@@ -171,7 +171,30 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Graphics.cpp" />
+    <ClCompile Include="Laser.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Maths.cpp" />
+    <ClCompile Include="PrecisionTime.cpp" />
+    <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="Rocket.cpp" />
+    <ClCompile Include="StarField.cpp" />
+    <ClCompile Include="Vector.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="cairo.h" />
+    <ClInclude Include="Enemy.h" />
+    <ClInclude Include="Graphics.h" />
+    <ClInclude Include="Laser.h" />
+    <ClInclude Include="Maths.h" />
+    <ClInclude Include="Missile.h" />
+    <ClInclude Include="Particule.h" />
+    <ClInclude Include="PrecisionTime.h" />
+    <ClInclude Include="Renderer.h" />
+    <ClInclude Include="Rocket.h" />
+    <ClInclude Include="StarField.h" />
+    <ClInclude Include="std.h" />
+    <ClInclude Include="Vector.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

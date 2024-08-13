@@ -2,5 +2,53 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Graphics.cpp">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="Maths.cpp">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="PrecisionTime.cpp">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="Vector.cpp">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="Rocket.cpp" />
+    <ClCompile Include="StarField.cpp" />
+    <ClCompile Include="Laser.cpp" />
+    <ClCompile Include="Renderer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Graphics.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="Maths.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="PrecisionTime.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="Vector.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="std.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="cairo.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="Rocket.h" />
+    <ClInclude Include="StarField.h" />
+    <ClInclude Include="Enemy.h" />
+    <ClInclude Include="Laser.h" />
+    <ClInclude Include="Missile.h" />
+    <ClInclude Include="Particule.h" />
+    <ClInclude Include="Renderer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="common">
+      <UniqueIdentifier>{4e82e753-0f85-4f82-972a-518af4770af4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>
