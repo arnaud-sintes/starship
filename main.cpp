@@ -3,6 +3,8 @@
 
 int main()
 {
+    // TODO rethink window creation code / priority management
+
     const std::wstring windowName{ L"Starship" };
     const size_t windowWidth{ 1920 };
     const size_t windowHeight{ 1000 };

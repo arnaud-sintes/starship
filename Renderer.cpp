@@ -293,8 +293,9 @@ bool Renderer::_MissileRocketCollision( Missile & _missile, Rocket & _other )
 
 
 void Renderer::_Update()
-{        
+{
     // TODO use mouse to move?
+    // TODO move code logic to proper classes
         
     // TODO solar wind (waves)
     // TODO planets and gravity attraction

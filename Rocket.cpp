@@ -108,6 +108,7 @@ void Rocket::Update()
 }
 
 
+// TODO split class
 void Rocket::Draw( cairo_t & _cairo, const Vector & _translation )
 {
     const auto translated{ position + _translation };

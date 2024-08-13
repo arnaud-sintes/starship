@@ -10,6 +10,7 @@
 
 
 // --------------
+// TODO way too big, move things at the right places (classes)
 class Renderer
 {
 public:
