@@ -4,10 +4,10 @@
 
 
 // --------------
-// TODO class
+// TODO refactor?
 struct Rocket
 {
-    Graphics::Color color;
+    const Graphics::Color color;
     Vector position;
     double orientation;
 
@@ -16,34 +16,34 @@ struct Rocket
     Vector momentum; // position momentum (thrust motion minus drag force)
     double rotationMomentum; // rotation momentum
 
-    double damage;
+    const double damage;
     
     struct Shield
     {
         double value; // capacity by default
-        double capacity;
-        double repair_rate;
-        double quality; // better quality -> thiner shield, with incidence on total mass (drag force penality)
+        const double capacity;
+        const double repair_rate;
+        const double quality; // better quality -> thiner shield, with incidence on total mass (drag force penality)
     };
     Shield shield;
 
     struct Propellant
     {
         double value; // capacity by default
-        double capacity;
-        double production_rate;
-        double quality; // better quality -> less tank size, with incidence on total mass (drag force penality)
+        const double capacity;
+        const double production_rate;
+        const double quality; // better quality -> less tank size, with incidence on total mass (drag force penality)
     };
     Propellant propellant;
 
     struct Engine
     {
         double thrust; // 0 by default
-        double power;
+        const double power;
         bool burst; // false by default
-        double acceleration_rate;
-        double decceleration_rate;
-        double quality; // better quality -> less nozzle size, with incidence on total mass (drag force penality)
+        const double acceleration_rate;
+        const double decceleration_rate;
+        const double quality; // better quality -> less nozzle size, with incidence on total mass (drag force penality)
         int burster; // for animation purpose
     };
     Engine engine;
@@ -54,11 +54,11 @@ struct Rocket
         inline static const int right{ 1 };
 
         std::array< double, 2 > thrust; // 0 by default
-        double power;
+        const double power;
         std::array< bool, 2 > burst; // false by default
-        double acceleration_rate;
-        double decceleration_rate;
-        double quality; // better quality -> less nozzle size, with incidence on total mass (drag force penality)
+        const double acceleration_rate;
+        const double decceleration_rate;
+        const double quality; // better quality -> less nozzle size, with incidence on total mass (drag force penality)
         std::array< int, 2 > burster; // for animation purpose
     };
     Rotator rotator;
@@ -80,19 +80,11 @@ struct Rocket
 
     void Reset();
     void Rotate( const int _direction );
-
     void StabilizeRotation();
-
     void ActivateThrust();
-
-    // _rotationAdjustmentRate the bigger the faster (but inertia) the lower the slower (but less inertia)
     void _RotateTo( const double _targetOrientation, const double _rotationAdjustmentRate );
-
     void InvertMomentum( const double _rotationAdjustmentRate );
-
     void Acquire( const Rocket & _target, const double _rotationAdjustmentRate, const Vector & _positionCompensation = {} );
-
     void Update();
-
     void Draw( cairo_t & _cairo, const Vector & _translation );
 };

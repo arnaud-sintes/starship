@@ -23,17 +23,17 @@ private:
     std::mt19937 m_rnd;
     const size_t m_dimension;
     std::uniform_int_distribution< std::mt19937::result_type > m_rndPos;
-    std::vector< Star > m_field;
+    std::list< Star > m_field;
 };
 
 
 // --------------
 struct StarField::Layer
 {
-    int density;
-    double speedMin, speedMax;
-    double colorMin, colorMax;
-    double radiusMin, radiusMax;
+    const int density;
+    const double speedMin, speedMax;
+    const double colorMin, colorMax;
+    const double radiusMin, radiusMax;
 };
 
 
@@ -41,7 +41,7 @@ struct StarField::Layer
 struct StarField::Star
 {
     double x, y;
-    double speed;
-    double c;
-    double radius;
+    const double speed;
+    const double c;
+    const double radius;
 };

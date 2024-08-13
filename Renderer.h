@@ -65,9 +65,9 @@ private:
 private:
     StarField m_starField;
     Rocket m_ship;
-    std::vector< Enemy > m_enemies;
+    std::list< std::unique_ptr< Enemy > > m_enemies;
     Rocket * m_pTarget{ nullptr };
-    std::vector< Laser > m_lasers;
-    std::vector< Missile > m_missiles;
-    std::vector< Particule > m_particules;
+    std::list< std::unique_ptr< Laser > > m_lasers;
+    std::list< std::unique_ptr< Missile > > m_missiles;
+    std::list< std::unique_ptr< Particule > > m_particules;
 };

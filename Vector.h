@@ -4,12 +4,10 @@
 
 
 // --------------
-class Vector
+struct Vector
 {
-public:
     double u{ 0 }, v{ 0 };
 
-public:
     static Vector From( const double _orientation, const double _distance );
     double DotProd( const Vector & _other ) const;
     double CrossProd( const Vector & _other ) const;

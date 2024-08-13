@@ -22,13 +22,13 @@ Renderer::Renderer( cairo_surface_t & _cairoSurface, cairo_t & _cairo, const siz
 void Renderer::_AddEnemy()
 {
     const auto minDistance{ Maths::Random( 0.25, 0.75 ) * static_cast< double >( max( m_windowWidth, m_windowHeight ) ) };
-    m_enemies.emplace_back( Rocket{ { 1, 0.5, 0.75 }, m_ship.position + Vector::From( Maths::Random( 0, Maths::Pi2 ), minDistance ), Maths::Random( 0, Maths::Pi2 ), {}, {}, 0,
+    m_enemies.emplace_back( new Enemy{ Rocket{ { 1, 0.5, 0.75 }, m_ship.position + Vector::From( Maths::Random( 0, Maths::Pi2 ), minDistance ), Maths::Random( 0, Maths::Pi2 ), {}, {}, 0,
             5, // damage
             { 5, 5, 0.001, 0.2 }, // shield
             { 10, 10, 0.05, Maths::Random( 0.1, 0.75 ) }, // propellant
             { 0, Maths::Random( 0.1, 0.5 ), false, 0.005, 0.01, Maths::Random( 0.2, 0.75 ), 0 }, // engine
             { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0, { 0, 0 } } }, // rotators
-            static_cast< int >( Maths::Random( 0, 60 * 5 ) ) );
+            static_cast< int >( Maths::Random( 0, 60 * 5 ) ) } );
 }
 
 
@@ -96,11 +96,11 @@ Rocket * Renderer::_ClosestEnemy( const Vector & _position )
     Rocket * pTarget{ nullptr };
     double minDistance{ std::numeric_limits< double >::infinity() };
     for( auto & enemy : m_enemies ) {
-        const auto distance{ ( enemy.rocket.position - _position ).Distance() };
+        const auto distance{ ( enemy->rocket.position - _position ).Distance() };
         if( distance >= minDistance )
             continue;
         minDistance = distance;
-        pTarget = &enemy.rocket;
+        pTarget = &enemy->rocket;
     }
     return pTarget;
 }
@@ -143,7 +143,7 @@ void Renderer::_Keys()
         alternateLazerPosition = !alternateLazerPosition;
         const auto momentum{ Vector::From( m_ship.orientation + Maths::Pi, 50 ) }; // 50px length
         const auto position{ Vector::From( m_ship.orientation + Maths::PiHalf * ( alternateLazerPosition ? 1 : -1 ), m_ship.dynamic.boundingBoxRadius ) };
-        m_lasers.emplace_back( Laser{ m_ship.position - momentum + m_ship.dynamic.headPosition + position, momentum,
+        m_lasers.emplace_back( new Laser{ m_ship.position - momentum + m_ship.dynamic.headPosition + position, momentum,
             0.2 } ); // damage
         laserShotRate = 0;
     }
@@ -154,13 +154,13 @@ void Renderer::_Keys()
     static int missileShotRate{ 0 };
     if( missileShotRate++ > 35 && _KeyPressed( VK_SPACE ) ) {
         missileShotRate = 0;
-        m_missiles.emplace_back( Rocket{ { 0.5, 0.75, 1 }, m_ship.position, m_ship.orientation, {}, m_ship.momentum, 0,
+        m_missiles.emplace_back( new Missile{ Rocket{ { 0.5, 0.75, 1 }, m_ship.position, m_ship.orientation, {}, m_ship.momentum, 0,
             3, // damage
             { 1, 1, 0.01, 0.5 }, // shield
             { 10, 10, 0.005, 0.9 }, // propellant
             { 0, 0.5, false, 0.01, 0.05, 0.8, 0 }, // engine
             //{ { 0, 0 }, 0, { false, false }, 0, 0, 0, { 0, 0 } } } ); // TODO non-guided missiles rotator?
-            { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0.5, { 0, 0 } } }, false, &m_ship ); // guided missiles rotator
+            { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0.5, { 0, 0 } } }, false, m_ship } ); // guided missiles rotator
     }
 }
 
@@ -169,11 +169,11 @@ void Renderer::_Reset()
 {
     // reset enemies data:
     for( auto & enemy : m_enemies )
-        enemy.rocket.Reset();
+        enemy->rocket.Reset();
 
     // reset missiles data:
     for( auto & missile : m_missiles )
-        missile.rocket.Reset();
+        missile->rocket.Reset();
 
     // reset ship data:
     m_ship.Reset();
@@ -183,7 +183,7 @@ void Renderer::_Reset()
 void Renderer::_AddParticule( const Vector & _position, const Vector & _direction, const double _orientation, const double _speed, const double _size )
 {
     const auto momentum{ Vector::From( _orientation, _speed ) + _direction };
-    m_particules.emplace_back( Particule{ _position, momentum, Maths::Random( 1.5, 3 ), _size } );
+    m_particules.emplace_back( new Particule{ _position, momentum, Maths::Random( 1.5, 3 ), _size } );
 }
 
 
@@ -280,7 +280,7 @@ bool Renderer::_LaserRocketCollision( Laser & _laser, Rocket & _other )
 bool Renderer::_MissileRocketCollision( Missile & _missile, Rocket & _other )
 {
     // prevent collision when launched:
-    if( _missile.pOrigin == &_other && !_missile.bypassCollision ) {
+    if( &_missile.origin == &_other && !_missile.bypassCollision ) {
         if( !Maths::Collision( _missile.rocket.position, _missile.rocket.dynamic.boundingBoxRadius, _other.position, _other.dynamic.boundingBoxRadius ) )
             _missile.bypassCollision = true;
         return false;
@@ -305,12 +305,12 @@ void Renderer::_Update()
         // enemies-enemies collisions:
         for( auto & enemyOther : m_enemies )
             if( &enemy != &enemyOther )
-                if( _RocketCollision( enemy.rocket, enemyOther.rocket ) )
-                    _RocketImpact( enemy.rocket, enemyOther.rocket );
+                if( _RocketCollision( enemy->rocket, enemyOther->rocket ) )
+                    _RocketImpact( enemy->rocket, enemyOther->rocket );
         // enemy-ship collision:
-        if( _RocketCollision( enemy.rocket, m_ship ) ) {
-            _RocketImpact( enemy.rocket, m_ship );
-            _RocketImpact( m_ship, enemy.rocket );
+        if( _RocketCollision( enemy->rocket, m_ship ) ) {
+            _RocketImpact( enemy->rocket, m_ship );
+            _RocketImpact( m_ship, enemy->rocket );
         }
     }
 
@@ -319,31 +319,34 @@ void Renderer::_Update()
         bool collision{ false };
         // laser-ships collisions:
         for( auto itEnemy{ m_enemies.begin() }, itEnemyEnd{ m_enemies.end() }; !collision && itEnemy != itEnemyEnd; ++itEnemy )
-            collision = _LaserRocketCollision( laser, itEnemy->rocket );
+            collision = _LaserRocketCollision( *laser, ( **itEnemy ).rocket );
         // laser-missiles collisions:
         for( auto itMissile{ m_missiles.begin() }; !collision && itMissile != m_missiles.end(); ) {
-            if( itMissile->pOrigin != &m_ship ) // laser don't destroy ship's missiles
-                if( _LaserRocketCollision( laser, itMissile->rocket ) ) {
+            auto & missile{ **itMissile };
+            if( &missile.origin != &m_ship ) // laser don't destroy ship's missiles
+                if( _LaserRocketCollision( *laser, missile.rocket ) ) {
                     collision = true;
-                    _AddExplosion( laser.position, itMissile->rocket.momentum );
+                    _AddExplosion( laser->position, missile.rocket.momentum );
                     itMissile = m_missiles.erase( itMissile );
                     continue;
                 }
             ++itMissile;
         }
         if( collision )
-            laser.lifeSpan = laser.maxLifeSpan;
+            laser->lifeSpan = laser->maxLifeSpan;
     }
         
     // missiles collision:
     for( auto it{ m_missiles.begin() }; it != m_missiles.end(); ) {
+        auto & rocket{ ( **it ).rocket };
         bool collision{ false };
         // missiles-missiles collisions:
         for( auto itMissile{ m_missiles.begin() }; !collision && itMissile != m_missiles.end(); ) {
+            auto & otherRocket{ ( **itMissile ).rocket };
             if( it != itMissile )
-                if( _RocketCollision( it->rocket, itMissile->rocket ) ) {
+                if( _RocketCollision( rocket, otherRocket ) ) {
                     collision = true;
-                    _AddExplosion( itMissile->rocket.position, itMissile->rocket.momentum );
+                    _AddExplosion( otherRocket.position, otherRocket.momentum );
                     itMissile = m_missiles.erase( itMissile );
                     continue;
                 }
@@ -351,13 +354,13 @@ void Renderer::_Update()
         }
         // missiles-enemies collisions:
         for( auto itEnemy{ m_enemies.begin() }, itEnemyEnd{ m_enemies.end() }; !collision && itEnemy != itEnemyEnd; ++itEnemy )
-            collision = _MissileRocketCollision( *it, itEnemy->rocket );
+            collision = _MissileRocketCollision( **it, ( **itEnemy ).rocket );
         // missiles-ship collision:
         if( !collision )
-            collision = _MissileRocketCollision( *it, m_ship );
+            collision = _MissileRocketCollision( **it, m_ship );
         // explode and remove:
         if( collision ) {
-            _AddExplosion( it->rocket.position, it->rocket.momentum );
+            _AddExplosion( rocket.position, rocket.momentum );
             it = m_missiles.erase( it );
             continue;
         }
@@ -367,28 +370,29 @@ void Renderer::_Update()
     // update enemies data:
     int newEnemiesToGenerate{ 0 };
     for( auto it{ m_enemies.begin() }; it != m_enemies.end(); ) {
+        auto & enemy{ **it };
         // better NOT aim directly the ship to avoid collisions:
-        it->rocket.Acquire( m_ship, 0.5, Vector::From( m_ship.orientation + Maths::Pi, 100 ) );
-        it->rocket.ActivateThrust();
-        it->rocket.Update();
+        enemy.rocket.Acquire( m_ship, 0.5, Vector::From( m_ship.orientation + Maths::Pi, 100 ) );
+        enemy.rocket.ActivateThrust();
+        enemy.rocket.Update();
 
         // shield:
-        if( it->rocket.shield.value <= 0 ) {
-            _AddExplosion( it->rocket.position, it->rocket.momentum, bigExplosion );
+        if( enemy.rocket.shield.value <= 0 ) {
+            _AddExplosion( enemy.rocket.position, enemy.rocket.momentum, bigExplosion );
             newEnemiesToGenerate++;
             it = m_enemies.erase( it );
             continue;
         }
 
         // enemies launch rockets aiming the ship:
-        if( it->shotRate++ > 60 * 5 ) { // every 5 seconds
-            it->shotRate = 0;
-            m_missiles.emplace_back( Rocket{ { 1, 0.5, 0.75 }, it->rocket.position, it->rocket.orientation, {}, it->rocket.momentum, 0,
+        if( enemy.shotRate++ > 60 * 5 ) { // every 5 seconds
+            enemy.shotRate = 0;
+            m_missiles.emplace_back( new Missile{ Rocket{ { 1, 0.5, 0.75 }, enemy.rocket.position, enemy.rocket.orientation, {}, enemy.rocket.momentum, 0,
                 3, // damage
                 { 1, 1, 0.01, 0.5 }, // shield
                 { 10, 10, 0.01, 0.9 }, // propellant
                 { 0, 0.5, false, 0.01, 0.05, 0.8, 0 }, // engine
-                { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0.5, { 0, 0 } } }, true, &it->rocket ); // guided missiles rotator
+                { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0.5, { 0, 0 } } }, true, enemy.rocket } ); // guided missiles rotator
         }
         ++it;
     }
@@ -397,41 +401,43 @@ void Renderer::_Update()
 
     // update laser data:
     for( auto it{ m_lasers.begin() }; it != m_lasers.end(); ) {
-        if( it->lifeSpan++ > it->maxLifeSpan ) {
+        auto & laser{ **it };
+        if( laser.lifeSpan++ > laser.maxLifeSpan ) {
             it = m_lasers.erase( it );
             continue;
         }
         // regular update:
-        it->Update();
+        laser.Update();
         ++it;
     }
 
     // update missiles data:
     for( auto it{ m_missiles.begin() }; it != m_missiles.end(); ) {
+        auto & missile{ **it };
         // running:
-        if( it->lifeSpan == 0 ) {
+        if( missile.lifeSpan == 0 ) {
             // acquiring proper target:
-            const auto pTarget{ it->targetShip ? &m_ship : _ClosestEnemy( it->rocket.position ) };
+            const auto pTarget{ missile.targetShip ? &m_ship : _ClosestEnemy( missile.rocket.position ) };
             if( pTarget != nullptr ) {
-                it->rocket.Acquire( *pTarget, 0.1 );
-                it->rocket.ActivateThrust();
+                missile.rocket.Acquire( *pTarget, 0.1 );
+                missile.rocket.ActivateThrust();
             }
             // stopping when out of propellant:
-            if( it->rocket.propellant.value <= it->rocket.propellant.production_rate )
-                it->lifeSpan = 1;
+            if( missile.rocket.propellant.value <= missile.rocket.propellant.production_rate )
+                missile.lifeSpan = 1;
         }
         // stopped:
         else {
-            it->lifeSpan++;
+            missile.lifeSpan++;
             // explode and remove after one second of drift:
-            if( it->lifeSpan == 60 ) {
-                _AddExplosion( it->rocket.position, it->rocket.momentum );
+            if( missile.lifeSpan == 60 ) {
+                _AddExplosion( missile.rocket.position, missile.rocket.momentum );
                 it = m_missiles.erase( it );
                 continue;
             }
         }
         // regular update:
-        it->rocket.Update();
+        missile.rocket.Update();
         ++it;
     }
 
@@ -442,19 +448,20 @@ void Renderer::_Update()
 
     // add particules:
     for( auto & enemy : m_enemies )
-        _AddEnginesParticules( enemy.rocket );
+        _AddEnginesParticules( enemy->rocket );
     for( auto & missile : m_missiles )
-        _AddEnginesParticules( missile.rocket );
+        _AddEnginesParticules( missile->rocket );
     _AddEnginesParticules( m_ship );
 
     // update particules data:
     for( auto it{ m_particules.begin() }; it != m_particules.end(); ) {
-        it->lifeSpan -= 0.09; // quickly reduce particules lifespan
-        if( it->lifeSpan <= 0 ) {
+        auto & particule{ **it };
+        particule.lifeSpan -= 0.09; // quickly reduce particules lifespan
+        if( particule.lifeSpan <= 0 ) {
             it = m_particules.erase( it );
             continue;
         }
-        it->position += it->momentum;
+        particule.position += particule.momentum;
         ++it;
     }
 }
@@ -488,29 +495,29 @@ void Renderer::_Draw()
 
     // draw particules:
     for( auto & particule : m_particules )
-        Graphics::Fill( m_cairo, particule.position + shipPosition, particule.width, Graphics::arcFull, Graphics::FireColor( ( 3 - particule.lifeSpan ) / 3 ) );
+        Graphics::Fill( m_cairo, particule->position + shipPosition, particule->width, Graphics::arcFull, Graphics::FireColor( ( 3 - particule->lifeSpan ) / 3 ) );
 
     // draw enemies:
     for( auto & enemy : m_enemies ) {
-        if( m_pTarget == &enemy.rocket ) {
-            Graphics::Line( m_cairo, screenCenter, enemy.rocket.position + shipPosition, { 1, 0.5, 0.1 }, 0.5, true );
-            const auto vector{ enemy.rocket.position - m_ship.position };
+        if( m_pTarget == &enemy->rocket ) {
+            Graphics::Line( m_cairo, screenCenter, enemy->rocket.position + shipPosition, { 1, 0.5, 0.1 }, 0.5, true );
+            const auto vector{ enemy->rocket.position - m_ship.position };
             const auto distance{ static_cast< int >( vector.Distance() ) };
             if( distance > 500 ) { // 500 is "close"
                 const auto position{ Vector::From( vector.Orientation(), m_ship.dynamic.boundingBoxRadius + 50 ) };
                 Graphics::Text( m_cairo, position + screenCenter, 12, { 1, 0.75, 0.5 }, std::to_string( distance ) );
             }
         }
-        enemy.rocket.Draw( m_cairo, shipPosition );
+        enemy->rocket.Draw( m_cairo, shipPosition );
     }
 
     // draw lasers:
     for( auto & laser : m_lasers )
-        laser.Draw( m_cairo, shipPosition );
+        laser->Draw( m_cairo, shipPosition );
 
     // draw missiles:
     for( auto & missile : m_missiles )
-        missile.rocket.Draw( m_cairo, shipPosition );
+        missile->rocket.Draw( m_cairo, shipPosition );
 
     // draw ship:
     m_ship.Draw( m_cairo, shipPosition );

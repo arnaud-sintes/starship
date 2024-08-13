@@ -29,6 +29,7 @@ void Rocket::ActivateThrust()
 }
 
 
+// _rotationAdjustmentRate the bigger the faster (but inertia) the lower the slower (but less inertia)
 void Rocket::_RotateTo( const double _targetOrientation, const double _rotationAdjustmentRate )
 {
     // compute current normalized orientation:

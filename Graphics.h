@@ -10,19 +10,17 @@ class Graphics
 {
 public:
     // --------------
-    class Color
+    struct Color
     {
-    public:
-        double r, g, b;
+        const double r, g, b;
     };
 
     inline static const Color colorWhite{ 1, 1, 1 };
 
     // --------------
-    class Arc
+    struct Arc
     {
-    public:
-        double a, b;
+        const double a, b;
     };
 
     inline static const Arc arcFull{ 0, Maths::Pi2 };

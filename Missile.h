@@ -4,12 +4,11 @@
 
 
 // --------------
-// TODO class
 struct Missile
 {
     Rocket rocket;
     bool targetShip;
-    Rocket * pOrigin;
+    const Rocket & origin;
     bool bypassCollision{ false };
     int lifeSpan{ 0 };
 };

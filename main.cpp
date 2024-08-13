@@ -26,7 +26,7 @@ int main()
     DWORD windowStyle{ WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX };
     DWORD windowExStyle{ WS_EX_APPWINDOW | WS_EX_WINDOWEDGE };
     ::AdjustWindowRectEx( &windowRect, windowStyle, FALSE, windowExStyle );
-    HWND hWnd{ ::CreateWindowExW( windowExStyle, windowName.c_str(), windowName.c_str(), windowStyle, 200, 200, windowRect.right - windowRect.left, windowRect.bottom - windowRect.top, nullptr, nullptr, hInstance, nullptr ) };
+    HWND hWnd{ ::CreateWindowExW( windowExStyle, windowName.c_str(), windowName.c_str(), windowStyle, 0, 0, windowRect.right - windowRect.left, windowRect.bottom - windowRect.top, nullptr, nullptr, hInstance, nullptr ) };
     ::ShowWindow( ::GetConsoleWindow(), SW_HIDE );
     MONITORINFO monitorInfo{ sizeof( MONITORINFO ) };
     ::GetMonitorInfo( MonitorFromWindow( hWnd, MONITOR_DEFAULTTOPRIMARY ), &monitorInfo );
@@ -43,7 +43,9 @@ int main()
     // rendering thread:
     Renderer renderer{ *pCairoSurface, *pCairo, windowWidth, windowHeight };
     std::jthread renderThread{ [ & ]( std::stop_token _token ){
+            #ifdef CRITICAL_PRIORITY
             ::SetThreadPriority( ::GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL );
+            #endif
             renderer.Loop( _token );
         } };
 
@@ -63,7 +65,9 @@ int main()
         }, nullptr, 0 ) };
 
     // dispatch thread:
+    #ifdef CRITICAL_PRIORITY
     ::SetThreadPriority( ::GetCurrentThread(), THREAD_PRIORITY_NORMAL );
+    #endif
     MSG msg;
     while( ::GetMessageW( &msg, nullptr, 0, 0 ) ) {
         ::TranslateMessage( &msg );

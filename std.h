@@ -11,3 +11,4 @@
 #include <random>
 #include <unordered_set>
 #include <functional>
+#include <memory>

@@ -4,11 +4,10 @@
 
 
 // --------------
-// TODO class
 struct Particule
 {
     Vector position;
-    Vector momentum;
+    const Vector momentum;
     double lifeSpan;
-    double width;
+    const double width;
 };

@@ -4,14 +4,13 @@
 
 
 // --------------
-// TODO class
 struct Laser
 {
     Vector position;
-    Vector momentum;
-    double damage;
+    const Vector momentum;
+    const double damage;
     int lifeSpan{ 0 };
-    int maxLifeSpan{ 20 };
+    const int maxLifeSpan{ 20 };
 
     struct Dynamic
     {

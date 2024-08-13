@@ -18,7 +18,9 @@ PrecisionTime::PrecisionTime()
     m_pSetResolution( nMaxRes, TRUE, &dummy );
 
     // increase priorities:
+    #ifdef CRITICAL_PRIORITY
     ::SetPriorityClass( ::GetCurrentProcess(), REALTIME_PRIORITY_CLASS );
+    #endif
 }
 
 

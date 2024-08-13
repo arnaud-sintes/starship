@@ -4,7 +4,6 @@
 
 
 // --------------
-// TODO class
 struct Enemy
 {
     Rocket rocket;
