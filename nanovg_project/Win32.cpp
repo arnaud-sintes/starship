@@ -12,6 +12,46 @@ void Win32::ShowConsole( const bool _show )
 }
 
 
+void Win32::_InstallKeyboardHook( const bool _install, const Handle & _wnd, FnHook && _hook )
+{
+    // hooks:
+    static std::mutex hooksMtx;
+    static std::unordered_map< void *, FnHook > hooks;
+
+    // add or remove hooks:
+    {
+        std::unique_lock lock{ hooksMtx };
+        if( _install )
+            hooks.emplace( _wnd.handle, std::move( _hook ) );
+        else
+            hooks.erase( _wnd.handle );
+    }
+
+    // install global keyboard hook (first time):
+    static const auto fnKeyPress{ []( const unsigned long _key, const bool _pressed ){
+            std::unique_lock lock{ hooksMtx };
+            for( const auto & hook : hooks )
+                if( ::GetForegroundWindow() == static_cast< HWND >( hook.first ) )
+                    hook.second( _key, _pressed );
+        } };
+    static HHOOK keyboardHook{ ::SetWindowsHookEx( WH_KEYBOARD_LL, []( const int _nCode, const WPARAM _wParam, const LPARAM _lParam ) {
+            auto press{ ( PKBDLLHOOKSTRUCT ) _lParam };
+            if( press->vkCode == 0x0d && ( press->flags & LLKHF_EXTENDED ) != 0 )
+		        press->vkCode = 0x0e;
+            const bool down{ _wParam == WM_KEYDOWN || _wParam == WM_SYSKEYDOWN };
+            if( ( _wParam == WM_KEYDOWN || _wParam == WM_SYSKEYDOWN ) || ( _wParam == WM_KEYUP || _wParam == WM_SYSKEYUP ) )
+                fnKeyPress( press->vkCode, down );
+            return CallNextHookEx( keyboardHook, _nCode, _wParam, _lParam );
+        }, nullptr, 0 ) };
+
+    // stop global keyboard hook (last call):
+    static int hookCount{ 0 };
+    hookCount += _install ? 1 : -1;
+    if( hookCount == 0 )
+        ::UnhookWindowsHookEx( keyboardHook );
+}
+
+
 Win32::Handle Win32::_GetModuleHandle()
 {
     return { ::GetModuleHandleW( nullptr ), false };
@@ -74,6 +114,11 @@ Win32::Windows::Windows( const std::wstring & _name, const Dimension_ui & _dimen
     // center by default:
     Center();
 
+    // install keyboard hook:
+    _InstallKeyboardHook( true, m_wnd, [ this ]( const unsigned long _key, const bool _pressed ){
+            m_keyPressed.at( static_cast< unsigned char >( _key ) )  = _pressed;
+        } );
+
     // setup device context:
     const_cast< Handle & >( m_dc ).handle = ::GetDC( m_wnd.As< ::HWND >() );
 
@@ -91,6 +136,7 @@ Win32::Windows::Windows( const std::wstring & _name, const Dimension_ui & _dimen
 
 Win32::Windows::~Windows()
 {
+    _InstallKeyboardHook( false, m_wnd );
     ::ReleaseDC( m_wnd.As< ::HWND >(), m_dc.As< ::HDC >() );
     ::DestroyWindow( m_wnd.As< ::HWND >() );
 }

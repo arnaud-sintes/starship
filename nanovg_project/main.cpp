@@ -17,6 +17,7 @@ int main()
         frame.FillArc( { 640, 240 }, 50, 3.1415 / 2, 3.1415 + 3.1415 / 2, { 1, 0, 0 }, true );
         frame.FillArc( { 320, 480 }, 50, 0, 3.1415, { 1, 0, 0 }, false );
         frame.Line( { 100, 200 }, { 500, 400 }, { 0, 0.5, 1 }, 2 );
-        frame.Text( { 0, 0 }, "fontA", 20, "hello there", { 1, 1, 1 } );
+        if( window.KeyPressed( Win32::Windows::eKey::space ) )
+            frame.Text( { 0, 0 }, "fontA", 20, "hello there", { 1, 1, 1 } );
     }
 }
