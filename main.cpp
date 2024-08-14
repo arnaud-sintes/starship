@@ -3,9 +3,7 @@
 
 int main()
 {
-    // TODO rethink window creation code / priority management
-    // TODO -> move PrecisionCode to new NanoVG folder
-    // TODO -> move keyboard handling
+    // TODO -> move PrecisionTime & thread/process to new NanoVG folder (Win32)
     // TODO replace Cairo with NanoVG
 
     const std::wstring windowName{ L"Starship" };
