@@ -4,6 +4,9 @@
 int main()
 {
     // TODO rethink window creation code / priority management
+    // TODO -> move PrecisionCode to new NanoVG folder
+    // TODO -> move keyboard handling
+    // TODO replace Cairo with NanoVG
 
     const std::wstring windowName{ L"Starship" };
     const size_t windowWidth{ 1920 };
