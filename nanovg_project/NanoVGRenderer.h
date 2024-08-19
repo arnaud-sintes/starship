@@ -1,31 +1,30 @@
 #pragma once
 
-#include "OpenGLSurface.h"
+#include "OpenGL.h"
 
 
 // ----------------
-class NanoVGSurface
+class NanoVGRenderer
 {
 public:
-    NanoVGSurface( const Win32::Windows & _windows );
-    ~NanoVGSurface();
+    NanoVGRenderer( const OpenGL & _openGL );
+    ~NanoVGRenderer();
 
 public:
     class Frame;
-    Frame CreateFrame( const Dimension_ui & _dimension, const Color_d & _color ) const;
+    Frame CreateFrame( const Dimension_ui & _dimension ) const;
     bool CreateFont( const std::string & _name, const std::string & _path ) const;
 
 private:
-    const OpenGLSurface m_ogl;
     void * m_context;
 };
 
 
 // ----------------
-class NanoVGSurface::Frame
+class NanoVGRenderer::Frame
 {
 public:
-    Frame( const Dimension_ui & _dimension, const Color_d & _color, const OpenGLSurface & _ogl, void * _context );
+    Frame( const Dimension_ui & _dimension, void * _context );
     ~Frame();
 
 public:
@@ -37,6 +36,5 @@ public:
     void Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color );
 
 private:
-    const OpenGLSurface::Context m_glContext;
     void * m_context;
 };

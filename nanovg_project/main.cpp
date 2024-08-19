@@ -1,23 +1,42 @@
 // maqui, (the) Most Astonishingly Qualitative User Interface
 
-#include "NanoVGSurface.h"
+#include "NanoVGRenderer.h"
+#include "Timer.h"
+#include "Renderer.h"
 
 
 int main()
 {
-    Win32::ShowConsole( false );
-    Win32::Windows window{ L"test", { 640, 480 } };
-    NanoVGSurface surface{ window };
-    surface.CreateFont( "fontA", "OpenSans-Light.ttf" );
+    Win32::ShowConsole( true );
+    Win32::Windows window{ L"Starship", { 1920, 1000 } };
+    auto & timer{ Timer::GetInstance() }; // init nano precision
+    Win32::SetThreadRealtimePriority();
+    OpenGL ogl{ window };
+    NanoVGRenderer nanoVG{ ogl };
+    nanoVG.CreateFont( "fontA", "OpenSans-Light.ttf" );
+
+    Renderer renderer{ window };
+
+    Timer::FpsContext fpsContext{ 60 };
     while( window.Dispatch() ) {
-        auto frame{ surface.CreateFrame( window.GetDimension(), { 0, 0, 0 } ) };
-        frame.FillArc( { 320, 0 }, 50, 0, 3.1415, { 1, 0, 0 } );
-        frame.FillArc( { 0, 240 }, 50, 3.1415 / 2, 3.1415 + 3.1415 / 2, { 1, 0, 0 }, false );
-        frame.StrokeCircle( { 320, 240 }, 50, { 1, 0, 0 }, 1 );
-        frame.FillArc( { 640, 240 }, 50, 3.1415 / 2, 3.1415 + 3.1415 / 2, { 1, 0, 0 }, true );
-        frame.FillArc( { 320, 480 }, 50, 0, 3.1415, { 1, 0, 0 }, false );
-        frame.Line( { 100, 200 }, { 500, 400 }, { 0, 0.5, 1 }, 2 );
-        if( window.KeyPressed( Win32::Windows::eKey::space ) )
-            frame.Text( { 0, 0 }, "fontA", 20, "hello there", { 1, 1, 1 } );
+        const auto temper{ timer.Temper( fpsContext ) };
+        {
+            auto context{ ogl.MakeCurrent() };
+            context.Viewport( window.GetDimension() );
+            context.Clear( { 0, 0.05, 0.1 } );
+            auto frame{ nanoVG.CreateFrame( window.GetDimension() ) };
+
+            // main loop:
+            renderer.Loop( frame );
+            
+            // frame rate information:
+            fpsContext.Update();
+            std::stringstream ssFps;            
+            ssFps << "fps: " << std::setprecision( 3 ) << fpsContext.Fps();
+            std::stringstream ssConsumption;            
+            ssConsumption << " (" << std::setprecision( 3 ) << fpsContext.Consumption() << "%)";
+            const std::string fps{ ssFps.str() + ssConsumption.str() + ( fpsContext.FrameDropped() ? " [frame dropped]" : "" ) };
+            frame.Text( { 2, 2 }, "fontA", 14, fps, { 1, 1, 1 } );
+        }
     }
 }

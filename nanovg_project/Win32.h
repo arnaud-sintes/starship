@@ -15,6 +15,8 @@ public:
     struct Handle;
     class Windows;
     static void ShowConsole( const bool _show = true );
+    static void SetProcessRealtimePriority();
+    static void SetThreadRealtimePriority( const bool _realtime = true );
 
 private:
     using FnHook = std::function< void( const unsigned long _key, const bool _pressed ) >;
@@ -66,9 +68,17 @@ public:
 public:
     bool Dispatch() const;
     enum class eKey : unsigned long {
-        space = 0x20
+        space = 0x20,
+        up = 0x26,
+        down = 0x28,
+        right = 0x27,
+        left = 0x25,
+        lControl = 0xA2,
+        rControl = 0xA3,
+        lShift =  0xA0,
+        rShift = 0xA1,        
     };
-    bool KeyPressed( const eKey _key ) { return m_keyPressed.at( static_cast< unsigned char >( _key ) ); }
+    bool KeyPressed( const eKey _key ) const { return m_keyPressed.at( static_cast< unsigned char >( _key ) ); }
     const Handle & GetDeviceContext() const { return m_dc; }
     const Dimension_ui & GetDimension() const{ return m_dimension; }
     void Show( const bool _show = true ) const;

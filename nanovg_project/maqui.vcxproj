@@ -151,12 +151,19 @@
   <ItemGroup>
     <ClCompile Include="external\glew\glew.c" />
     <ClCompile Include="external\nanovg\nanovg.c" />
+    <ClCompile Include="Laser.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="NanoVGSurface.cpp" />
-    <ClCompile Include="OpenGLSurface.cpp" />
+    <ClCompile Include="Maths.cpp" />
+    <ClCompile Include="NanoVGRenderer.cpp" />
+    <ClCompile Include="OpenGL.cpp" />
+    <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="Rocket.cpp" />
+    <ClCompile Include="StarField.cpp" />
+    <ClCompile Include="Timer.cpp" />
     <ClCompile Include="Win32.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Enemy.h" />
     <ClInclude Include="external\glew\glew.h" />
     <ClInclude Include="external\glew\wglew.h" />
     <ClInclude Include="external\nanovg\fontstash.h" />
@@ -165,10 +172,17 @@
     <ClInclude Include="external\nanovg\nanovg_gl_utils.h" />
     <ClInclude Include="external\nanovg\stb_image.h" />
     <ClInclude Include="external\nanovg\stb_truetype.h" />
+    <ClInclude Include="Laser.h" />
     <ClInclude Include="Maths.h" />
-    <ClInclude Include="NanoVGSurface.h" />
-    <ClInclude Include="OpenGLSurface.h" />
+    <ClInclude Include="Missile.h" />
+    <ClInclude Include="NanoVGRenderer.h" />
+    <ClInclude Include="OpenGL.h" />
+    <ClInclude Include="Particule.h" />
+    <ClInclude Include="Renderer.h" />
+    <ClInclude Include="Rocket.h" />
+    <ClInclude Include="StarField.h" />
     <ClInclude Include="std.h" />
+    <ClInclude Include="Timer.h" />
     <ClInclude Include="Win32.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

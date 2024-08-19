@@ -1,4 +1,4 @@
-#include "NanoVGSurface.h"
+#include "NanoVGRenderer.h"
 
 #include "external/glew/glew.h"
 #include "external/nanovg/nanovg.h"
@@ -7,28 +7,27 @@
 
 // ----------------
 
-NanoVGSurface::NanoVGSurface( const Win32::Windows & _windows )
-    : m_ogl{ _windows }
+NanoVGRenderer::NanoVGRenderer( const OpenGL & _openGL )
 {
-    auto context{ m_ogl.MakeCurrent() };
+    auto context{ _openGL.MakeCurrent() };
     ::glewInit();
     m_context = ::nvgCreateGL3( NVG_ANTIALIAS | NVG_STENCIL_STROKES );
 }
 
 
-NanoVGSurface::~NanoVGSurface()
+NanoVGRenderer::~NanoVGRenderer()
 {
     ::nvgDeleteGL3( static_cast< NVGcontext * >( m_context ) );
 }
 
 
-NanoVGSurface::Frame NanoVGSurface::CreateFrame( const Dimension_ui & _dimension, const Color_d & _color ) const
+NanoVGRenderer::Frame NanoVGRenderer::CreateFrame( const Dimension_ui & _dimension ) const
 {
-    return { _dimension, _color, m_ogl, m_context };
+    return { _dimension, m_context };
 }
 
 
-bool NanoVGSurface::CreateFont( const std::string & _name, const std::string & _path ) const
+bool NanoVGRenderer::CreateFont( const std::string & _name, const std::string & _path ) const
 {
     return ::nvgCreateFont( static_cast< NVGcontext * >( m_context ), _name.c_str(), _path.c_str() ) != -1;
 }
@@ -36,24 +35,20 @@ bool NanoVGSurface::CreateFont( const std::string & _name, const std::string & _
 
 // ----------------
 
-NanoVGSurface::Frame::Frame( const Dimension_ui & _dimension, const Color_d & _color, const OpenGLSurface & _ogl, void * _context )
-    : m_glContext{ _ogl.MakeCurrent() }
-    , m_context{ _context }
-{
-    m_glContext.Viewport( _dimension );
-    m_glContext.Clear( _color );
-    ::nvgBeginFrame( static_cast< NVGcontext * >( m_context ),
+NanoVGRenderer::Frame::Frame(const Dimension_ui & _dimension, void * _context )
+    : m_context{ _context }
+{   ::nvgBeginFrame( static_cast< NVGcontext * >( m_context ),
         static_cast< float >( _dimension.width ), static_cast< float >( _dimension.height ), 1 );
 }
 
 
-NanoVGSurface::Frame::~Frame()
+NanoVGRenderer::Frame::~Frame()
 {
     ::nvgEndFrame( static_cast< NVGcontext * >( m_context ) );
 }
 
 
-void NanoVGSurface::Frame::Line( const Position_d & _a, const Position_d & _b, const Color_d & _color, const double _strokeWidth ) const
+void NanoVGRenderer::Frame::Line( const Position_d & _a, const Position_d & _b, const Color_d & _color, const double _strokeWidth ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };
     ::nvgBeginPath( context );
@@ -68,7 +63,7 @@ void NanoVGSurface::Frame::Line( const Position_d & _a, const Position_d & _b, c
 }
 
 
-void NanoVGSurface::Frame::FillCircle( const Position_d & _position, const double _radius, const Color_d & _color ) const
+void NanoVGRenderer::Frame::FillCircle( const Position_d & _position, const double _radius, const Color_d & _color ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };
     ::nvgBeginPath( context );
@@ -80,7 +75,7 @@ void NanoVGSurface::Frame::FillCircle( const Position_d & _position, const doubl
 }
 
 
-void NanoVGSurface::Frame::StrokeCircle( const Position_d & _position, const double _radius, const Color_d & _color, const double _strokeWidth ) const
+void NanoVGRenderer::Frame::StrokeCircle( const Position_d & _position, const double _radius, const Color_d & _color, const double _strokeWidth ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };
     ::nvgBeginPath( context );
@@ -93,7 +88,7 @@ void NanoVGSurface::Frame::StrokeCircle( const Position_d & _position, const dou
 }
 
 
-void NanoVGSurface::Frame::FillArc( const Position_d & _position, const double _radius, const double _angleA, const double _angleB, const Color_d & _color, const bool _clockWise ) const
+void NanoVGRenderer::Frame::FillArc( const Position_d & _position, const double _radius, const double _angleA, const double _angleB, const Color_d & _color, const bool _clockWise ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };
     ::nvgBeginPath( context );
@@ -105,7 +100,7 @@ void NanoVGSurface::Frame::FillArc( const Position_d & _position, const double _
 }
 
 
-void NanoVGSurface::Frame::StrokeArc( const Position_d & _position, const double _radius, const double _angleA, const double _angleB, const Color_d & _color, const double _strokeWidth, const bool _clockWise ) const
+void NanoVGRenderer::Frame::StrokeArc( const Position_d & _position, const double _radius, const double _angleA, const double _angleB, const Color_d & _color, const double _strokeWidth, const bool _clockWise ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };
     ::nvgBeginPath( context );
@@ -118,7 +113,7 @@ void NanoVGSurface::Frame::StrokeArc( const Position_d & _position, const double
 }
 
 
-void NanoVGSurface::Frame::Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color )
+void NanoVGRenderer::Frame::Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color )
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };
     ::nvgFontSize( context, static_cast< float >( _size ) );

@@ -4,11 +4,11 @@
 
 
 // ----------------
-class OpenGLSurface
+class OpenGL
 {
 public:
-    OpenGLSurface( const Win32::Windows & _windows );
-    ~OpenGLSurface();
+    OpenGL( const Win32::Windows & _windows );
+    ~OpenGL();
 
 public:
     class Context;
@@ -21,7 +21,7 @@ private:
 
 
 // ----------------
-class OpenGLSurface::Context
+class OpenGL::Context
 {
 public:
     Context( const Win32::Handle & _dc, const Win32::Handle & _rc );

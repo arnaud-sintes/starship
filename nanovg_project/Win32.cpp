@@ -12,6 +12,18 @@ void Win32::ShowConsole( const bool _show )
 }
 
 
+void Win32::SetProcessRealtimePriority()
+{
+    ::SetPriorityClass( ::GetCurrentProcess(), REALTIME_PRIORITY_CLASS );
+}
+
+
+void Win32::SetThreadRealtimePriority( const bool _realtime )
+{
+    ::SetThreadPriority( ::GetCurrentThread(), _realtime ? THREAD_PRIORITY_TIME_CRITICAL : THREAD_PRIORITY_NORMAL );
+}
+
+
 void Win32::_InstallKeyboardHook( const bool _install, const Handle & _wnd, FnHook && _hook )
 {
     // hooks:
@@ -145,10 +157,12 @@ Win32::Windows::~Windows()
 bool Win32::Windows::Dispatch() const
 {
     MSG msg;
-    if( !::GetMessageW( &msg, nullptr, 0, 0 ) )
-        return false;
-    ::TranslateMessage( &msg );
-    ::DispatchMessageW( &msg );
+    while( ::PeekMessageW( &msg, m_wnd.As< ::HWND >(), 0, 0, PM_REMOVE ) ) {
+        if( msg.message == WM_CLOSE || ( msg.message == WM_KEYDOWN && msg.wParam == VK_ESCAPE ) )
+            return false;
+        ::TranslateMessage( &msg );
+        ::DispatchMessage( &msg );
+    }
     return true;
 }
 
@@ -187,10 +201,14 @@ Win32::Class::Class( const std::wstring & _name )
 {
     ::WNDCLASS wndClass{ 0 };
     wndClass.lpfnWndProc = []( ::HWND _hWnd, ::UINT _msg, ::WPARAM _wParam, ::LPARAM _lParam ) {
-            if( _msg != WM_DESTROY )
-                return ::DefWindowProc( _hWnd, _msg, _wParam, _lParam );
-            ::PostQuitMessage( 0 );
-            return ::LRESULT{ 0 };
+            if( _msg == WM_CLOSE || _msg == WM_DESTROY ) {
+                if( _msg == WM_CLOSE )
+                    ::PostMessageW( _hWnd, WM_CLOSE, 0, 0 );
+                else
+                    ::PostQuitMessage( 0 );
+                return ::LRESULT{ 0 };
+            }
+            return ::DefWindowProc( _hWnd, _msg, _wParam, _lParam );
         };
     wndClass.hInstance = instance.As< ::HINSTANCE >();
     wndClass.lpszClassName = name.c_str();

@@ -2,7 +2,7 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="OpenGLSurface.cpp">
+    <ClCompile Include="OpenGL.cpp">
       <Filter>core</Filter>
     </ClCompile>
     <ClCompile Include="Win32.cpp">
@@ -14,15 +14,33 @@
     <ClCompile Include="external\glew\glew.c">
       <Filter>external\glew</Filter>
     </ClCompile>
-    <ClCompile Include="NanoVGSurface.cpp">
+    <ClCompile Include="NanoVGRenderer.cpp">
       <Filter>core</Filter>
+    </ClCompile>
+    <ClCompile Include="Timer.cpp">
+      <Filter>core</Filter>
+    </ClCompile>
+    <ClCompile Include="Maths.cpp">
+      <Filter>core</Filter>
+    </ClCompile>
+    <ClCompile Include="Laser.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
+    <ClCompile Include="Rocket.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
+    <ClCompile Include="StarField.cpp">
+      <Filter>game</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Maths.h">
       <Filter>core</Filter>
     </ClInclude>
-    <ClInclude Include="OpenGLSurface.h">
+    <ClInclude Include="OpenGL.h">
       <Filter>core</Filter>
     </ClInclude>
     <ClInclude Include="std.h">
@@ -55,8 +73,32 @@
     <ClInclude Include="external\glew\wglew.h">
       <Filter>external\glew</Filter>
     </ClInclude>
-    <ClInclude Include="NanoVGSurface.h">
+    <ClInclude Include="NanoVGRenderer.h">
       <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="Timer.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="Enemy.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="Laser.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="Missile.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="Particule.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="Rocket.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="StarField.h">
+      <Filter>game</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -71,6 +113,9 @@
     </Filter>
     <Filter Include="external\glew">
       <UniqueIdentifier>{834dc9fc-ab53-4000-b07c-dced442a6a16}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="game">
+      <UniqueIdentifier>{a93b5981-5245-4fc1-90fb-4239927e0338}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
