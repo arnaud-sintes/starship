@@ -86,5 +86,5 @@ struct Rocket
     void InvertMomentum( const double _rotationAdjustmentRate );
     void Acquire( const Rocket & _target, const double _rotationAdjustmentRate, const Vector & _positionCompensation = {} );
     void Update();
-    void Draw( NanoVGRenderer::Frame & _frame, const Vector & _translation );
+    void Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation );
 };

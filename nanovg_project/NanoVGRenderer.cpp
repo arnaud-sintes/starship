@@ -11,7 +11,7 @@ NanoVGRenderer::NanoVGRenderer( const OpenGL & _openGL )
 {
     auto context{ _openGL.MakeCurrent() };
     ::glewInit();
-    m_context = ::nvgCreateGL3( NVG_ANTIALIAS | NVG_STENCIL_STROKES );
+    m_context = ::nvgCreateGL3( NVG_ANTIALIAS /*| NVG_STENCIL_STROKES*/ );
 }
 
 
@@ -113,7 +113,7 @@ void NanoVGRenderer::Frame::StrokeArc( const Position_d & _position, const doubl
 }
 
 
-void NanoVGRenderer::Frame::Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color )
+void NanoVGRenderer::Frame::Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };
     ::nvgFontSize( context, static_cast< float >( _size ) );

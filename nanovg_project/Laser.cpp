@@ -7,7 +7,7 @@ void Laser::Update()
 }
 
 
-void Laser::Draw( NanoVGRenderer::Frame & _frame, const Vector & _translation )
+void Laser::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation )
 {
     dynamic.positionA = position;
     dynamic.positionB = dynamic.positionA + momentum;

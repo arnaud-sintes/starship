@@ -6,6 +6,7 @@
 #include "Missile.h"
 #include "StarField.h"
 #include "Particule.h"
+#include "MiniAudio.h"
 
 
 // --------------
@@ -14,12 +15,13 @@ class Renderer
 {
 public:
     Renderer( const Win32::Windows & _windows );
+    ~Renderer() = default;
 
 private:
     void _AddEnemy();
 
 public:
-    void Loop( NanoVGRenderer::Frame & _frame );
+    void Loop( const NanoVGRenderer::Frame & _frame );
 
 private:
     inline static const int bigExplosion{ 200 };
@@ -42,7 +44,27 @@ private:
     bool _LaserRocketCollision( Laser & _laser, Rocket & _other );
     bool _MissileRocketCollision( Missile & _missile, Rocket & _other );
     void _Update();
-    void _Draw( NanoVGRenderer::Frame & _frame );
+    void _Draw( const NanoVGRenderer::Frame & _frame );
+
+    enum class eSound {
+        proximityAlert,
+        lowFuelAlert,
+        lowShieldAlert,
+        spaceWind,
+        laserShot,
+        laserCollision,
+        missileShot,
+        missileRun,
+        missileExplosion,
+        shipCollision,
+        shipExplosion,
+        shipRotationEngine,
+        shipMainEngine,
+    };
+    MiniAudio::Sound & _SetupSound( MiniAudio::Sound & _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false );
+    MiniAudio::Sound & _SetupSound( const eSound _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false );
+    void _QueueSoundPlay( MiniAudio::Sound & _sound );
+    void _PurgeSoundQueue();
 
 private:
     const Win32::Windows & m_windows;
@@ -53,4 +75,14 @@ private:
     std::list< std::unique_ptr< Laser > > m_lasers;
     std::list< std::unique_ptr< Missile > > m_missiles;
     std::list< std::unique_ptr< Particule > > m_particules;
+
+private:
+    MiniAudio m_audioEngine;
+    std::unordered_map< eSound, MiniAudio::Sound > m_sounds;
+    struct Sound
+    {
+        MiniAudio::Sound sound;
+        int lifeSpan;
+    };
+    std::list< Sound > m_soundQueue;
 };

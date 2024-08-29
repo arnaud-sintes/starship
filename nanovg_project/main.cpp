@@ -7,36 +7,35 @@
 
 int main()
 {
-    Win32::ShowConsole( true );
-    Win32::Windows window{ L"Starship", { 1920, 1000 } };
+    Win32::ShowConsole( false );
+    const Dimension_ui windowDimension{ 1500, 1000 };
+    Win32::Windows window{ L"Starship", windowDimension };
     auto & timer{ Timer::GetInstance() }; // init nano precision
-    Win32::SetThreadRealtimePriority();
+    //Win32::SetThreadRealtimePriority();
     OpenGL ogl{ window };
     NanoVGRenderer nanoVG{ ogl };
-    nanoVG.CreateFont( "fontA", "OpenSans-Light.ttf" );
+    nanoVG.CreateFont( "openSans", "./OpenSans-Light.ttf" );
 
     Renderer renderer{ window };
 
-    Timer::FpsContext fpsContext{ 60 };
+    Timer::FpsContext fpsContext{ 60 }; // 60 fps loop
     while( window.Dispatch() ) {
         const auto temper{ timer.Temper( fpsContext ) };
-        {
-            auto context{ ogl.MakeCurrent() };
-            context.Viewport( window.GetDimension() );
-            context.Clear( { 0, 0.05, 0.1 } );
-            auto frame{ nanoVG.CreateFrame( window.GetDimension() ) };
+        const auto context{ ogl.MakeCurrent() };
+        context.Viewport( windowDimension );
+        context.Clear( { 0, 0.05, 0.1 } );
+        const auto frame{ nanoVG.CreateFrame( windowDimension ) };
 
-            // main loop:
-            renderer.Loop( frame );
+        // main loop:
+        renderer.Loop( frame );
             
-            // frame rate information:
-            fpsContext.Update();
-            std::stringstream ssFps;            
-            ssFps << "fps: " << std::setprecision( 3 ) << fpsContext.Fps();
-            std::stringstream ssConsumption;            
-            ssConsumption << " (" << std::setprecision( 3 ) << fpsContext.Consumption() << "%)";
-            const std::string fps{ ssFps.str() + ssConsumption.str() + ( fpsContext.FrameDropped() ? " [frame dropped]" : "" ) };
-            frame.Text( { 2, 2 }, "fontA", 14, fps, { 1, 1, 1 } );
-        }
+        // frame rate information:
+        const auto & fpsState{ fpsContext.Update() };
+        std::stringstream ssFps;
+        ssFps << "FPS: " << std::setprecision( 3 ) << fpsState.avgFrameRate;
+        std::stringstream ssConsumption;            
+        ssConsumption << " (" << std::setprecision( 3 ) << fpsState.avgConsumption << "%)";
+        const std::string fps{ ssFps.str() + ssConsumption.str() + ( fpsState.frameDropped ? " [frame dropped]" : "" ) };
+        frame.Text( { 2, 4 }, "openSans", 14, fps, { 1, 1, 1 } );
     }
 }

@@ -33,7 +33,7 @@ public:
     void StrokeCircle( const Position_d & _position, const double _radius, const Color_d & _color, const double _strokeWidth ) const;
     void FillArc( const Position_d & _position, const double _radius, const double _angleA, const double _angleB, const Color_d & _color, const bool _clockWise = true ) const;
     void StrokeArc( const Position_d & _position, const double _radius, const double _angleA, const double _angleB, const Color_d & _color, const double _strokeWidth, const bool _clockWise = true ) const;
-    void Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color );
+    void Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color ) const;
 
 private:
     void * m_context;

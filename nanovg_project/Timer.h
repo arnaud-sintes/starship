@@ -41,19 +41,20 @@ public:
     ~FpsContext() = default;
 
 public:
-    void Update();
-    double Fps() const { return m_avgFrameRate; }
-    double Consumption() const { return m_avgConsumption; }
-    bool FrameDropped() const { return m_frameDropped; }
+    struct State
+    {
+        double avgFrameRate{ 0 };
+        double avgConsumption{ 0 };
+        bool frameDropped{ false };
+    };
+    const State & Update();
 
 private:
     const unsigned long long m_targetFrameRate;
     unsigned long long m_updateTime;
     unsigned long long m_frameCount{ 0 };
-    bool m_frameDropped{ false };
-    double m_avgFrameRate{ 0 };
     double m_consumption{ 0 };
-    double m_avgConsumption{ 0 };
+    State m_state;
 };
 
 

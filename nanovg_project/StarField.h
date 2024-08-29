@@ -10,7 +10,7 @@ public:
     StarField( const Dimension_ui & _dimension );
 
 public:
-    void Draw( NanoVGRenderer::Frame & _frame, const Vector & _speed );
+    void Draw( const NanoVGRenderer::Frame & _frame, const Vector & _speed );
 
 private:
     struct Layer;

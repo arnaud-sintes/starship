@@ -70,17 +70,21 @@ Timer::FpsContext::FpsContext( const unsigned long long _targetFrameRate )
 {}
 
 
-void Timer::FpsContext::Update()
+const Timer::FpsContext::State & Timer::FpsContext::Update()
 {
     const auto currentTime{ GetInstance().Get() };
-    if( currentTime < m_updateTime + 1'000'000'000 ) // refresh every second
-        return;
-    m_avgFrameRate = static_cast< double >( m_frameCount * 1'000'000'000 ) / ( currentTime - m_updateTime );
-    m_avgConsumption = m_consumption / m_frameCount;
-    m_frameCount = 0;
-    m_updateTime = currentTime;
-    m_consumption = 0;
-    m_frameDropped = false;
+    static const unsigned long long refreshRate{ 1'000'000'000 }; // 1s
+    if( currentTime >= m_updateTime + refreshRate ) {
+        // update states:
+        m_state.avgFrameRate = static_cast< double >( m_frameCount * refreshRate ) / ( currentTime - m_updateTime );
+        m_state.avgConsumption = m_consumption / m_frameCount;
+        // reset:
+        m_state.frameDropped = false;
+        m_updateTime = currentTime;
+        m_frameCount = 0;
+        m_consumption = 0;
+    }
+    return m_state;
 }
 
 
@@ -98,10 +102,9 @@ Timer::TemperContext::~TemperContext()
     m_fpsContext.m_frameCount++;
     const auto & instance{ GetInstance() };
     const auto loopElapsedTime( instance.Get() - m_loopStartTime );
-    if( loopElapsedTime >= m_maxLoopDuration ) {
-        m_fpsContext.m_frameDropped = true;
-        return;
-    }
     m_fpsContext.m_consumption += static_cast< double >( loopElapsedTime ) * 100 / m_maxLoopDuration;
-    instance.Sleep( m_maxLoopDuration - loopElapsedTime );
+    if( loopElapsedTime > m_maxLoopDuration )
+        m_fpsContext.m_state.frameDropped = true;
+    else
+        instance.Sleep( m_maxLoopDuration - loopElapsedTime );
 }

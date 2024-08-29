@@ -2,20 +2,11 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="OpenGL.cpp">
-      <Filter>core</Filter>
-    </ClCompile>
-    <ClCompile Include="Win32.cpp">
-      <Filter>core</Filter>
-    </ClCompile>
     <ClCompile Include="external\nanovg\nanovg.c">
       <Filter>external\nanovg</Filter>
     </ClCompile>
     <ClCompile Include="external\glew\glew.c">
       <Filter>external\glew</Filter>
-    </ClCompile>
-    <ClCompile Include="NanoVGRenderer.cpp">
-      <Filter>core</Filter>
     </ClCompile>
     <ClCompile Include="Timer.cpp">
       <Filter>core</Filter>
@@ -35,18 +26,24 @@
     <ClCompile Include="StarField.cpp">
       <Filter>game</Filter>
     </ClCompile>
+    <ClCompile Include="Win32.cpp">
+      <Filter>core\Wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="OpenGL.cpp">
+      <Filter>core\Wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="NanoVGRenderer.cpp">
+      <Filter>core\Wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="MiniAudio.cpp">
+      <Filter>core\Wrapper</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Maths.h">
       <Filter>core</Filter>
     </ClInclude>
-    <ClInclude Include="OpenGL.h">
-      <Filter>core</Filter>
-    </ClInclude>
     <ClInclude Include="std.h">
-      <Filter>core</Filter>
-    </ClInclude>
-    <ClInclude Include="Win32.h">
       <Filter>core</Filter>
     </ClInclude>
     <ClInclude Include="external\nanovg\fontstash.h">
@@ -73,9 +70,6 @@
     <ClInclude Include="external\glew\wglew.h">
       <Filter>external\glew</Filter>
     </ClInclude>
-    <ClInclude Include="NanoVGRenderer.h">
-      <Filter>core</Filter>
-    </ClInclude>
     <ClInclude Include="Timer.h">
       <Filter>core</Filter>
     </ClInclude>
@@ -100,6 +94,21 @@
     <ClInclude Include="StarField.h">
       <Filter>game</Filter>
     </ClInclude>
+    <ClInclude Include="external\miniaudio\miniaudio.h">
+      <Filter>external\miniaudio</Filter>
+    </ClInclude>
+    <ClInclude Include="Win32.h">
+      <Filter>core\Wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenGL.h">
+      <Filter>core\Wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="NanoVGRenderer.h">
+      <Filter>core\Wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="MiniAudio.h">
+      <Filter>core\Wrapper</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="core">
@@ -116,6 +125,12 @@
     </Filter>
     <Filter Include="game">
       <UniqueIdentifier>{a93b5981-5245-4fc1-90fb-4239927e0338}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="external\miniaudio">
+      <UniqueIdentifier>{8be31e32-751d-4aa8-bb6d-02ff5aaf9d7b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="core\Wrapper">
+      <UniqueIdentifier>{cfbe8b6a-b42c-4b1e-96ad-6d62c5d52e86}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

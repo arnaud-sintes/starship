@@ -9,10 +9,10 @@ StarField::StarField( const Dimension_ui & _dimension )
 {
     std::vector< Layer > layers{
         // d     speed   color        radius
-        { 2000,  1,  2,  0.75, 1,     0.25, 0.5  },
-        { 500,   3,  5,  0.5,  1,     0.5,  0.75 },
-        { 150,   5,  8,  0.75, 1,     0.75, 1    },
-        { 25,    8, 21,  0.7,  0.9,   1,    1.5  },
+        { 2000,  1,  2,  0.25, 0.5,   0.5,  0.75 },
+        { 500,   3,  5,  0.25, 0.75,  0.75, 1    },
+        { 150,   5,  8,  0.5,  0.75,  1,    1.5  },
+        { 25,    8, 21,  0.5,  1,     1.5,  2    },
     };
     for( auto & layer : layers )
         for( int d{ 0 }; d < layer.density; d++ ) {
@@ -29,7 +29,7 @@ StarField::StarField( const Dimension_ui & _dimension )
 }
 
 
-void StarField::Draw( NanoVGRenderer::Frame & _frame, const Vector & _speed )
+void StarField::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _speed )
 {
     const double hzSpeedFactor{ 0.1 };
     for( auto & star : m_field ) {
