@@ -1,11 +1,12 @@
 // maqui, (the) Most Astonishingly Qualitative User Interface
 
 #include "NanoVGRenderer.h"
-#include "Timer.h"
+#include "../core/Timer.h"
 #include "Renderer.h"
+#include "../core/Packer.h"
 
 
-int main()
+int main( int, char * )
 {
     Win32::ShowConsole( false );
     const Dimension_ui windowDimension{ 1500, 1000 };
@@ -14,9 +15,12 @@ int main()
     //Win32::SetThreadRealtimePriority();
     OpenGL ogl{ window };
     NanoVGRenderer nanoVG{ ogl };
-    nanoVG.CreateFont( "openSans", "./OpenSans-Light.ttf" );
+    const auto resources{ Packer::UnPack( "./resource.dat" ) };
+    if( !resources )
+        return -1;
+    nanoVG.CreateFont( "openSans", resources->find( "OpenSans-Light.ttf" )->second );
 
-    Renderer renderer{ window };
+    Renderer renderer{ window, *resources };
 
     Timer::FpsContext fpsContext{ 60 }; // 60 fps loop
     while( window.Dispatch() ) {
@@ -38,4 +42,6 @@ int main()
         const std::string fps{ ssFps.str() + ssConsumption.str() + ( fpsState.frameDropped ? " [frame dropped]" : "" ) };
         frame.Text( { 2, 4 }, "openSans", 14, fps, { 1, 1, 1 } );
     }
+
+    return 0;
 }

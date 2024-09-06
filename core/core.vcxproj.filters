@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Maths.cpp" />
+    <ClCompile Include="Timer.cpp" />
+    <ClCompile Include="Win32.cpp" />
+    <ClCompile Include="Base64.cpp" />
+    <ClCompile Include="Sha1.cpp" />
+    <ClCompile Include="File.cpp" />
+    <ClCompile Include="Packer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Maths.h" />
+    <ClInclude Include="std.h" />
+    <ClInclude Include="Timer.h" />
+    <ClInclude Include="Win32.h" />
+    <ClInclude Include="Base64.h" />
+    <ClInclude Include="Sha1.h" />
+    <ClInclude Include="File.h" />
+    <ClInclude Include="Packer.h" />
+  </ItemGroup>
+</Project>

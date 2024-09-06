@@ -17,6 +17,7 @@ public:
     static void ShowConsole( const bool _show = true );
     static void SetProcessRealtimePriority();
     static void SetThreadRealtimePriority( const bool _realtime = true );
+    static std::optional< std::string > GetTemporaryFolder();
 
 private:
     using FnHook = std::function< void( const unsigned long _key, const bool _pressed ) >;

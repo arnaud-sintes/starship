@@ -65,7 +65,9 @@ MiniAudio::Sound::~Sound()
     if( pSound == nullptr )
         return;
     Stop();
+    #ifndef _DEBUG
     ::ma_sound_uninit( pSound );
+    #endif
     delete pSound;
 }
 

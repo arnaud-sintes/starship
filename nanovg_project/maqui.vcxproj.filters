@@ -8,12 +8,6 @@
     <ClCompile Include="external\glew\glew.c">
       <Filter>external\glew</Filter>
     </ClCompile>
-    <ClCompile Include="Timer.cpp">
-      <Filter>core</Filter>
-    </ClCompile>
-    <ClCompile Include="Maths.cpp">
-      <Filter>core</Filter>
-    </ClCompile>
     <ClCompile Include="Laser.cpp">
       <Filter>game</Filter>
     </ClCompile>
@@ -26,9 +20,6 @@
     <ClCompile Include="StarField.cpp">
       <Filter>game</Filter>
     </ClCompile>
-    <ClCompile Include="Win32.cpp">
-      <Filter>core\Wrapper</Filter>
-    </ClCompile>
     <ClCompile Include="OpenGL.cpp">
       <Filter>core\Wrapper</Filter>
     </ClCompile>
@@ -40,12 +31,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Maths.h">
-      <Filter>core</Filter>
-    </ClInclude>
-    <ClInclude Include="std.h">
-      <Filter>core</Filter>
-    </ClInclude>
     <ClInclude Include="external\nanovg\fontstash.h">
       <Filter>external\nanovg</Filter>
     </ClInclude>
@@ -70,9 +55,6 @@
     <ClInclude Include="external\glew\wglew.h">
       <Filter>external\glew</Filter>
     </ClInclude>
-    <ClInclude Include="Timer.h">
-      <Filter>core</Filter>
-    </ClInclude>
     <ClInclude Include="Enemy.h">
       <Filter>game</Filter>
     </ClInclude>
@@ -96,9 +78,6 @@
     </ClInclude>
     <ClInclude Include="external\miniaudio\miniaudio.h">
       <Filter>external\miniaudio</Filter>
-    </ClInclude>
-    <ClInclude Include="Win32.h">
-      <Filter>core\Wrapper</Filter>
     </ClInclude>
     <ClInclude Include="OpenGL.h">
       <Filter>core\Wrapper</Filter>

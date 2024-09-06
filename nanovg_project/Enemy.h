@@ -12,4 +12,6 @@ struct Enemy
     MiniAudio::Sound sound_laserCollision;
     MiniAudio::Sound sound_collision;
     MiniAudio::Sound sound_explosion;
+    MiniAudio::Sound sound_shipMainEngine;
+    MiniAudio::Sound sound_shipRotationEngine;
 };

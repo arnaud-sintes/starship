@@ -24,6 +24,16 @@ void Win32::SetThreadRealtimePriority( const bool _realtime )
 }
 
 
+std::optional< std::string > Win32::GetTemporaryFolder()
+{
+	char lpTempPathBuffer[ MAX_PATH ];
+    ::DWORD dwRetVal{ ::GetTempPathA( MAX_PATH, lpTempPathBuffer ) };
+	if( dwRetVal >= MAX_PATH || dwRetVal == 0 )
+		return {};
+    return std::string{ lpTempPathBuffer };
+}
+
+
 void Win32::_InstallKeyboardHook( const bool _install, const Handle & _wnd, FnHook && _hook )
 {
     // hooks:

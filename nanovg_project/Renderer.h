@@ -7,6 +7,7 @@
 #include "StarField.h"
 #include "Particule.h"
 #include "MiniAudio.h"
+#include "../core/Packer.h"
 
 
 // --------------
@@ -14,7 +15,7 @@
 class Renderer
 {
 public:
-    Renderer( const Win32::Windows & _windows );
+    Renderer( const Win32::Windows & _windows, const Packer::Resources & _resources );
     ~Renderer() = default;
 
 private:
@@ -47,7 +48,6 @@ private:
     void _Draw( const NanoVGRenderer::Frame & _frame );
 
     enum class eSound {
-        proximityAlert,
         lowFuelAlert,
         lowShieldAlert,
         spaceWind,
@@ -61,8 +61,8 @@ private:
         shipRotationEngine,
         shipMainEngine,
     };
-    MiniAudio::Sound & _SetupSound( MiniAudio::Sound & _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false );
-    MiniAudio::Sound & _SetupSound( const eSound _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false );
+    MiniAudio::Sound & _SetupSound( MiniAudio::Sound & _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
+    MiniAudio::Sound & _SetupSound( const eSound _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
     void _QueueSoundPlay( MiniAudio::Sound & _sound );
     void _PurgeSoundQueue();
 
@@ -85,4 +85,6 @@ private:
         int lifeSpan;
     };
     std::list< Sound > m_soundQueue;
+    bool m_shieldAlert{ false };
+    bool m_fuelAlert{ false };
 };
