@@ -72,6 +72,7 @@ struct Vector
     double u{ 0 }, v{ 0 };
 
     static Vector From( const double _orientation, const double _distance );
+    static Vector From( const Position_d & _position ) { return { _position.x, _position.y }; }
     double DotProd( const Vector & _other ) const;
     double CrossProd( const Vector & _other ) const;
     double Distance() const;
@@ -84,6 +85,8 @@ struct Vector
     Vector operator - ( const Vector & _other ) const;
     Vector & operator *= ( const double _value );
     Vector operator * ( const double _value ) const;
+    bool operator != ( const Vector & _other ) const { return u != _other.u || v != _other.v; }
+    bool operator == ( const Vector & _other ) const { return !operator != ( _other ); }
 
     operator Position_d() const { return { u, v }; }
 };

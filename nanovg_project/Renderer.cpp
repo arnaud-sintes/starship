@@ -115,10 +115,14 @@ void Renderer::_Keys()
             m_ship.Acquire( *m_pTarget, 0.5 );
     }
 
+    // follow the mouse cursor:
+    const auto screenCenter{ m_windows.GetDimension().As< Vector, double >() * 0.5 };
+    m_ship.PointTo( Vector::From( m_windows.CursorPosition().ToType< double >() ) - screenCenter + m_ship.position, 0.5 );
+
     // laser:
     static bool alternateLazerPosition{ true };
     static int laserShotRate{ 0 };
-    if( laserShotRate++ > 5 && m_windows.KeyPressed( Win32::Windows::eKey::space ) )
+    if( laserShotRate++ > 5 && ( m_windows.KeyPressed( Win32::Windows::eKey::space ) || m_windows.LeftMouseButtonPressed() ) )
     {
         m_sounds.find( eSound::laserShot )->second.Play();
         alternateLazerPosition = !alternateLazerPosition;
@@ -133,7 +137,7 @@ void Renderer::_Keys()
 
     // shoot missile:
     static int missileShotRate{ 0 };
-    if( missileShotRate++ > 35 && m_windows.KeyPressed( Win32::Windows::eKey::space ) ) {
+    if( missileShotRate++ > 35 && ( m_windows.KeyPressed( Win32::Windows::eKey::space ) || m_windows.RightMouseButtonPressed() ) ) {
         missileShotRate = 0;
         const auto & missile{ m_missiles.emplace_back( new Missile{ Rocket{ { 0.5, 0.75, 1 }, m_ship.position, m_ship.orientation, {}, m_ship.momentum, 0,
             3, // damage
@@ -549,6 +553,9 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
     // - current ship information (shield, propeller & engines classes)
     // - current target information
     // - fuel & shield alerts
+
+    // cursor:
+    _frame.StrokeCircle( m_windows.CursorPosition().ToType< double >(), 15, { 0.25, 0.5, 1 }, 4 );
         
     // draw starfield, related to ship motion:
     m_starField.Draw( _frame, m_ship.momentum * 2 );

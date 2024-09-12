@@ -40,7 +40,8 @@ void Rocket::_RotateTo( const double _targetOrientation, const double _rotationA
 
     // reduce spin-effect and rotate:
     const double targetMomentum{ _rotationAdjustmentRate * orientationDistance / Maths::Pi };
-    Rotate( rotationMomentum > targetMomentum ? Rocket::Rotator::left : Rocket::Rotator::right );
+    if( static_cast< int >( std::abs( rotationMomentum - targetMomentum ) * 1000 ) != 0 )
+        Rotate( rotationMomentum > targetMomentum ? Rocket::Rotator::left : Rocket::Rotator::right );
 }
 
 
@@ -50,9 +51,9 @@ void Rocket::InvertMomentum( const double _rotationAdjustmentRate )
 }
 
 
-void Rocket::Acquire( const Rocket & _target, const double _rotationAdjustmentRate, const Vector & _positionCompensation )
+void Rocket::PointTo( const Vector & _target, const double _rotationAdjustmentRate, const Vector & _positionCompensation, const Vector & _targetMomentum )
 {
-    const auto targetPosition{ _target.position + _positionCompensation };
+     const auto targetPosition{ _target + _positionCompensation };
     // over-compensate positions with momentum:
     double compensationRate{ 1.0 };
     const double distance{ ( targetPosition - position ).Distance() };
@@ -61,8 +62,14 @@ void Rocket::Acquire( const Rocket & _target, const double _rotationAdjustmentRa
     if( distance < distanceCompensationTrigger )
         compensationRate = maxCompensationRate * ( distanceCompensationTrigger - distance ) / distanceCompensationTrigger;
     const auto compensatedPosition{ position + ( momentum * compensationRate ) };
-    const auto compensatedTargetPosition{ targetPosition + ( _target.momentum * compensationRate ) };
+    const auto compensatedTargetPosition{ targetPosition + ( _targetMomentum * compensationRate ) };
     _RotateTo( ( compensatedPosition - compensatedTargetPosition ).Orientation(), _rotationAdjustmentRate );
+}
+
+
+void Rocket::Acquire( const Rocket & _target, const double _rotationAdjustmentRate, const Vector & _positionCompensation )
+{
+    PointTo( _target.position, _rotationAdjustmentRate, _positionCompensation, _target.momentum );
 }
 
 

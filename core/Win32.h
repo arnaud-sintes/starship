@@ -67,7 +67,7 @@ public:
     ~Windows();
 
 public:
-    bool Dispatch() const;
+    bool Dispatch();
     enum class eKey : unsigned long {
         space = 0x20,
         up = 0x26,
@@ -80,6 +80,10 @@ public:
         rShift = 0xA1,        
     };
     bool KeyPressed( const eKey _key ) const { return m_keyPressed.at( static_cast< unsigned char >( _key ) ); }
+    bool LeftMouseButtonPressed() const { return m_leftMouseButtonPressed; }
+    bool RightMouseButtonPressed() const { return m_rightMouseButtonPressed; }
+    void ShowCursor( const bool _show = true ) const;
+    Position_i CursorPosition() const;
     const Handle & GetDeviceContext() const { return m_dc; }
     const Dimension_ui & GetDimension() const{ return m_dimension; }
     void Show( const bool _show = true ) const;
@@ -93,4 +97,6 @@ private:
     const Handle m_wnd;
     const Handle m_dc;
     std::array< std::atomic< bool >, 255 > m_keyPressed;
+    bool m_leftMouseButtonPressed{ false };
+    bool m_rightMouseButtonPressed{ false };
 };

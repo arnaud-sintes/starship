@@ -84,6 +84,7 @@ struct Rocket
     void ActivateThrust();
     void _RotateTo( const double _targetOrientation, const double _rotationAdjustmentRate );
     void InvertMomentum( const double _rotationAdjustmentRate );
+    void PointTo( const Vector & _target, const double _rotationAdjustmentRate, const Vector & _positionCompensation = {}, const Vector & _targetMomentum = {} );
     void Acquire( const Rocket & _target, const double _rotationAdjustmentRate, const Vector & _positionCompensation = {} );
     void Update();
     void Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation );

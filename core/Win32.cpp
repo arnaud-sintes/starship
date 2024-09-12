@@ -164,16 +164,35 @@ Win32::Windows::~Windows()
 }
 
 
-bool Win32::Windows::Dispatch() const
+bool Win32::Windows::Dispatch()
 {
     MSG msg;
     while( ::PeekMessageW( &msg, m_wnd.As< ::HWND >(), 0, 0, PM_REMOVE ) ) {
         if( msg.message == WM_CLOSE || ( msg.message == WM_KEYDOWN && msg.wParam == VK_ESCAPE ) )
             return false;
+        if( msg.message == WM_LBUTTONDOWN || msg.message == WM_LBUTTONUP )
+            m_leftMouseButtonPressed = msg.message == WM_LBUTTONDOWN;
+        if( msg.message == WM_RBUTTONDOWN || msg.message == WM_RBUTTONUP )
+            m_rightMouseButtonPressed = msg.message == WM_RBUTTONDOWN;
         ::TranslateMessage( &msg );
         ::DispatchMessage( &msg );
     }
     return true;
+}
+
+
+void Win32::Windows::ShowCursor( const bool _show ) const
+{
+    ::ShowCursor( _show ? TRUE : FALSE );
+}
+
+
+Position_i Win32::Windows::CursorPosition() const
+{
+    ::POINT pos;
+    ::GetCursorPos( &pos );
+    ::ScreenToClient( m_wnd.As< ::HWND >(), &pos );
+    return { pos.x, pos.y };
 }
 
 

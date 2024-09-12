@@ -11,6 +11,7 @@ int main( int, char * )
     Win32::ShowConsole( false );
     const Dimension_ui windowDimension{ 1500, 1000 };
     Win32::Windows window{ L"Starship", windowDimension };
+    window.ShowCursor( false );
     auto & timer{ Timer::GetInstance() }; // init nano precision
     //Win32::SetThreadRealtimePriority();
     OpenGL ogl{ window };
