@@ -1,6 +1,19 @@
 #include "Renderer.h"
 
 
+// primary weapon laser:
+// laser speed: slow, medium, fast
+// laser pass: single, double, quadruple
+
+// secondary weapons:
+// missiles         pack
+// homing-missiles  pack
+// laser turret     pack
+// flying shield
+// mines
+// plasma
+
+
 Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _resources )
     : m_windows{ _windows }
     , m_starField{ m_windows.GetDimension() }
@@ -29,7 +42,7 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
     _SetupSound( eSound::shipMainEngine, m_ship, 1.0, true, 0 ).Play();
     _SetupSound( eSound::shipRotationEngine, m_ship, 1.0, true, 0 ).Play();
 
-    for( int i{ 0 }; i < 3; i++ )
+    for( int i{ 0 }; i < 4; i++ )
         _AddEnemy();
 }
 
@@ -88,56 +101,34 @@ Rocket * Renderer::_ClosestEnemy( const Vector & _position )
 
 void Renderer::_Keys()
 {
-    // stabilize rotation:
-    if( m_windows.KeyPressed( Win32::Windows::eKey::down ) )
-        m_ship.StabilizeRotation();
-    else
-    // invert momentum:
-    if( m_windows.KeyPressed( Win32::Windows::eKey::lControl ) || m_windows.KeyPressed( Win32::Windows::eKey::rControl ) )
-        m_ship.InvertMomentum( 0.2 );
-    else
-    // change ship orientation:
-    if( m_windows.KeyPressed( Win32::Windows::eKey::right ) )
-        m_ship.Rotate( Rocket::Rotator::right );
-    else
-    if( m_windows.KeyPressed( Win32::Windows::eKey::left ) )
-        m_ship.Rotate( Rocket::Rotator::left );
-
     // activate ship burst:
-    if( m_windows.KeyPressed( Win32::Windows::eKey::up ) )
+    if( m_windows.KeyPressed( Win32::Windows::eKey::space ) )
         m_ship.ActivateThrust();
-
-    // acquire closest target:
-    m_pTarget = nullptr;
-    if( m_windows.KeyPressed( Win32::Windows::eKey::lShift ) || m_windows.KeyPressed( Win32::Windows::eKey::rShift ) ) {
-        m_pTarget = _ClosestEnemy( m_ship.position );
-        if( m_pTarget != nullptr )
-            m_ship.Acquire( *m_pTarget, 0.5 );
-    }
 
     // follow the mouse cursor:
     const auto screenCenter{ m_windows.GetDimension().As< Vector, double >() * 0.5 };
     m_ship.PointTo( Vector::From( m_windows.CursorPosition().ToType< double >() ) - screenCenter + m_ship.position, 0.5 );
 
     // laser:
-    static bool alternateLazerPosition{ true };
     static int laserShotRate{ 0 };
-    if( laserShotRate++ > 5 && ( m_windows.KeyPressed( Win32::Windows::eKey::space ) || m_windows.LeftMouseButtonPressed() ) )
-    {
+    if( laserShotRate++ % static_cast< int >( m_laserSpeed ) == 0  && m_windows.LeftMouseButtonPressed() ) {
         m_sounds.find( eSound::laserShot )->second.Play();
-        alternateLazerPosition = !alternateLazerPosition;
-        const auto momentum{ Vector::From( m_ship.orientation + Maths::Pi, 50 ) }; // 50px length
-        const auto position{ Vector::From( m_ship.orientation + Maths::PiHalf * ( alternateLazerPosition ? 1 : -1 ), m_ship.dynamic.boundingBoxRadius ) };
-        m_lasers.emplace_back( new Laser{ m_ship.position - momentum + m_ship.dynamic.headPosition + position, momentum,
-            0.2 } ); // damage
-        laserShotRate = 0;
+        for( int i{ 0 }; i < static_cast< int >( m_laserPass ); i++ ) {
+            static int alternateLazerPosition{ 0 };
+            const auto rightSide{ ( alternateLazerPosition % 2 ) == 0 };
+            const auto position{ Vector::From( m_ship.orientation + Maths::PiHalf * ( rightSide ? 1 : -1 ), m_ship.dynamic.boundingBoxRadius ) };
+            const auto wave{ std::sin( static_cast< double >( alternateLazerPosition ) * 0.5 ) }; // wave speed
+            const auto wideAngle{ ( rightSide ? 1 : -1 ) * ( Maths::PiHalf * wave * 0.05 ) }; // wave amplitude
+            const auto momentum{ Vector::From( m_ship.orientation + Maths::Pi - wideAngle, 50 ) }; // 50px length
+            m_lasers.emplace_back( new Laser{ m_ship.position - momentum + m_ship.dynamic.headPosition + position, momentum,
+                0.2 } ); // damage
+            alternateLazerPosition++;
+        }
     }
-        
-    // TODO non-moving celestial object (mines)
-
+    
     // shoot missile:
     static int missileShotRate{ 0 };
-    if( missileShotRate++ > 35 && ( m_windows.KeyPressed( Win32::Windows::eKey::space ) || m_windows.RightMouseButtonPressed() ) ) {
+    if( missileShotRate++ > 35 && m_windows.RightMouseButtonPressed() ) {
         missileShotRate = 0;
         const auto & missile{ m_missiles.emplace_back( new Missile{ Rocket{ { 0.5, 0.75, 1 }, m_ship.position, m_ship.orientation, {}, m_ship.momentum, 0,
             3, // damage
@@ -569,8 +560,9 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
         _frame.FillCircle( particule->position + shipPosition, particule->width, Color_d::FireColor( ( 3 - particule->lifeSpan ) / 3 ) );
 
     // draw enemies:
+    Rocket * pTarget{ _ClosestEnemy( m_ship.position ) };
     for( auto & enemy : m_enemies ) {
-        if( m_pTarget == &enemy->rocket ) {
+        if( pTarget == &enemy->rocket ) {
             _frame.Line( screenCenter, enemy->rocket.position + shipPosition, { 1, 0.5, 0.1 }, 0.75 );
             const auto vector{ enemy->rocket.position - m_ship.position };
             const auto distance{ static_cast< int >( vector.Distance() ) };

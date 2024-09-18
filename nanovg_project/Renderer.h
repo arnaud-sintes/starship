@@ -71,10 +71,29 @@ private:
     StarField m_starField;
     Rocket m_ship;
     std::list< std::unique_ptr< Enemy > > m_enemies;
-    Rocket * m_pTarget{ nullptr };
+    //Rocket * m_pTarget{ nullptr };
     std::list< std::unique_ptr< Laser > > m_lasers;
     std::list< std::unique_ptr< Missile > > m_missiles;
     std::list< std::unique_ptr< Particule > > m_particules;
+
+private:
+    enum class eLaserSpeed : int
+    {
+        Slow = 10,
+        Medium = 8,
+        Fast = 6,
+    };
+    eLaserSpeed m_laserSpeed{ eLaserSpeed::Slow };
+
+    enum class eLaserPass : int
+    {
+        one = 1,
+        two = 2,
+        four = 4,
+        six = 6,
+        height = 8
+    };
+    eLaserPass m_laserPass{ eLaserPass::one };
 
 private:
     MiniAudio m_audioEngine;
