@@ -1,19 +1,18 @@
 #include "StarField.h"
 
 
-StarField::StarField( const size_t _windowWidth, const size_t _windowHeight )
-    : m_windowWidth{ _windowWidth }
-    , m_windowHeight{ _windowHeight }
+StarField::StarField( const Dimension_ui & _dimension )
+    : m_dimension{ _dimension }
     , m_rnd{ m_rndDev() }
-    , m_dimension{ ( _windowWidth > _windowHeight ? _windowWidth : _windowHeight ) + 200 } // margin
-    , m_rndPos{ 0, static_cast< unsigned int >( m_dimension ) }
+    , m_maxDimension{ ( m_dimension.width > m_dimension.height ? m_dimension.width : m_dimension.height ) + 200 } // margin
+    , m_rndPos{ 0, static_cast< unsigned int >( m_maxDimension ) }
 {
     std::vector< Layer > layers{
         // d     speed   color        radius
-        { 4000,  1,  2,  0.75, 1,     0.25, 0.5  },
-        { 1000,  3,  5,  0.5,  1,     0.5,  0.75 },
-        { 300,   5,  8,  0.75, 1,     0.75, 1    },
-        { 50,    8, 21,  0.7,  0.9,   1,    1.5  },
+        { 2000,  1,  2,  0.25, 0.5,   0.5,  0.75 },
+        { 500,   3,  5,  0.25, 0.75,  0.75, 1    },
+        { 150,   5,  8,  0.5,  0.75,  1,    1.5  },
+        { 25,    8, 21,  0.5,  1,     1.5,  2    },
     };
     for( auto & layer : layers )
         for( int d{ 0 }; d < layer.density; d++ ) {
@@ -30,18 +29,16 @@ StarField::StarField( const size_t _windowWidth, const size_t _windowHeight )
 }
 
 
-void StarField::Draw( cairo_t & _cairo, const Vector & _speed )
+void StarField::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _speed )
 {
     const double hzSpeedFactor{ 0.1 };
     for( auto & star : m_field ) {
-        cairo_set_source_rgb( &_cairo, star.c, star.c, 1 );
-        cairo_arc( &_cairo, star.x - ( m_dimension >> 1 ) + ( m_windowWidth >> 1 ), star.y - ( m_dimension >> 1 ) + ( m_windowHeight >> 1 ), star.radius, 0, 2 * 3.1415 );
-        cairo_fill( &_cairo );
+        _frame.FillCircle( { star.x - ( m_maxDimension >> 1 ) + ( m_dimension.width >> 1 ), star.y - ( m_maxDimension >> 1 ) + ( m_dimension.height >> 1 ) }, star.radius, { star.c, star.c, 1 } );
         star.x += ( -star.speed * ( _speed.u * hzSpeedFactor ) );
         star.y += ( -star.speed * ( _speed.v * hzSpeedFactor ) );
-        if( _speed.u < 0 && star.x >= m_dimension ) { star.x = 0; star.y = m_rndPos( m_rnd ); }
-        if( _speed.u > 0 && star.x < 0 ) { star.x = static_cast< double >( m_dimension - 1 ); star.y = m_rndPos( m_rnd ); }
-        if( _speed.v < 0 && star.y >= m_dimension ) { star.y = 0; star.x = m_rndPos( m_rnd ); }
-        if( _speed.v > 0 && star.y < 0 ) { star.y = static_cast< double >( m_dimension - 1 ); star.x = m_rndPos( m_rnd ); }
+        if( _speed.u < 0 && star.x >= m_maxDimension ) { star.x = 0; star.y = m_rndPos( m_rnd ); }
+        if( _speed.u > 0 && star.x < 0 ) { star.x = static_cast< double >( m_maxDimension - 1 ); star.y = m_rndPos( m_rnd ); }
+        if( _speed.v < 0 && star.y >= m_maxDimension ) { star.y = 0; star.x = m_rndPos( m_rnd ); }
+        if( _speed.v > 0 && star.y < 0 ) { star.y = static_cast< double >( m_maxDimension - 1 ); star.x = m_rndPos( m_rnd ); }
     }
 }

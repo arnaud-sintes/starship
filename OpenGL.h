@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../core/Win32.h"
+#include "core/Win32.h"
 
 
 // ----------------

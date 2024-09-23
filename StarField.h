@@ -1,27 +1,26 @@
 #pragma once
 
-#include "Graphics.h"
+#include "NanoVGRenderer.h"
 
 
 // --------------
 class StarField
 {
 public:
-    StarField( const size_t _windowWidth, const size_t _windowHeight );
+    StarField( const Dimension_ui & _dimension );
 
 public:
-    void Draw( cairo_t & _cairo, const Vector & _speed );
+    void Draw( const NanoVGRenderer::Frame & _frame, const Vector & _speed );
 
 private:
     struct Layer;
     struct Star;
 
 private:
-    const size_t m_windowWidth;
-    const size_t m_windowHeight;
+    const Dimension_ui m_dimension;
     std::random_device m_rndDev;
     std::mt19937 m_rnd;
-    const size_t m_dimension;
+    const size_t m_maxDimension;
     std::uniform_int_distribution< std::mt19937::result_type > m_rndPos;
     std::list< Star > m_field;
 };

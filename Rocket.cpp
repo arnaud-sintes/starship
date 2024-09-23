@@ -40,7 +40,8 @@ void Rocket::_RotateTo( const double _targetOrientation, const double _rotationA
 
     // reduce spin-effect and rotate:
     const double targetMomentum{ _rotationAdjustmentRate * orientationDistance / Maths::Pi };
-    Rotate( rotationMomentum > targetMomentum ? Rocket::Rotator::left : Rocket::Rotator::right );
+    if( static_cast< int >( std::abs( rotationMomentum - targetMomentum ) * 1000 ) != 0 )
+        Rotate( rotationMomentum > targetMomentum ? Rocket::Rotator::left : Rocket::Rotator::right );
 }
 
 
@@ -50,9 +51,9 @@ void Rocket::InvertMomentum( const double _rotationAdjustmentRate )
 }
 
 
-void Rocket::Acquire( const Rocket & _target, const double _rotationAdjustmentRate, const Vector & _positionCompensation )
+void Rocket::PointTo( const Vector & _target, const double _rotationAdjustmentRate, const Vector & _positionCompensation, const Vector & _targetMomentum )
 {
-    const auto targetPosition{ _target.position + _positionCompensation };
+     const auto targetPosition{ _target + _positionCompensation };
     // over-compensate positions with momentum:
     double compensationRate{ 1.0 };
     const double distance{ ( targetPosition - position ).Distance() };
@@ -61,8 +62,14 @@ void Rocket::Acquire( const Rocket & _target, const double _rotationAdjustmentRa
     if( distance < distanceCompensationTrigger )
         compensationRate = maxCompensationRate * ( distanceCompensationTrigger - distance ) / distanceCompensationTrigger;
     const auto compensatedPosition{ position + ( momentum * compensationRate ) };
-    const auto compensatedTargetPosition{ targetPosition + ( _target.momentum * compensationRate ) };
+    const auto compensatedTargetPosition{ targetPosition + ( _targetMomentum * compensationRate ) };
     _RotateTo( ( compensatedPosition - compensatedTargetPosition ).Orientation(), _rotationAdjustmentRate );
+}
+
+
+void Rocket::Acquire( const Rocket & _target, const double _rotationAdjustmentRate, const Vector & _positionCompensation )
+{
+    PointTo( _target.position, _rotationAdjustmentRate, _positionCompensation, _target.momentum );
 }
 
 
@@ -110,7 +117,7 @@ void Rocket::Update()
 
 
 // TODO split class
-void Rocket::Draw( cairo_t & _cairo, const Vector & _translation )
+void Rocket::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation )
 {
     const auto translated{ position + _translation };
 
@@ -121,7 +128,7 @@ void Rocket::Draw( cairo_t & _cairo, const Vector & _translation )
     const double propellantRadius{ propellant.capacity * ( 1 - propellant.quality ) };
     const double containerStateMargin{ 4 };
     const double tankRadius{ propellantRadius + containerStateMargin };
-    Graphics::Stroke( _cairo, translated, tankRadius, Graphics::arcFull, color, strokeWidth );
+    _frame.StrokeCircle( translated, tankRadius, color, strokeWidth );
         
     // draw shielded body:
     const double bodyStrokeWidth{ shield.capacity * ( 1 - shield.quality ) };
@@ -130,8 +137,8 @@ void Rocket::Draw( cairo_t & _cairo, const Vector & _translation )
     const double shieldState{ shield.value / shield.capacity };
     const bool shieldUnder25Percent{ shield.value < ( shield.capacity * 0.25 ) };
     static int shieldAlert{ 0 };
-    const Graphics::Color shieldColor{ ( shieldUnder25Percent ? ( ( shieldAlert++ / 4 ) % 2 == 0 ? 1.0 : 0.0 ) : 1.0 ), shieldState, shieldState };
-    Graphics::Stroke( _cairo, translated, bodyRadius, { orientation + Maths::PiHalf - Maths::PiQuarter, orientation - Maths::PiHalf + Maths::PiQuarter }, shieldColor, bodyStrokeWidth );
+    const Color_d shieldColor{ ( shieldUnder25Percent ? ( ( shieldAlert++ / 4 ) % 2 == 0 ? 1.0 : 0.0 ) : 1.0 ), shieldState, shieldState };
+    _frame.StrokeArc( translated, bodyRadius, orientation + Maths::PiHalf - Maths::PiQuarter, orientation - Maths::PiHalf + Maths::PiQuarter, shieldColor, bodyStrokeWidth );
 
     // bounding box:
     dynamic.boundingBoxRadius = bodyRadius + bodyStrokeWidth * 0.5;
@@ -139,20 +146,20 @@ void Rocket::Draw( cairo_t & _cairo, const Vector & _translation )
     // draw head:
     const double headRadius{ 5 };
     dynamic.headPosition = Vector::From( orientation + Maths::Pi, tankRadius + bodyTankMargin + bodyStrokeWidth );
-    Graphics::Fill( _cairo, translated + dynamic.headPosition, headRadius, { orientation + Maths::PiHalf, orientation - Maths::PiHalf }, color );
+    _frame.FillArc( translated + dynamic.headPosition, headRadius, orientation + Maths::PiHalf, orientation - Maths::PiHalf, color );
          
     // draw nozzle:
     const double powerFactor{ 100 * ( 1 - engine.quality ) };
     const double nozzleRadius{ powerFactor * engine.power };
     const auto nozzlePosition{ Vector::From( orientation, tankRadius + nozzleRadius ) };
-    Graphics::Stroke( _cairo, translated + nozzlePosition, nozzleRadius, { orientation + Maths::PiHalf, orientation - Maths::PiHalf }, color, strokeWidth );
+    _frame.StrokeArc( translated + nozzlePosition, nozzleRadius, orientation + Maths::PiHalf, orientation - Maths::PiHalf, color, strokeWidth );
         
     // draw propellant state:
     const double propellantState{ propellant.value / propellant.capacity };
     const bool propellantUnder25Percent{ propellant.value < ( propellant.capacity * 0.25 ) };
     static int propellantAlert{ 0 };
-    const Graphics::Color propellantColor{ ( propellantUnder25Percent ? ( ( propellantAlert++ / 4 ) % 2 == 0 ? 1.0 : 0.0 ) : 1.0 ), propellantState, propellantState };
-    Graphics::Fill( _cairo, translated, propellantRadius, Graphics::arcFull, propellantColor );
+    const Color_d propellantColor{ ( propellantUnder25Percent ? ( ( propellantAlert++ / 4 ) % 2 == 0 ? 1.0 : 0.0 ) : 1.0 ), propellantState, propellantState };
+    _frame.FillCircle( translated, propellantRadius, propellantColor );
 
     // draw nozzle flame:
     if( engine.thrust != 0 ) { // only if there's some thrust
@@ -164,7 +171,7 @@ void Rocket::Draw( cairo_t & _cairo, const Vector & _translation )
             dynamic.engine.orientation = orientation;
             const auto burstPosition{ Vector::From( orientation, tankRadius + nozzleRadius * thrustRatio ) };
             dynamic.engine.position = Vector::From( orientation, tankRadius + 4 );
-            Graphics::Fill( _cairo, translated + burstPosition, burstRadius, Graphics::arcFull, { 1, Maths::Random( 0, 1 ), 0 } );
+            _frame.FillCircle( translated + burstPosition, burstRadius, { 1, Maths::Random( 0, 1 ), 0 } );
         }
     }
 
@@ -182,12 +189,12 @@ void Rocket::Draw( cairo_t & _cairo, const Vector & _translation )
             burstLeft.orientation = orientation + Maths::PiHalf;
             const auto burstLeftPosition{ Vector::From( burstLeft.orientation + displacement, rotatorDistance ) };
             burstLeft.position = Vector::From( burstLeft.orientation + displacement, rotatorInitialDistance + 1 );
-            Graphics::Fill( _cairo, translated + burstLeftPosition, rotatorRadius, Graphics::arcFull, { 1, Maths::Random( 0, 0.5 ), 0 } );
+            _frame.FillCircle( translated + burstLeftPosition, rotatorRadius, { 1, Maths::Random( 0, 0.5 ), 0 } );
             auto & burstRight{ dynamic.rotators.at( Rotator::left ).at( Rotator::right ) };
             burstRight.orientation = orientation - Maths::PiHalf;
             const auto burstRightPosition{ Vector::From( burstRight.orientation + displacement, rotatorDistance ) };
             burstRight.position = Vector::From( burstRight.orientation + displacement, rotatorInitialDistance + 1 );
-            Graphics::Fill( _cairo, translated + burstRightPosition, rotatorRadius, Graphics::arcFull, { 1, Maths::Random( 0, 1 ), 0 } );
+            _frame.FillCircle( translated + burstRightPosition, rotatorRadius, { 1, Maths::Random( 0, 1 ), 0 } );
         }
     }
     if( rotator.thrust.at( Rotator::right ) ) {
@@ -201,12 +208,12 @@ void Rocket::Draw( cairo_t & _cairo, const Vector & _translation )
             burstRight.orientation = orientation - Maths::PiHalf;
             const auto burstRightPosition{ Vector::From( burstRight.orientation - displacement, rotatorDistance ) };
             burstRight.position = Vector::From( burstRight.orientation - displacement, rotatorInitialDistance + 1 );
-            Graphics::Fill( _cairo, translated + burstRightPosition, rotatorRadius, Graphics::arcFull, { 1, Maths::Random( 0, 0.5 ), 0 } );
+            _frame.FillCircle( translated + burstRightPosition, rotatorRadius, { 1, Maths::Random( 0, 0.5 ), 0 } );
             auto & burstLeft{ dynamic.rotators.at( Rotator::right ).at( Rotator::left ) };
             burstLeft.orientation = orientation + Maths::PiHalf;
             const auto burstLeftPosition{ Vector::From( burstLeft.orientation - displacement, rotatorDistance ) };
             burstLeft.position = Vector::From( burstLeft.orientation - displacement, rotatorInitialDistance + 1 );
-            Graphics::Fill( _cairo, translated + burstLeftPosition, rotatorRadius, Graphics::arcFull, { 1, Maths::Random( 0, 0.5 ), 0 } );
+            _frame.FillCircle( translated + burstLeftPosition, rotatorRadius, { 1, Maths::Random( 0, 0.5 ), 0 } );
         }
     }
 }

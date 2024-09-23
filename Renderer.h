@@ -6,7 +6,9 @@
 #include "Missile.h"
 #include "StarField.h"
 #include "Particule.h"
-#include "PrecisionTime.h"
+#include "Goody.h"
+#include "MiniAudio.h"
+#include "core/Packer.h"
 
 
 // --------------
@@ -14,14 +16,14 @@
 class Renderer
 {
 public:
-    Renderer( cairo_surface_t & _cairoSurface, cairo_t & _cairo, const size_t _windowWidth, const size_t _windowHeight );
+    Renderer( const Win32::Windows & _windows, const Packer::Resources & _resources );
+    ~Renderer() = default;
 
 private:
     void _AddEnemy();
 
 public:
-    void Loop( std::stop_token _token );
-    void KeyPress( const unsigned long _key, const bool _pressed );
+    void Loop( const NanoVGRenderer::Frame & _frame );
 
 private:
     inline static const int bigExplosion{ 200 };
@@ -29,7 +31,6 @@ private:
     inline static const int smallExplosion{ 20 };
 
 private:
-    bool _KeyPressed( const unsigned long _key );
     Rocket * _ClosestEnemy( const Vector & _position );
     void _Keys();
     void _Reset();
@@ -44,30 +45,68 @@ private:
     void _RocketImpact( Rocket & _a, Rocket & _b );
     bool _LaserRocketCollision( Laser & _laser, Rocket & _other );
     bool _MissileRocketCollision( Missile & _missile, Rocket & _other );
+    void _Goody( const Goody::eType _type );
     void _Update();
-    void _Draw();
+    void _Draw( const NanoVGRenderer::Frame & _frame );
+
+    enum class eSound {
+        lowFuelAlert,
+        lowShieldAlert,
+        spaceWind,
+        laserShot,
+        laserCollision,
+        missileShot,
+        missileRun,
+        missileExplosion,
+        shipCollision,
+        shipExplosion,
+        shipRotationEngine,
+        shipMainEngine,
+        laserPowerUp,
+    };
+    MiniAudio::Sound & _SetupSound( MiniAudio::Sound & _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
+    MiniAudio::Sound & _SetupSound( const eSound _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
+    void _QueueSoundPlay( MiniAudio::Sound & _sound );
+    void _PurgeSoundQueue();
 
 private:
-    PrecisionTime m_precisionTime;
-    cairo_surface_t & m_cairoSurface;
-    cairo_t & m_cairo;
-    const size_t m_windowWidth;
-    const size_t m_windowHeight;
-
-private:
-    std::array< std::atomic< bool >, 255 > m_keyPressed;
-    int m_frameCounter{ 0 };
-    double m_fps{ 0 };
-    int m_frameConsumption{ 0 };
-    int m_freezedFrameConsumption{ 0 };
-    int m_frameDropAlert{ 0 };
-
-private:
+    const Win32::Windows & m_windows;
     StarField m_starField;
     Rocket m_ship;
     std::list< std::unique_ptr< Enemy > > m_enemies;
-    Rocket * m_pTarget{ nullptr };
     std::list< std::unique_ptr< Laser > > m_lasers;
     std::list< std::unique_ptr< Missile > > m_missiles;
     std::list< std::unique_ptr< Particule > > m_particules;
+    std::list< std::unique_ptr< Goody > > m_goodies;
+
+private:
+    enum class eLaserSpeed : int
+    {
+        slow = 10,
+        medium = 8,
+        fast = 6,
+    };
+    eLaserSpeed m_laserSpeed{ eLaserSpeed::slow };
+
+    enum class eLaserPass : int
+    {
+        one = 1,
+        two = 2,
+        four = 4,
+        six = 6,
+        height = 8
+    };
+    eLaserPass m_laserPass{ eLaserPass::one };
+
+private:
+    MiniAudio m_audioEngine;
+    std::unordered_map< eSound, MiniAudio::Sound > m_sounds;
+    struct Sound
+    {
+        MiniAudio::Sound sound;
+        int lifeSpan;
+    };
+    std::list< Sound > m_soundQueue;
+    bool m_shieldAlert{ false };
+    bool m_fuelAlert{ false };
 };

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Graphics.h"
+#include "NanoVGRenderer.h"
 
 
 // --------------
@@ -20,5 +20,5 @@ struct Laser
     Dynamic dynamic;
 
     void Update();
-    void Draw( cairo_t & _cairo, const Vector & _translation );
+    void Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation );
 };

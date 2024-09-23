@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Graphics.h"
+#include "NanoVGRenderer.h"
 
 
 // --------------
 // TODO refactor?
 struct Rocket
 {
-    const Graphics::Color color;
+    const Color_d color;
     Vector position;
     double orientation;
 
@@ -84,7 +84,8 @@ struct Rocket
     void ActivateThrust();
     void _RotateTo( const double _targetOrientation, const double _rotationAdjustmentRate );
     void InvertMomentum( const double _rotationAdjustmentRate );
+    void PointTo( const Vector & _target, const double _rotationAdjustmentRate, const Vector & _positionCompensation = {}, const Vector & _targetMomentum = {} );
     void Acquire( const Rocket & _target, const double _rotationAdjustmentRate, const Vector & _positionCompensation = {} );
     void Update();
-    void Draw( cairo_t & _cairo, const Vector & _translation );
+    void Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation );
 };

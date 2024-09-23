@@ -7,10 +7,10 @@ void Laser::Update()
 }
 
 
-void Laser::Draw( cairo_t & _cairo, const Vector & _translation )
+void Laser::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation )
 {
     dynamic.positionA = position;
     dynamic.positionB = dynamic.positionA + momentum;
     const auto lifeRatio{ static_cast< double >( lifeSpan ) / static_cast< double >( maxLifeSpan ) };
-    Graphics::Line( _cairo, dynamic.positionA + _translation, dynamic.positionB + _translation, Graphics::FireColor( lifeRatio ), 3, false );
+    _frame.Line( dynamic.positionA + _translation, dynamic.positionB + _translation, Color_d::FireColor( lifeRatio ), 3 );
 }

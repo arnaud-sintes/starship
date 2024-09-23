@@ -4,21 +4,22 @@
 
 
 // --------------
-struct Laser
+struct Goody
 {
     Vector position;
-    const Vector momentum;
-    const double damage;
-    int lifeSpan{ 0 };
-    const int maxLifeSpan{ 20 };
+
+    enum class eType {
+        laserUp,    // increase laser power
+    };
+    eType type;
 
     struct Dynamic
     {
-        Vector positionA;
-        Vector positionB;
+        double radius{ 0 };
     };
     Dynamic dynamic;
 
-    void Update();
+    double grow{ 0 };
+
     void Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation );
 };

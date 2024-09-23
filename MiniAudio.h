@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../core/std.h"
+#include "core/std.h"
 
 
 // ----------------

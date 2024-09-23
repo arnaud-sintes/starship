@@ -2,78 +2,120 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Graphics.cpp">
-      <Filter>common</Filter>
+    <ClCompile Include="external\nanovg\nanovg.c">
+      <Filter>external\nanovg</Filter>
     </ClCompile>
-    <ClCompile Include="Maths.cpp">
-      <Filter>common</Filter>
-    </ClCompile>
-    <ClCompile Include="PrecisionTime.cpp">
-      <Filter>common</Filter>
-    </ClCompile>
-    <ClCompile Include="Vector.cpp">
-      <Filter>common</Filter>
+    <ClCompile Include="external\glew\glew.c">
+      <Filter>external\glew</Filter>
     </ClCompile>
     <ClCompile Include="Laser.cpp">
-      <Filter>system</Filter>
+      <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="Renderer.cpp">
-      <Filter>system</Filter>
+      <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="Rocket.cpp">
-      <Filter>system</Filter>
+      <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="StarField.cpp">
-      <Filter>system</Filter>
+      <Filter>game</Filter>
+    </ClCompile>
+    <ClCompile Include="OpenGL.cpp">
+      <Filter>core\Wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="NanoVGRenderer.cpp">
+      <Filter>core\Wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="MiniAudio.cpp">
+      <Filter>core\Wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="Goody.cpp">
+      <Filter>game</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Graphics.h">
-      <Filter>common</Filter>
+    <ClInclude Include="external\nanovg\fontstash.h">
+      <Filter>external\nanovg</Filter>
     </ClInclude>
-    <ClInclude Include="Maths.h">
-      <Filter>common</Filter>
+    <ClInclude Include="external\nanovg\nanovg.h">
+      <Filter>external\nanovg</Filter>
     </ClInclude>
-    <ClInclude Include="PrecisionTime.h">
-      <Filter>common</Filter>
+    <ClInclude Include="external\nanovg\nanovg_gl.h">
+      <Filter>external\nanovg</Filter>
     </ClInclude>
-    <ClInclude Include="Vector.h">
-      <Filter>common</Filter>
+    <ClInclude Include="external\nanovg\nanovg_gl_utils.h">
+      <Filter>external\nanovg</Filter>
     </ClInclude>
-    <ClInclude Include="std.h">
-      <Filter>common</Filter>
+    <ClInclude Include="external\nanovg\stb_image.h">
+      <Filter>external\nanovg</Filter>
     </ClInclude>
-    <ClInclude Include="cairo.h">
-      <Filter>common</Filter>
+    <ClInclude Include="external\nanovg\stb_truetype.h">
+      <Filter>external\nanovg</Filter>
+    </ClInclude>
+    <ClInclude Include="external\glew\glew.h">
+      <Filter>external\glew</Filter>
+    </ClInclude>
+    <ClInclude Include="external\glew\wglew.h">
+      <Filter>external\glew</Filter>
     </ClInclude>
     <ClInclude Include="Enemy.h">
-      <Filter>system</Filter>
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="Laser.h">
-      <Filter>system</Filter>
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="Missile.h">
-      <Filter>system</Filter>
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="Particule.h">
-      <Filter>system</Filter>
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="Renderer.h">
-      <Filter>system</Filter>
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="Rocket.h">
-      <Filter>system</Filter>
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="StarField.h">
-      <Filter>system</Filter>
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="external\miniaudio\miniaudio.h">
+      <Filter>external\miniaudio</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenGL.h">
+      <Filter>core\Wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="NanoVGRenderer.h">
+      <Filter>core\Wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="MiniAudio.h">
+      <Filter>core\Wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="Goody.h">
+      <Filter>game</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="common">
-      <UniqueIdentifier>{4e82e753-0f85-4f82-972a-518af4770af4}</UniqueIdentifier>
+    <Filter Include="core">
+      <UniqueIdentifier>{eac33817-2242-4833-bd95-972c8e46f2d3}</UniqueIdentifier>
     </Filter>
-    <Filter Include="system">
-      <UniqueIdentifier>{2049cb6a-bbe4-411a-9fe6-86406faba87c}</UniqueIdentifier>
+    <Filter Include="external">
+      <UniqueIdentifier>{125b2f26-06f0-4cc9-8d0b-ab7d82d6a9fd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="external\nanovg">
+      <UniqueIdentifier>{a1713576-c051-4a4e-8eb6-e2bed61540a3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="external\glew">
+      <UniqueIdentifier>{834dc9fc-ab53-4000-b07c-dced442a6a16}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="game">
+      <UniqueIdentifier>{a93b5981-5245-4fc1-90fb-4239927e0338}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="external\miniaudio">
+      <UniqueIdentifier>{8be31e32-751d-4aa8-bb6d-02ff5aaf9d7b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="core\Wrapper">
+      <UniqueIdentifier>{cfbe8b6a-b42c-4b1e-96ad-6d62c5d52e86}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
