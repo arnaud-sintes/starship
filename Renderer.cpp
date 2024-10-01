@@ -55,6 +55,7 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
     for( int i{ 0 }; i < 10; i++ )
         _AddEnemy();
 #endif
+    //m_goodies.emplace_back( new Goody{ { 100, 100 }, Goody::eType::homingMissiles } );
 }
 
 
@@ -139,7 +140,8 @@ void Renderer::_Keys()
     
     // shoot missile:
     static int missileShotRate{ 0 };
-    if( missileShotRate++ > 35 && m_windows.RightMouseButtonPressed() ) {
+    if( m_homingMissiles != 0 && missileShotRate++ > 35 && m_windows.RightMouseButtonPressed() ) {
+        m_homingMissiles--;
         missileShotRate = 0;
         const auto & missile{ m_missiles.emplace_back( new Missile{ Rocket{ { 0.5, 0.75, 1 }, m_ship.position, m_ship.orientation, {}, m_ship.momentum, 0,
             3, // damage
@@ -355,6 +357,11 @@ void Renderer::_Goody( const Goody::eType _type )
             m_sounds.find( eSound::laserPowerUp )->second.Play();
         return;
     }
+    if( _type == Goody::eType::homingMissiles ) {
+        m_homingMissiles += 20; // 20x missiles pack
+        // TODO sound
+        return;
+    }
 }
 
 
@@ -457,9 +464,10 @@ void Renderer::_Update()
 
         // shield:
         if( enemy.rocket.shield.value <= 0 ) {
-            // TODO not EVERY time (random?)
-            // TODO alternate goodies (random?)
-            m_goodies.emplace_back( new Goody{ enemy.rocket.position, Goody::eType::laserUp } );
+            if( Maths::Random( 0, 1 ) < 0.75 ) { // 75% chance
+                const auto type{ Maths::Random( 0, 1 ) > 0.5 ? Goody::eType::laserUp : Goody::eType::homingMissiles };
+                m_goodies.emplace_back( new Goody{ enemy.rocket.position, type } );
+            }
             _QueueSoundPlay( _SetupSound( enemy.sound_explosion, enemy.rocket ) );
             _AddExplosion( enemy.rocket.position, enemy.rocket.momentum, bigExplosion );
             newEnemiesToGenerate++;

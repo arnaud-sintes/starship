@@ -98,6 +98,8 @@ private:
     };
     eLaserPass m_laserPass{ eLaserPass::one };
 
+    int m_homingMissiles{ 0 };
+
 private:
     MiniAudio m_audioEngine;
     std::unordered_map< eSound, MiniAudio::Sound > m_sounds;

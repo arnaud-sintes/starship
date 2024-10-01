@@ -9,7 +9,8 @@ struct Goody
     Vector position;
 
     enum class eType {
-        laserUp,    // increase laser power
+        laserUp,        // increase laser power
+        homingMissiles, // homing missiles pack
     };
     eType type;
 
