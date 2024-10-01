@@ -77,7 +77,7 @@ private:
     std::list< std::unique_ptr< Laser > > m_lasers;
     std::list< std::unique_ptr< Missile > > m_missiles;
     std::list< std::unique_ptr< Particule > > m_particules;
-    std::list< std::unique_ptr< Goody > > m_goodies;
+    std::list< std::unique_ptr< Goody > > m_goodies;    
 
 private:
     enum class eLaserSpeed : int

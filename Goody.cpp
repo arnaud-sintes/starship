@@ -17,6 +17,8 @@ void Goody::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translat
     };
     const auto & info{ infos.find( type )->second };
 
-    _frame.StrokeCircle( position + _translation, dynamic.radius, { 0.25, 1, ( sinGrow + 1 ) * 0.5 }, 4 );
+    const Color_d color{ 0.25, 1, ( sinGrow + 1 ) * 0.5 };
+    _frame.StrokeCircle( position + _translation, dynamic.radius, color, 4 );
     _frame.Text( position + _translation - info.adjust, "openSansBold", 20, info.letter, colorWhite );
+    _frame.Reflect( position + _translation, dynamic.radius, color, -0.4, dynamic.reflectAnimation += 0.3 );
 }

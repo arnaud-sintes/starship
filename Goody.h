@@ -16,6 +16,7 @@ struct Goody
     struct Dynamic
     {
         double radius{ 0 };
+        double reflectAnimation{ 0 };
     };
     Dynamic dynamic;
 

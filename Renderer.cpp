@@ -52,7 +52,7 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
     _SetupSound( eSound::shipRotationEngine, m_ship, 1.0, true, 0 ).Play();
 
 #ifndef _NO_ENEMY
-    for( int i{ 0 }; i < 4; i++ )
+    for( int i{ 0 }; i < 10; i++ )
         _AddEnemy();
 #endif
 }
@@ -326,7 +326,8 @@ void Renderer::_PurgeSoundQueue()
 void Renderer::_Goody( const Goody::eType _type )
 {
     if( _type == Goody::eType::laserUp ) {
-        m_sounds.find( eSound::laserPowerUp )->second.Play();
+        const auto currentLaserSpeed{ m_laserSpeed };
+        const auto currentLaserPass{ m_laserPass };
         if( m_laserSpeed == eLaserSpeed::slow )
             m_laserSpeed = eLaserSpeed::medium;
         else
@@ -350,6 +351,8 @@ void Renderer::_Goody( const Goody::eType _type )
             if( m_laserPass == eLaserPass::height )
                 m_laserSpeed = eLaserSpeed::fast;
         }
+        if( currentLaserSpeed != m_laserSpeed || currentLaserPass != m_laserPass )
+            m_sounds.find( eSound::laserPowerUp )->second.Play();
         return;
     }
 }
@@ -454,6 +457,8 @@ void Renderer::_Update()
 
         // shield:
         if( enemy.rocket.shield.value <= 0 ) {
+            // TODO not EVERY time (random?)
+            // TODO alternate goodies (random?)
             m_goodies.emplace_back( new Goody{ enemy.rocket.position, Goody::eType::laserUp } );
             _QueueSoundPlay( _SetupSound( enemy.sound_explosion, enemy.rocket ) );
             _AddExplosion( enemy.rocket.position, enemy.rocket.momentum, bigExplosion );
@@ -498,7 +503,7 @@ void Renderer::_Update()
     // update laser data:
     for( auto it{ m_lasers.begin() }; it != m_lasers.end(); ) {
         auto & laser{ **it };
-        if( laser.lifeSpan++ > laser.maxLifeSpan ) {
+        if( laser.lifeSpan++ >= laser.maxLifeSpan ) {
             it = m_lasers.erase( it );
             continue;
         }

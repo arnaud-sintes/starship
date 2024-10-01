@@ -124,3 +124,29 @@ void NanoVGRenderer::Frame::Text( const Position_d & _position, const std::strin
     const auto position{ _position.ToType< float >() };
     ::nvgText( context, position.x, position.y, _text.c_str(), 0 );
 }
+
+
+void NanoVGRenderer::Frame::Reflect( const Position_d & _position, const double _radius, const Color_d & _color, const double _reflectAngle, const double _animation ) const
+{
+    auto context{ static_cast< NVGcontext * >( m_context ) };
+    ::nvgSave( context );
+    ::nvgBeginPath( context );
+    const double sinAnim{ ( std::sin( _animation + Maths::PiHalf ) + 1 ) * 0.5 };
+    const auto yPos1{ static_cast< float >( std::sin( _animation - sinAnim ) * _radius * 1.2 ) };
+    const auto yPos2{ static_cast< float >( std::sin( _animation + sinAnim ) * _radius * 1.2 ) };
+    const auto position{ _position.ToType< float >() };
+    const auto radius{ static_cast< float >( _radius ) };
+    const auto halfRadius{ radius * 0.5f };
+    ::nvgTranslate( context, position.x, position.y );
+    ::nvgRotate( context, static_cast< float >( _reflectAngle ) );
+    ::nvgTranslate( context, -position.x, -position.y );
+    ::nvgMoveTo( context, position.x - radius, position.y );
+    ::nvgBezierTo( context, position.x - halfRadius, position.y + yPos1, position.x + halfRadius, position.y + yPos1, position.x + radius, position.y );
+    ::nvgBezierTo( context, position.x + halfRadius, position.y + yPos2, position.x - halfRadius, position.y + yPos2, position.x - radius, position.y );
+    ::nvgClosePath( context );
+    const auto sinAnim90{ sinAnim * 0.9 };
+    const auto color{ ( Color_d{ _color.r + ( 1 - _color.r ) * sinAnim90, _color.g + ( 1 - _color.g ) * sinAnim90, _color.b + ( 1 - _color.b ) * sinAnim90 } * 255 ).ToType< unsigned char >() };
+    ::nvgFillColor( context, ::nvgRGBA( color.r, color.g, color.b, static_cast< unsigned char >( 255 * ( sinAnim90 + 0.1 ) ) ) );
+    ::nvgFill( context );
+    ::nvgRestore( context );
+}
