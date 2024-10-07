@@ -63,6 +63,10 @@ private:
         shipRotationEngine,
         shipMainEngine,
         laserPowerUp,
+        homingMissiles,
+        homingMissilesOff,
+        plasmaShield,
+        plasmaShieldOff,
     };
     MiniAudio::Sound & _SetupSound( MiniAudio::Sound & _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
     MiniAudio::Sound & _SetupSound( const eSound _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
@@ -99,6 +103,13 @@ private:
     eLaserPass m_laserPass{ eLaserPass::one };
 
     int m_homingMissiles{ 0 };
+
+private:
+    int m_plasmaShield{ 0 };
+    double m_plasmaShieldIncrement{ 0 };
+    double m_plasmaShieldRamp{ 0 };
+    double m_plasmaShieldRadius{ 0 };
+    double m_plasmaShieldReflectAnimation{ 0 };
 
 private:
     MiniAudio m_audioEngine;

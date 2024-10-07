@@ -11,6 +11,7 @@ struct Goody
     enum class eType {
         laserUp,        // increase laser power
         homingMissiles, // homing missiles pack
+        plasmaShield,   // temporary plasma shield
     };
     eType type;
 

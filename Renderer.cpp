@@ -1,23 +1,6 @@
 ﻿#include "Renderer.h"
 
 
-// *** primary weapon laser:
-// laser speed: slow, medium, fast
-// laser pass: 1, 2, 4, 6, 8
-
-// *** secondary weapons:
-// missiles         10x pack
-// homing-missiles  10x pack
-// laser turret     pack
-// mines            pack
-// plasma (concentrating) gauge
-
-// *** helpers (until destroyed)
-// force field
-// copilot
-// ?
-
-
 // debugging purpose
 //#define _NO_ENEMY
 
@@ -45,7 +28,12 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
         { eSound::shipRotationEngine, m_audioEngine.LoadSound( _resources.find( "shipRotationEngine.wav" )->second ) },
         { eSound::shipMainEngine, m_audioEngine.LoadSound( _resources.find( "shipMainEngine.wav" )->second ) },
         { eSound::laserPowerUp, m_audioEngine.LoadSound( _resources.find( "laserPowerUp.wav" )->second ) },
+        { eSound::homingMissiles, m_audioEngine.LoadSound( _resources.find( "homingMissiles.wav" )->second ) },
+        { eSound::homingMissilesOff, m_audioEngine.LoadSound( _resources.find( "homingMissilesOff.wav" )->second ) },
+        { eSound::plasmaShield, m_audioEngine.LoadSound( _resources.find( "plasmaShield.wav" )->second ) },
+        { eSound::plasmaShieldOff, m_audioEngine.LoadSound( _resources.find( "plasmaShieldOff.wav" )->second ) },
     }
+    , m_plasmaShield{ 60 * 10 } // 10 seconds immunity at startup
 {
     _SetupSound( eSound::spaceWind, m_ship, 0.2, true ).Play();
     _SetupSound( eSound::shipMainEngine, m_ship, 1.0, true, 0 ).Play();
@@ -55,16 +43,18 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
     for( int i{ 0 }; i < 10; i++ )
         _AddEnemy();
 #endif
-    //m_goodies.emplace_back( new Goody{ { 100, 100 }, Goody::eType::homingMissiles } );
+    //m_goodies.emplace_back( new Goody{ { 200, 200 }, Goody::eType::plasmaShield } );
 }
 
 
 void Renderer::_AddEnemy()
 {
+    // enemy shield is correlated to current laser pass:
+    const double shield{ static_cast< double >( m_laserPass ) };
     const auto minDistance{ Maths::Random( 0.5, 0.75 ) * static_cast< double >( std::max( m_windows.GetDimension().width, m_windows.GetDimension().height ) ) };
     m_enemies.emplace_back( new Enemy{ Rocket{ { 1, 0.5, 0.75 }, m_ship.position + Vector::From( Maths::Random( 0, Maths::Pi2 ), minDistance ), Maths::Random( 0, Maths::Pi2 ), {}, {}, 0,
             5, // damage
-            { 5, 5, 0.001, 0.2 }, // shield
+            { shield, shield, 0.001, 0.2 }, // shield
             { 10, 10, 0.05, Maths::Random( 0.1, 0.75 ) }, // propellant
             { 0, Maths::Random( 0.1, 0.5 ), false, 0.005, 0.01, Maths::Random( 0.2, 0.75 ), 0 }, // engine
             { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0, { 0, 0 } } }, // rotators
@@ -114,7 +104,7 @@ Rocket * Renderer::_ClosestEnemy( const Vector & _position )
 void Renderer::_Keys()
 {
     // activate ship burst:
-    if( m_windows.KeyPressed( Win32::Windows::eKey::space ) )
+    if( m_windows.RightMouseButtonPressed() )
         m_ship.ActivateThrust();
 
     // follow the mouse cursor:
@@ -140,8 +130,10 @@ void Renderer::_Keys()
     
     // shoot missile:
     static int missileShotRate{ 0 };
-    if( m_homingMissiles != 0 && missileShotRate++ > 35 && m_windows.RightMouseButtonPressed() ) {
+    if( m_homingMissiles > 0 && missileShotRate++ > 20 && m_windows.LeftMouseButtonPressed() ) {
         m_homingMissiles--;
+        if( m_homingMissiles == 0 )
+            m_sounds.find( eSound::homingMissilesOff )->second.Play();
         missileShotRate = 0;
         const auto & missile{ m_missiles.emplace_back( new Missile{ Rocket{ { 0.5, 0.75, 1 }, m_ship.position, m_ship.orientation, {}, m_ship.momentum, 0,
             3, // damage
@@ -359,7 +351,12 @@ void Renderer::_Goody( const Goody::eType _type )
     }
     if( _type == Goody::eType::homingMissiles ) {
         m_homingMissiles += 20; // 20x missiles pack
-        // TODO sound
+        m_sounds.find( eSound::homingMissiles )->second.Play();
+        return;
+    }
+    if( _type == Goody::eType::plasmaShield ) {
+        m_plasmaShield += 60 * 5; // 5 seconds plasma shield
+        m_sounds.find( eSound::plasmaShield )->second.Play();
         return;
     }
 }
@@ -367,11 +364,22 @@ void Renderer::_Goody( const Goody::eType _type )
 
 void Renderer::_Update()
 {
-    // TODO use mouse to move?
     // TODO move code logic to proper classes
         
     // TODO solar wind (waves)
     // TODO planets and gravity attraction
+
+    // plasma shield:
+    if( m_plasmaShield > 0 ) {
+        m_plasmaShield--;
+        if( m_plasmaShield == 0 )
+            m_sounds.find( eSound::plasmaShieldOff )->second.Play();
+    }
+    m_plasmaShieldIncrement += 4;
+    if( m_plasmaShieldIncrement > 100 )
+        m_plasmaShieldIncrement = 0;
+    m_plasmaShieldRamp = ( m_plasmaShieldIncrement * m_plasmaShieldIncrement ) / 10000;
+    m_plasmaShieldRadius = 20 + ( m_plasmaShieldRamp * 50 );
 
     // enemies collision:
     for( auto & enemy : m_enemies ) {
@@ -386,6 +394,11 @@ void Renderer::_Update()
         if( _RocketCollision( enemy->rocket, m_ship ) ) {
             _SetupSound( enemy->sound_collision, enemy->rocket ).Play();
             _RocketImpact( enemy->rocket, m_ship );
+            _RocketImpact( m_ship, enemy->rocket );
+        }
+        // enemy-plasma shield collision:
+        if( m_plasmaShield > 0 && Maths::Collision( enemy->rocket.position, enemy->rocket.dynamic.boundingBoxRadius, m_ship.position, m_plasmaShieldRadius ) ) {
+            _SetupSound( enemy->sound_collision, enemy->rocket ).Play();
             _RocketImpact( m_ship, enemy->rocket );
         }
     }
@@ -438,6 +451,9 @@ void Renderer::_Update()
         // missiles-ship collision:
         if( !collision )
             collision = _MissileRocketCollision( **it, m_ship );
+        // missiles-plasma shield collision:
+        if( !collision && &it->get()->origin != &m_ship && m_plasmaShield > 0 )
+            collision = Maths::Collision( rocket.position, rocket.dynamic.boundingBoxRadius, m_ship.position, m_plasmaShieldRadius );
         // explode and remove:
         if( collision ) {
             _SetupSound( ( **it ).sound_run, rocket ).Stop();
@@ -464,8 +480,12 @@ void Renderer::_Update()
 
         // shield:
         if( enemy.rocket.shield.value <= 0 ) {
-            if( Maths::Random( 0, 1 ) < 0.75 ) { // 75% chance
-                const auto type{ Maths::Random( 0, 1 ) > 0.5 ? Goody::eType::laserUp : Goody::eType::homingMissiles };
+            if( Maths::Random( 0, 1 ) < 0.5 ) { // 50% chance of goody addition
+                const auto typeRandom{ Maths::Random( 0, 1 ) };
+                // 40% homing missiles pack
+                // 30% laser power-up
+                // 30% plasma shield
+                const auto type{ typeRandom < 0.4 ? Goody::eType::homingMissiles : ( typeRandom < 0.7 ? Goody::eType::laserUp : Goody::eType::plasmaShield ) };
                 m_goodies.emplace_back( new Goody{ enemy.rocket.position, type } );
             }
             _QueueSoundPlay( _SetupSound( enemy.sound_explosion, enemy.rocket ) );
@@ -552,6 +572,14 @@ void Renderer::_Update()
         // regular update:
         missile.rocket.Update();
         ++it;
+    }
+
+    // goodies attraction:
+    for( const auto & goody : m_goodies ) {
+        const auto posToShip{ m_ship.position - goody->position };
+        const double maxDistance{ 400 };
+        const auto distance{ ( maxDistance - std::min( posToShip.Distance(), maxDistance ) ) / maxDistance };
+        goody->position += posToShip.Normalized() * ( ( distance + 0.1 ) * 5 );
     }
 
     // TODO deal with shield / potential explosion/removal (game-over)
@@ -648,8 +676,18 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
     for( auto & missile : m_missiles )
         missile->rocket.Draw( _frame, shipPosition );
 
+    // plasma  shield:
+    const auto plasmaShieldSin{ std::sin( m_plasmaShieldRamp * Maths::Pi ) };
+    const auto plasmaShieldColor{ Color_d{ 0.5, 1, 0.75 } * plasmaShieldSin };
+    if( m_plasmaShield > 0 )
+        _frame.StrokeCircle( screenCenter, m_plasmaShieldRadius, plasmaShieldColor, 2 * plasmaShieldSin );
+
     // draw ship:
     m_ship.Draw( _frame, shipPosition );
+
+    // plasma shield reflection:
+    if( m_plasmaShield > 0 )
+        _frame.Reflect( screenCenter, m_plasmaShieldRadius, plasmaShieldColor, -0.4, m_plasmaShieldReflectAnimation += 0.3 );
 
     // TODO information panel:
     // TODO colors

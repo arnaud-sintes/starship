@@ -15,6 +15,7 @@ void Goody::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translat
     static std::unordered_map< eType, TypeInfo > infos{
         { eType::laserUp, { "L", { 5, 8 } } },
         { eType::homingMissiles, { "M", { 9, 8 } } },
+        { eType::plasmaShield, { "S", { 5, 8 } } },
     };
     const auto & info{ infos.find( type )->second };
 
