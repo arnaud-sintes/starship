@@ -718,22 +718,6 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
 void Renderer::_DisplayInfos( const NanoVGRenderer::Frame & _frame )
 {
     const Vector screen{ static_cast< double >( m_windows.GetDimension().width ), static_cast< double >( m_windows.GetDimension().height ) };
-
-    //const auto fnPercent{ []( const double _value, const double _max ){
-    //        std::string s{ "[" };
-    //        const auto current{ static_cast< int >( std::round( _value ) * 10 / _max ) };
-    //        for( int i{ 0 }; i < 10; i++ ) s.append( i < current ? "O" : " " );
-    //        return s.append( "]" );
-    //    } };
-    //_frame.Text( { 4, screen.v - 18 - 2 }, "sourceCodePro", 18,
-    //    "Shield " + fnPercent( m_ship.shield.value, m_ship.shield.capacity ) + " | " +
-    //    "Propellant " + fnPercent( m_ship.propellant.value, m_ship.propellant.capacity ) + " | " +
-    //    "Laser [" + std::string{ m_laserSpeed == eLaserSpeed::slow ? "O  " : ( m_laserSpeed == eLaserSpeed::medium ? "OO " : "OOO" ) } + "] " +
-    //    "[" + std::string{ m_laserPass == eLaserPass::one ? "O    " : ( m_laserPass == eLaserPass::two ? "OO   " :
-    //        ( m_laserPass == eLaserPass::four ? "OOO  " : ( m_laserPass == eLaserPass::six ? "OOOO " : "OOOOO" ) ) ) } + "]"
-    //    , colorWhite );
-
-
     constexpr double margin{ 4 };
     constexpr double spacing{ 4 };
     constexpr double borderRadius{ 2 };
@@ -745,28 +729,43 @@ void Renderer::_DisplayInfos( const NanoVGRenderer::Frame & _frame )
     constexpr double barWidth{ 100 };
     constexpr double barHeight{ 16 };
     double yMenu{ 0 };
-
-    // TODO homing missiles information bar (temporary)
-    // TODO homing missiles information bar (plasma shield)
-
-    // TODO laser power information bar
-    const int laserSpeed{ ( m_laserSpeed == eLaserSpeed::slow ) ? 0 : ( ( m_laserSpeed == eLaserSpeed::medium ) ? 1 : 2 ) };
-    const int laserPass{ ( m_laserPass == eLaserPass::one ) ? 0 : ( m_laserPass == eLaserPass::two ? 1 : ( m_laserPass == eLaserPass::four ? 2 : ( m_laserPass == eLaserPass::six ? 3 : 4 ) ) ) };
-    const double maxLaserPower{ 14 }; // 4 * 3 + 2
-    const auto laserPower{ static_cast< double >( laserPass * 3 + laserSpeed ) * 100 / maxLaserPower };
-    // TODO
-
-    // Propellant:
-    yMenu = margin + barHeight + spacing;
-    _frame.Text( { xText, screen.v - yMenu - yText }, "sourceCodePro", textHeight, "Propellant:", colorWhite );
-    const auto propellantdRate{ std::round( m_ship.propellant.value ) * barWidth / m_ship.propellant.capacity };
-    _frame.FillRectangle( { xMenu, screen.v - yMenu }, { xMenu + propellantdRate, screen.v - yMenu - barHeight }, Color_d::FireColor( 1 - ( propellantdRate / barWidth ) ) );
-    _frame.StrokeRectangle( { xMenu, screen.v - yMenu }, { xMenu + barWidth, screen.v - yMenu - barHeight }, colorWhite, strokeWidth, borderRadius );
     
-    // Shield:
+    // shield state:
     yMenu = margin;
-    _frame.Text( { xText, screen.v - yMenu - yText }, "sourceCodePro", textHeight, "Shield:", colorWhite );
+    _frame.Text( { xText, screen.v - yMenu - yText }, "openSansBold", textHeight, "Shield:", colorWhite );
     const auto shieldRate{ std::round( m_ship.shield.value ) * 100 / m_ship.shield.capacity };
     _frame.FillRectangle( { xMenu, screen.v - yMenu }, { xMenu + shieldRate, screen.v - yMenu - barHeight }, Color_d::FireColor( 1 - ( shieldRate / barWidth ) ) );
     _frame.StrokeRectangle( { xMenu, screen.v - yMenu }, { xMenu + barWidth, screen.v - yMenu - barHeight }, colorWhite, strokeWidth, borderRadius );
+
+    // propellant state:
+    yMenu = margin + barHeight + spacing;
+    _frame.Text( { xText, screen.v - yMenu - yText }, "openSansBold", textHeight, "Propellant:", colorWhite );
+    const auto propellantdRate{ std::round( m_ship.propellant.value ) * barWidth / m_ship.propellant.capacity };
+    _frame.FillRectangle( { xMenu, screen.v - yMenu }, { xMenu + propellantdRate, screen.v - yMenu - barHeight }, Color_d::FireColor( 1 - ( propellantdRate / barWidth ) ) );
+    _frame.StrokeRectangle( { xMenu, screen.v - yMenu }, { xMenu + barWidth, screen.v - yMenu - barHeight }, colorWhite, strokeWidth, borderRadius );
+
+    // laser power state:
+    const int laserSpeed{ ( m_laserSpeed == eLaserSpeed::slow ) ? 0 : ( ( m_laserSpeed == eLaserSpeed::medium ) ? 1 : 2 ) };
+    const int laserPass{ ( m_laserPass == eLaserPass::one ) ? 0 : ( m_laserPass == eLaserPass::two ? 1 : ( m_laserPass == eLaserPass::four ? 2 : ( m_laserPass == eLaserPass::six ? 3 : 4 ) ) ) };
+    const double maxLaserPower{ 14 }; // 4 * 3 + 2
+    yMenu = margin + ( barHeight + spacing ) * 2;
+    _frame.Text( { xText, screen.v - yMenu - yText }, "openSansBold", textHeight, "Laser:", { 1, 0.5, 0.5 } );
+    const auto laserPower{ static_cast< double >( laserPass * 3 + laserSpeed ) * barWidth / maxLaserPower };
+    _frame.FillRectangle( { xMenu, screen.v - yMenu }, { xMenu + laserPower, screen.v - yMenu - barHeight }, Color_d::FireColor( 1 - ( laserPower / barWidth ) ) );
+    _frame.StrokeRectangle( { xMenu, screen.v - yMenu }, { xMenu + barWidth, screen.v - yMenu - barHeight }, colorWhite, strokeWidth, borderRadius );
+
+    int optionalInfos{ 2 };
+    constexpr Color_d greenColor{ 0.5, 1, 0.5 };
+
+    // homing missiles count (temporary):
+    if( m_homingMissiles != 0 ) {
+        yMenu = margin + ( barHeight + spacing ) * ++optionalInfos;
+        _frame.Text( { xText, screen.v - yMenu - yText }, "openSansBold", textHeight, "Homing-missiles x" + std::to_string( m_homingMissiles ), greenColor );
+    }
+    
+    // plasma shield remaining time (temporary):
+    if( m_plasmaShield != 0 ) {
+        yMenu = margin + ( barHeight + spacing ) * ++optionalInfos;
+        _frame.Text( { xText, screen.v - yMenu - yText }, "openSansBold", textHeight, "Plasma-shield: " + std::to_string( static_cast< int >( std::ceil( static_cast< double >( m_plasmaShield ) / 60 ) ) ) + "s", greenColor );
+    }
 }
