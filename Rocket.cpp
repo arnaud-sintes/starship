@@ -105,6 +105,11 @@ void Rocket::Update()
     const auto thrust{ Vector::From( orientation + Maths::Pi, engine.thrust ) };
     thrustMotion += thrust;
 
+    // solar density thrust retention:
+    // note: this is fake, but helps to avoid excessive speeds and momentum...
+    if( thrustMotion.Distance() > 0 )
+        thrustMotion *= 0.999; // 99.9%
+
     // compute and substract drag force to motion (opposite to motion, depending of all drag force penalties):
     dynamic.totalMass =  shield.capacity * ( 1 - shield.quality ) + propellant.capacity * ( 1 - propellant.quality ) +
         engine.power * ( 1 - engine.quality ) + 2 * ( rotator.power * ( 1 - rotator.quality ) );

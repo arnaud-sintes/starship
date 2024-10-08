@@ -12,6 +12,8 @@ struct Goody
         laserUp,        // increase laser power
         homingMissiles, // homing missiles pack
         plasmaShield,   // temporary plasma shield
+        shieldAdd,      // shield addition
+        propellantAdd,  // propellant addition
     };
     eType type;
 

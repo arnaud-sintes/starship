@@ -113,6 +113,39 @@ void NanoVGRenderer::Frame::StrokeArc( const Position_d & _position, const doubl
 }
 
 
+void NanoVGRenderer::Frame::FillRectangle( const Position_d & _a, const Position_d & _b, const Color_d & _color, const double _borderRadius ) const
+{
+    auto context{ static_cast< NVGcontext * >( m_context ) };
+    ::nvgBeginPath( context );
+    const auto a{ _a.ToType< float >() };
+    const auto d{ ( Vector::From( _b ) - Vector::From( _a ) ).ToFloat() };
+    if( _borderRadius != 0 )
+        ::nvgRoundedRect( context, a.x, a.y, d.u, d.v, static_cast< float >( _borderRadius ) );
+    else
+        ::nvgRect( context, a.x, a.y, d.u, d.v );
+    const auto color{ ( _color * 255 ).ToType< unsigned char >() };
+    ::nvgFillColor( context, ::nvgRGBA( color.r, color.g, color.b, 255 ) );
+    ::nvgFill( context );
+}
+
+
+void NanoVGRenderer::Frame::StrokeRectangle( const Position_d & _a, const Position_d & _b, const Color_d & _color, const double _strokeWidth, const double _borderRadius ) const
+{
+    auto context{ static_cast< NVGcontext * >( m_context ) };
+    ::nvgBeginPath( context );
+    const auto a{ _a.ToType< float >() };
+    const auto d{ ( Vector::From( _b ) - Vector::From( _a ) ).ToFloat() };
+    if( _borderRadius != 0 )
+        ::nvgRoundedRect( context, a.x, a.y, d.u, d.v, static_cast< float >( _borderRadius ) );
+    else
+        ::nvgRect( context, a.x, a.y, d.u, d.v );
+    const auto color{ ( _color * 255 ).ToType< unsigned char >() };
+    ::nvgStrokeColor( context, ::nvgRGBA( color.r, color.g, color.b, 255 ) );
+    ::nvgStrokeWidth( context, static_cast< float >( _strokeWidth ) );
+    ::nvgStroke( context );
+}
+
+
 void NanoVGRenderer::Frame::Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };
@@ -132,21 +165,25 @@ void NanoVGRenderer::Frame::Reflect( const Position_d & _position, const double 
     ::nvgSave( context );
     ::nvgBeginPath( context );
     const double sinAnim{ ( std::sin( _animation + Maths::PiHalf ) + 1 ) * 0.5 };
-    const auto yPos1{ static_cast< float >( std::sin( _animation - sinAnim ) * _radius * 1.2 ) };
-    const auto yPos2{ static_cast< float >( std::sin( _animation + sinAnim ) * _radius * 1.2 ) };
+    const auto yPos1{ static_cast< float >( std::sin( _animation - sinAnim ) * _radius * 1.33 ) };
+    const auto yPos2{ static_cast< float >( std::sin( _animation + sinAnim ) * _radius * 1.33 ) };
     const auto position{ _position.ToType< float >() };
     const auto radius{ static_cast< float >( _radius ) };
-    const auto halfRadius{ radius * 0.5f };
+    const auto iRadius{ radius * 0.75f };
     ::nvgTranslate( context, position.x, position.y );
     ::nvgRotate( context, static_cast< float >( _reflectAngle ) );
     ::nvgTranslate( context, -position.x, -position.y );
-    ::nvgMoveTo( context, position.x - radius, position.y );
-    ::nvgBezierTo( context, position.x - halfRadius, position.y + yPos1, position.x + halfRadius, position.y + yPos1, position.x + radius, position.y );
-    ::nvgBezierTo( context, position.x + halfRadius, position.y + yPos2, position.x - halfRadius, position.y + yPos2, position.x - radius, position.y );
+    ::nvgMoveTo( context,   position.x - radius, position.y );
+    ::nvgBezierTo( context, position.x - iRadius, position.y + yPos1,
+                            position.x + iRadius, position.y + yPos1,
+                            position.x + radius, position.y );
+    ::nvgBezierTo( context, position.x + iRadius, position.y + yPos2,
+                            position.x - iRadius, position.y + yPos2,
+                            position.x - radius, position.y );
     ::nvgClosePath( context );
     const auto sinAnim90{ sinAnim * 0.9 };
     const auto color{ ( Color_d{ _color.r + ( 1 - _color.r ) * sinAnim90, _color.g + ( 1 - _color.g ) * sinAnim90, _color.b + ( 1 - _color.b ) * sinAnim90 } * 255 ).ToType< unsigned char >() };
-    ::nvgFillColor( context, ::nvgRGBA( color.r, color.g, color.b, static_cast< unsigned char >( 255 * ( sinAnim90 + 0.1 ) ) ) );
+    ::nvgFillColor( context, ::nvgRGBA( color.r, color.g, color.b, static_cast< unsigned char >( 200 * ( sinAnim90 + 0.1 ) ) ) );
     ::nvgFill( context );
     ::nvgRestore( context );
 }

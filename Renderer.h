@@ -67,11 +67,14 @@ private:
         homingMissilesOff,
         plasmaShield,
         plasmaShieldOff,
+        shieldRepair,
+        propellantRefuel,
     };
     MiniAudio::Sound & _SetupSound( MiniAudio::Sound & _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
     MiniAudio::Sound & _SetupSound( const eSound _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
     void _QueueSoundPlay( MiniAudio::Sound & _sound );
     void _PurgeSoundQueue();
+    void _DisplayInfos( const NanoVGRenderer::Frame & _frame );
 
 private:
     const Win32::Windows & m_windows;

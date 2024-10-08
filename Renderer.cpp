@@ -32,6 +32,8 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
         { eSound::homingMissilesOff, m_audioEngine.LoadSound( _resources.find( "homingMissilesOff.wav" )->second ) },
         { eSound::plasmaShield, m_audioEngine.LoadSound( _resources.find( "plasmaShield.wav" )->second ) },
         { eSound::plasmaShieldOff, m_audioEngine.LoadSound( _resources.find( "plasmaShieldOff.wav" )->second ) },
+        { eSound::shieldRepair, m_audioEngine.LoadSound( _resources.find( "shieldRepair.wav" )->second ) },
+        { eSound::propellantRefuel, m_audioEngine.LoadSound( _resources.find( "propellantRefuel.wav" )->second ) },
     }
     , m_plasmaShield{ 60 * 10 } // 10 seconds immunity at startup
 {
@@ -43,7 +45,11 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
     for( int i{ 0 }; i < 10; i++ )
         _AddEnemy();
 #endif
-    //m_goodies.emplace_back( new Goody{ { 200, 200 }, Goody::eType::plasmaShield } );
+    //m_goodies.emplace_back( new Goody{ { 200, 200 }, Goody::eType::laserUp } );
+    //m_goodies.emplace_back( new Goody{ { 300, 200 }, Goody::eType::homingMissiles } );
+    //m_goodies.emplace_back( new Goody{ { 400, 200 }, Goody::eType::plasmaShield } );
+    //m_goodies.emplace_back( new Goody{ { 500, 200 }, Goody::eType::shieldAdd } );
+    //m_goodies.emplace_back( new Goody{ { 600, 200 }, Goody::eType::propellantAdd } );
 }
 
 
@@ -322,28 +328,16 @@ void Renderer::_Goody( const Goody::eType _type )
     if( _type == Goody::eType::laserUp ) {
         const auto currentLaserSpeed{ m_laserSpeed };
         const auto currentLaserPass{ m_laserPass };
-        if( m_laserSpeed == eLaserSpeed::slow )
-            m_laserSpeed = eLaserSpeed::medium;
-        else
-        if( m_laserSpeed == eLaserSpeed::medium )
-            m_laserSpeed = eLaserSpeed::fast;
+        if( m_laserSpeed == eLaserSpeed::slow )         m_laserSpeed = eLaserSpeed::medium;
+        else if( m_laserSpeed == eLaserSpeed::medium )  m_laserSpeed = eLaserSpeed::fast;
         else
         if( m_laserSpeed == eLaserSpeed::fast ) {
             m_laserSpeed = eLaserSpeed::slow;
-            if( m_laserPass == eLaserPass::one )
-                m_laserPass = eLaserPass::two;
-            else
-            if( m_laserPass == eLaserPass::two )
-                m_laserPass = eLaserPass::four;
-            else
-            if( m_laserPass == eLaserPass::four )
-                m_laserPass = eLaserPass::six;
-            else
-            if( m_laserPass == eLaserPass::six )
-                m_laserPass = eLaserPass::height;
-            else
-            if( m_laserPass == eLaserPass::height )
-                m_laserSpeed = eLaserSpeed::fast;
+            if( m_laserPass == eLaserPass::one )            m_laserPass = eLaserPass::two;
+            else if( m_laserPass == eLaserPass::two )       m_laserPass = eLaserPass::four;
+            else if( m_laserPass == eLaserPass::four )      m_laserPass = eLaserPass::six;
+            else if( m_laserPass == eLaserPass::six )       m_laserPass = eLaserPass::height;
+            else if( m_laserPass == eLaserPass::height )    m_laserSpeed = eLaserSpeed::fast;
         }
         if( currentLaserSpeed != m_laserSpeed || currentLaserPass != m_laserPass )
             m_sounds.find( eSound::laserPowerUp )->second.Play();
@@ -359,11 +353,34 @@ void Renderer::_Goody( const Goody::eType _type )
         m_sounds.find( eSound::plasmaShield )->second.Play();
         return;
     }
+    if( _type == Goody::eType::shieldAdd ) {
+        if( m_ship.shield.value >= m_ship.shield.capacity )
+            return;
+        const auto capacityBoost{ m_ship.shield.capacity * 0.5 }; // 50% capacity boost
+        m_ship.shield.value += capacityBoost;
+        if( m_ship.shield.value > m_ship.shield.capacity )
+            m_ship.shield.value = m_ship.shield.capacity;
+        m_sounds.find( eSound::shieldRepair )->second.Play();
+        return;
+    }
+    if( _type == Goody::eType::propellantAdd ) {
+        if( m_ship.propellant.value >= m_ship.propellant.capacity )
+            return;
+        const auto capacityBoost{ m_ship.propellant.capacity * 0.5 }; // 50% capacity boost
+        m_ship.propellant.value += capacityBoost;
+        if( m_ship.propellant.value > m_ship.propellant.capacity )
+            m_ship.propellant.value = m_ship.propellant.capacity;
+        m_sounds.find( eSound::propellantRefuel )->second.Play();
+        return;
+    }
 }
 
 
 void Renderer::_Update()
 {
+    // TODO points counter !
+    // TODO more variety on enemies
+    
     // TODO move code logic to proper classes
         
     // TODO solar wind (waves)
@@ -379,7 +396,7 @@ void Renderer::_Update()
     if( m_plasmaShieldIncrement > 100 )
         m_plasmaShieldIncrement = 0;
     m_plasmaShieldRamp = ( m_plasmaShieldIncrement * m_plasmaShieldIncrement ) / 10000;
-    m_plasmaShieldRadius = 20 + ( m_plasmaShieldRamp * 50 );
+    m_plasmaShieldRadius = 30 + ( m_plasmaShieldRamp * 70 ); // maxium radius of 100
 
     // enemies collision:
     for( auto & enemy : m_enemies ) {
@@ -480,13 +497,14 @@ void Renderer::_Update()
 
         // shield:
         if( enemy.rocket.shield.value <= 0 ) {
-            if( Maths::Random( 0, 1 ) < 0.5 ) { // 50% chance of goody addition
-                const auto typeRandom{ Maths::Random( 0, 1 ) };
-                // 40% homing missiles pack
-                // 30% laser power-up
-                // 30% plasma shield
-                const auto type{ typeRandom < 0.4 ? Goody::eType::homingMissiles : ( typeRandom < 0.7 ? Goody::eType::laserUp : Goody::eType::plasmaShield ) };
-                m_goodies.emplace_back( new Goody{ enemy.rocket.position, type } );
+            // 50% chance of goody addition, only if far enought (avoid volontary collision bonuses...)
+            if( ( enemy.rocket.position - m_ship.position ).Distance() > 100 && Maths::Random( 0, 1 ) < 0.5 ) { 
+                std::vector< Goody::eType > types{ Goody::eType::homingMissiles, Goody::eType::plasmaShield };
+                if( m_ship.shield.value < m_ship.shield.capacity ) types.emplace_back( Goody::eType::shieldAdd );
+                if( m_ship.propellant.value < m_ship.propellant.capacity ) types.emplace_back( Goody::eType::propellantAdd );
+                if( m_laserSpeed != eLaserSpeed::fast || m_laserPass != eLaserPass::height ) types.emplace_back( Goody::eType::laserUp );
+                const auto typeRandom{ Maths::Random( 0, static_cast< double >( types.size() ) - 0.01 ) };
+                m_goodies.emplace_back( new Goody{ enemy.rocket.position, types.at( static_cast< int >( typeRandom ) ) } );
             }
             _QueueSoundPlay( _SetupSound( enemy.sound_explosion, enemy.rocket ) );
             _AddExplosion( enemy.rocket.position, enemy.rocket.momentum, bigExplosion );
@@ -635,7 +653,7 @@ void Renderer::_Update()
 
 
 void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
-{    
+{   
     // draw starfield, related to ship motion:
     m_starField.Draw( _frame, m_ship.momentum * 2 );
     _SetupSound( eSound::spaceWind, m_ship, std::max( std::min( m_ship.momentum.Distance() / 20, 1.0 ), 0.2 ), true );
@@ -687,27 +705,68 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
 
     // plasma shield reflection:
     if( m_plasmaShield > 0 )
-        _frame.Reflect( screenCenter, m_plasmaShieldRadius, plasmaShieldColor, -0.4, m_plasmaShieldReflectAnimation += 0.3 );
+        _frame.Reflect( screenCenter, m_plasmaShieldRadius, plasmaShieldColor, 0.4, m_plasmaShieldReflectAnimation += 0.3 );
 
-    // TODO information panel:
-    // TODO colors
-    // TODO shield, propellant, engine & rotators grades
-    // TODO shield & Propellant alert
-    // TODO laser damage?
-    const auto fnPercent{ []( const double _value, const double _max ){
-            std::string s{ "[" };
-            const auto current{ static_cast< int >( _value * 10 / _max ) };
-            for( int i{ 0 }; i < 10; i++ ) s.append( i < current ? "O" : " " );
-            return s.append( "]" );
-        } };
-    _frame.Text( { 4, screen.v - 18 - 2 }, "sourceCodePro", 18,
-        "Shield " + fnPercent( m_ship.shield.value, m_ship.shield.capacity ) + " | " +
-        "Propellant " + fnPercent( m_ship.propellant.value, m_ship.propellant.capacity ) + " | " +
-        "Laser [" + std::string{ m_laserSpeed == eLaserSpeed::slow ? "O  " : ( m_laserSpeed == eLaserSpeed::medium ? "OO " : "OOO" ) } + "] " +
-        "[" + std::string{ m_laserPass == eLaserPass::one ? "O    " : ( m_laserPass == eLaserPass::two ? "OO   " :
-            ( m_laserPass == eLaserPass::four ? "OOO  " : ( m_laserPass == eLaserPass::six ? "OOOO " : "OOOOO" ) ) ) } + "]"
-        , colorWhite );
+    // display informations:
+    _DisplayInfos( _frame );
 
     // cursor:
     _frame.StrokeCircle( m_windows.CursorPosition().ToType< double >(), 15, { 0.25, 0.5, 1 }, 4 );
+}
+
+
+void Renderer::_DisplayInfos( const NanoVGRenderer::Frame & _frame )
+{
+    const Vector screen{ static_cast< double >( m_windows.GetDimension().width ), static_cast< double >( m_windows.GetDimension().height ) };
+
+    //const auto fnPercent{ []( const double _value, const double _max ){
+    //        std::string s{ "[" };
+    //        const auto current{ static_cast< int >( std::round( _value ) * 10 / _max ) };
+    //        for( int i{ 0 }; i < 10; i++ ) s.append( i < current ? "O" : " " );
+    //        return s.append( "]" );
+    //    } };
+    //_frame.Text( { 4, screen.v - 18 - 2 }, "sourceCodePro", 18,
+    //    "Shield " + fnPercent( m_ship.shield.value, m_ship.shield.capacity ) + " | " +
+    //    "Propellant " + fnPercent( m_ship.propellant.value, m_ship.propellant.capacity ) + " | " +
+    //    "Laser [" + std::string{ m_laserSpeed == eLaserSpeed::slow ? "O  " : ( m_laserSpeed == eLaserSpeed::medium ? "OO " : "OOO" ) } + "] " +
+    //    "[" + std::string{ m_laserPass == eLaserPass::one ? "O    " : ( m_laserPass == eLaserPass::two ? "OO   " :
+    //        ( m_laserPass == eLaserPass::four ? "OOO  " : ( m_laserPass == eLaserPass::six ? "OOOO " : "OOOOO" ) ) ) } + "]"
+    //    , colorWhite );
+
+
+    constexpr double margin{ 4 };
+    constexpr double spacing{ 4 };
+    constexpr double borderRadius{ 2 };
+    constexpr double strokeWidth{ 1 };
+    constexpr double xText{ margin };
+    constexpr double yText{ 14 };
+    constexpr double textHeight{ 14 };
+    constexpr double xMenu{ xText + 90 };
+    constexpr double barWidth{ 100 };
+    constexpr double barHeight{ 16 };
+    double yMenu{ 0 };
+
+    // TODO homing missiles information bar (temporary)
+    // TODO homing missiles information bar (plasma shield)
+
+    // TODO laser power information bar
+    const int laserSpeed{ ( m_laserSpeed == eLaserSpeed::slow ) ? 0 : ( ( m_laserSpeed == eLaserSpeed::medium ) ? 1 : 2 ) };
+    const int laserPass{ ( m_laserPass == eLaserPass::one ) ? 0 : ( m_laserPass == eLaserPass::two ? 1 : ( m_laserPass == eLaserPass::four ? 2 : ( m_laserPass == eLaserPass::six ? 3 : 4 ) ) ) };
+    const double maxLaserPower{ 14 }; // 4 * 3 + 2
+    const auto laserPower{ static_cast< double >( laserPass * 3 + laserSpeed ) * 100 / maxLaserPower };
+    // TODO
+
+    // Propellant:
+    yMenu = margin + barHeight + spacing;
+    _frame.Text( { xText, screen.v - yMenu - yText }, "sourceCodePro", textHeight, "Propellant:", colorWhite );
+    const auto propellantdRate{ std::round( m_ship.propellant.value ) * barWidth / m_ship.propellant.capacity };
+    _frame.FillRectangle( { xMenu, screen.v - yMenu }, { xMenu + propellantdRate, screen.v - yMenu - barHeight }, Color_d::FireColor( 1 - ( propellantdRate / barWidth ) ) );
+    _frame.StrokeRectangle( { xMenu, screen.v - yMenu }, { xMenu + barWidth, screen.v - yMenu - barHeight }, colorWhite, strokeWidth, borderRadius );
+    
+    // Shield:
+    yMenu = margin;
+    _frame.Text( { xText, screen.v - yMenu - yText }, "sourceCodePro", textHeight, "Shield:", colorWhite );
+    const auto shieldRate{ std::round( m_ship.shield.value ) * 100 / m_ship.shield.capacity };
+    _frame.FillRectangle( { xMenu, screen.v - yMenu }, { xMenu + shieldRate, screen.v - yMenu - barHeight }, Color_d::FireColor( 1 - ( shieldRate / barWidth ) ) );
+    _frame.StrokeRectangle( { xMenu, screen.v - yMenu }, { xMenu + barWidth, screen.v - yMenu - barHeight }, colorWhite, strokeWidth, borderRadius );
 }

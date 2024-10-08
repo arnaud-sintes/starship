@@ -67,6 +67,12 @@ inline static const Color_d colorWhite{ 1, 1, 1 };
 
 
 // --------------
+struct Vector_f
+{
+    float u{ 0 }, v{ 0 };
+};
+
+
 struct Vector
 {
     double u{ 0 }, v{ 0 };
@@ -89,6 +95,8 @@ struct Vector
     bool operator == ( const Vector & _other ) const { return !operator != ( _other ); }
 
     operator Position_d() const { return { u, v }; }
+
+    Vector_f ToFloat() const { return { static_cast< float >( u ), static_cast< float >( v ) }; }
 };
 
 
