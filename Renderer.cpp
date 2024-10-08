@@ -733,14 +733,14 @@ void Renderer::_DisplayInfos( const NanoVGRenderer::Frame & _frame )
     // shield state:
     yMenu = margin;
     _frame.Text( { xText, screen.v - yMenu - yText }, "openSansBold", textHeight, "Shield:", colorWhite );
-    const auto shieldRate{ std::round( m_ship.shield.value ) * 100 / m_ship.shield.capacity };
+    const auto shieldRate{ std::round( m_ship.shield.value * barWidth ) / m_ship.shield.capacity };
     _frame.FillRectangle( { xMenu, screen.v - yMenu }, { xMenu + shieldRate, screen.v - yMenu - barHeight }, Color_d::FireColor( 1 - ( shieldRate / barWidth ) ) );
     _frame.StrokeRectangle( { xMenu, screen.v - yMenu }, { xMenu + barWidth, screen.v - yMenu - barHeight }, colorWhite, strokeWidth, borderRadius );
 
     // propellant state:
     yMenu = margin + barHeight + spacing;
     _frame.Text( { xText, screen.v - yMenu - yText }, "openSansBold", textHeight, "Propellant:", colorWhite );
-    const auto propellantdRate{ std::round( m_ship.propellant.value ) * barWidth / m_ship.propellant.capacity };
+    const auto propellantdRate{ std::round( m_ship.propellant.value * barWidth ) / m_ship.propellant.capacity };
     _frame.FillRectangle( { xMenu, screen.v - yMenu }, { xMenu + propellantdRate, screen.v - yMenu - barHeight }, Color_d::FireColor( 1 - ( propellantdRate / barWidth ) ) );
     _frame.StrokeRectangle( { xMenu, screen.v - yMenu }, { xMenu + barWidth, screen.v - yMenu - barHeight }, colorWhite, strokeWidth, borderRadius );
 
