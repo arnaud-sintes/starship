@@ -1,5 +1,6 @@
 ﻿#include "Renderer.h"
 
+// get fps to properly condition the timing in second
 
 // debugging purpose
 //#define _NO_ENEMY
