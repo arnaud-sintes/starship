@@ -2,13 +2,18 @@
 #include "core/Timer.h"
 #include "Renderer.h"
 #include "core/Packer.h"
+#include "core/Macros.h"
+#include "version.h"
+
+
+#define _DISPLAY_FPS
 
 
 int main( int, char * )
 {
     Win32::ShowConsole( false );
     const Dimension_ui windowDimension{ 1500, 900 };
-    Win32::Windows window{ L"Starship", windowDimension };
+    Win32::Windows window{ L"Starship v" + std::wstring{ _ToWideString( __ToString( VERSION ) ) }, windowDimension };
     window.ShowCursor( false );
     auto & timer{ Timer::GetInstance() }; // init nano precision
     //Win32::SetThreadRealtimePriority();
@@ -35,13 +40,15 @@ int main( int, char * )
         renderer.Loop( frame );
             
         // frame rate information:
+        #ifdef _DISPLAY_FPS
         const auto & fpsState{ fpsContext.Update() };
         std::stringstream ssFps;
         ssFps << "FPS: " << std::setprecision( 3 ) << fpsState.avgFrameRate;
         std::stringstream ssConsumption;            
         ssConsumption << " (" << std::setprecision( 3 ) << fpsState.avgConsumption << "%)";
         const std::string fps{ ssFps.str() + ssConsumption.str() + ( fpsState.frameDropped ? " [frame dropped]" : "" ) };
-        frame.Text( { 2, 4 }, "openSans", 14, fps, { 1, 1, 1 } );
+        frame.Text( { 2, windowDimension.ToType< double >().height - 2 }, "sourceCodePro", 14, fps, { 1, 1, 1 }, NanoVGRenderer::Frame::eTextAlign::bottomLeft );
+        #endif
     }
 
     return 0;

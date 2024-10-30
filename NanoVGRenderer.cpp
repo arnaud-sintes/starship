@@ -146,12 +146,19 @@ void NanoVGRenderer::Frame::StrokeRectangle( const Position_d & _a, const Positi
 }
 
 
-void NanoVGRenderer::Frame::Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color ) const
+void NanoVGRenderer::Frame::Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color, const eTextAlign _textAlign ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };
     ::nvgFontSize( context, static_cast< float >( _size ) );
     ::nvgFontFace( context, _fontName.c_str() );
-    ::nvgTextAlign( context, NVG_ALIGN_LEFT | NVG_ALIGN_TOP );
+    static const std::unordered_map< eTextAlign, int > textAligns{
+        { eTextAlign::topLeft, NVG_ALIGN_TOP | NVG_ALIGN_LEFT },
+        { eTextAlign::topRight, NVG_ALIGN_TOP | NVG_ALIGN_RIGHT },
+        { eTextAlign::bottomLeft, NVG_ALIGN_BOTTOM | NVG_ALIGN_LEFT },
+        { eTextAlign::bottomRight, NVG_ALIGN_BOTTOM | NVG_ALIGN_RIGHT },
+        { eTextAlign::center, NVG_ALIGN_MIDDLE | NVG_ALIGN_CENTER },
+    };
+    ::nvgTextAlign( context, textAligns.find( _textAlign )->second );
     const auto color{ ( _color * 255 ).ToType< unsigned char >() };
     ::nvgFillColor( context, ::nvgRGBA( color.r, color.g, color.b, 255 ) );
     const auto position{ _position.ToType< float >() };

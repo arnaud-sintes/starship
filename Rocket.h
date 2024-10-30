@@ -4,7 +4,6 @@
 
 
 // --------------
-// TODO refactor?
 struct Rocket
 {
     const Color_d color;

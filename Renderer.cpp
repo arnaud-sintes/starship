@@ -1,15 +1,40 @@
 ﻿#include "Renderer.h"
 
-// get fps to properly condition the timing in second
+// *** TODO list:
+// - technical:
+//      - properly condition timings in second to current fps
+//      - choose a distance unit (not pixel), e.g.: closest enemy display
+//      - move code logic inside classes
+//      - Renderer is way too big, move things at the right places (classes)
+//      - Rocket must be split
+//      - optimize what can be optimize (perf)
+//      - general code refactoring (no struct...)
+// 
+// - engine:
+//      - add solar wind (waves)
+//      - add planets with gravity/attraction
+// 
+// - functional:
+//      - full screen
+//
+//      - deal with shield / potential explosion/removal (game-over)
+//      - add stages, with different ennemies (more variety) and specific choregraphies
+//      - add special stages (asteroid field, rescue broken ship etc.)
+//      - end of stage big boss
+// 
+//      - more special bonues (turel, external module, allied ship etc.)
+//      - non-guided missiles rotator goodie ?
+
 
 // debugging purpose
 //#define _NO_ENEMY
+#define _ENEMY_COUNT 2 // 10
 
 
 Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _resources )
     : m_windows{ _windows }
     , m_starField{ m_windows.GetDimension() }
-    , m_ship{ { 0.5, 0.75, 1 },  {}, Maths::PiHalf, {}, {}, 0,
+    , m_ship{ { 0.5, 0.75, 1 },  {}, Maths::PiHalf, { 0, -5 }, {}, 0, // initial momentum is debatable
         5, // damage
         { 5, 5, 0.01, 0.5 }, // shield
         { 20, 20, 0.01, 0.75 }, // propellant
@@ -42,11 +67,13 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
     _SetupSound( eSound::shipMainEngine, m_ship, 1.0, true, 0 ).Play();
     _SetupSound( eSound::shipRotationEngine, m_ship, 1.0, true, 0 ).Play();
 
-#ifndef _NO_ENEMY
-    for( int i{ 0 }; i < 10; i++ )
+    #ifndef _NO_ENEMY
+    for( int i{ 0 }; i < _ENEMY_COUNT; i++ )
         _AddEnemy();
-#endif
-    //m_goodies.emplace_back( new Goody{ { 200, 200 }, Goody::eType::laserUp } );
+    #endif
+    //double powerUpPos{ 200 };
+    //for( int i{ 0 }; i < 50; i++ )
+    //    m_goodies.emplace_back( new Goody{ { powerUpPos + i * 50, 200 }, Goody::eType::laserUp } );
     //m_goodies.emplace_back( new Goody{ { 300, 200 }, Goody::eType::homingMissiles } );
     //m_goodies.emplace_back( new Goody{ { 400, 200 }, Goody::eType::plasmaShield } );
     //m_goodies.emplace_back( new Goody{ { 500, 200 }, Goody::eType::shieldAdd } );
@@ -86,7 +113,7 @@ void Renderer::Loop( const NanoVGRenderer::Frame & _frame )
     _Keys();
 
     // update:
-    _Update();
+    _Update(); // TODO bypass when displaying stage information
 
     // draw:
     _Draw( _frame );
@@ -147,7 +174,7 @@ void Renderer::_Keys()
             { 1, 1, 0.01, 0.5 }, // shield
             { 10, 10, 0.005, 0.9 }, // propellant
             { 0, 0.5, false, 0.01, 0.05, 0.8, 0 }, // engine
-            //{ { 0, 0 }, 0, { false, false }, 0, 0, 0, { 0, 0 } } } ); // TODO non-guided missiles rotator?
+            //{ { 0, 0 }, 0, { false, false }, 0, 0, 0, { 0, 0 } } } ); // non-guided missiles rotator
             { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0.5, { 0, 0 } } }, // guided missiles rotator
             false, m_ship,
             { m_sounds.find( eSound::missileShot )->second, nullptr },
@@ -326,6 +353,8 @@ void Renderer::_PurgeSoundQueue()
 
 void Renderer::_Goody( const Goody::eType _type )
 {
+    m_score++;
+
     if( _type == Goody::eType::laserUp ) {
         const auto currentLaserSpeed{ m_laserSpeed };
         const auto currentLaserPass{ m_laserPass };
@@ -379,14 +408,6 @@ void Renderer::_Goody( const Goody::eType _type )
 
 void Renderer::_Update()
 {
-    // TODO points counter !
-    // TODO more variety on enemies
-    
-    // TODO move code logic to proper classes
-        
-    // TODO solar wind (waves)
-    // TODO planets and gravity attraction
-
     // plasma shield:
     if( m_plasmaShield > 0 ) {
         m_plasmaShield--;
@@ -418,6 +439,7 @@ void Renderer::_Update()
         if( m_plasmaShield > 0 && Maths::Collision( enemy->rocket.position, enemy->rocket.dynamic.boundingBoxRadius, m_ship.position, m_plasmaShieldRadius ) ) {
             _SetupSound( enemy->sound_collision, enemy->rocket ).Play();
             _RocketImpact( m_ship, enemy->rocket );
+            m_score++;
         }
     }
 
@@ -429,6 +451,7 @@ void Renderer::_Update()
             if( _LaserRocketCollision( *laser, ( **itEnemy ).rocket ) ) {
                 pCollision = &( **itEnemy ).rocket;
                 _SetupSound( ( **itEnemy ).sound_laserCollision, *pCollision ).Play();
+                m_score += 5;
             }
         }
         // laser-missiles collisions:
@@ -439,6 +462,7 @@ void Renderer::_Update()
                     pCollision = &missile.rocket;
                     _AddExplosion( laser->position, missile.rocket.momentum );
                     itMissile = m_missiles.erase( itMissile );
+                    m_score += 10;
                     continue;
                 }
             ++itMissile;
@@ -459,25 +483,29 @@ void Renderer::_Update()
                     collision = true;
                     _AddExplosion( otherRocket.position, otherRocket.momentum );
                     itMissile = m_missiles.erase( itMissile );
+                    m_score++;
                     continue;
                 }
             ++itMissile;
         }
         // missiles-enemies collisions:
-        for( auto itEnemy{ m_enemies.begin() }, itEnemyEnd{ m_enemies.end() }; !collision && itEnemy != itEnemyEnd; ++itEnemy )
+        for( auto itEnemy{ m_enemies.begin() }, itEnemyEnd{ m_enemies.end() }; !collision && itEnemy != itEnemyEnd; ++itEnemy ) {
             collision = _MissileRocketCollision( **it, ( **itEnemy ).rocket );
+        }
         // missiles-ship collision:
         if( !collision )
             collision = _MissileRocketCollision( **it, m_ship );
         // missiles-plasma shield collision:
-        if( !collision && &it->get()->origin != &m_ship && m_plasmaShield > 0 )
+        if( !collision && &it->get()->origin != &m_ship && m_plasmaShield > 0 ) {
             collision = Maths::Collision( rocket.position, rocket.dynamic.boundingBoxRadius, m_ship.position, m_plasmaShieldRadius );
+        }
         // explode and remove:
         if( collision ) {
             _SetupSound( ( **it ).sound_run, rocket ).Stop();
             _QueueSoundPlay( _SetupSound( ( **it ).sound_explosion, rocket ) );
             _AddExplosion( rocket.position, rocket.momentum );
             it = m_missiles.erase( it );
+            m_score++;
             continue;
         }
         ++it;
@@ -511,6 +539,7 @@ void Renderer::_Update()
             _AddExplosion( enemy.rocket.position, enemy.rocket.momentum, bigExplosion );
             newEnemiesToGenerate++;
             it = m_enemies.erase( it );
+            m_score += 50;
             continue;
         }
 
@@ -601,8 +630,6 @@ void Renderer::_Update()
         goody->position += posToShip.Normalized() * ( ( distance + 0.1 ) * 5 );
     }
 
-    // TODO deal with shield / potential explosion/removal (game-over)
-
     // update ship data:
     m_ship.Update();
 
@@ -654,13 +681,21 @@ void Renderer::_Update()
 
 
 void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
-{   
-    // draw starfield, related to ship motion:
-    m_starField.Draw( _frame, m_ship.momentum * 2 );
+{    
+    const Vector solarWind{ 0.05, 0.2 }; // TODO create a very subtile movement, even when not moving (avoid fixed starfield positions)
+    // draw starfield, related to ship motion & solar wind:
+    m_starField.Draw( _frame, m_ship.momentum * 2 + solarWind );
     _SetupSound( eSound::spaceWind, m_ship, std::max( std::min( m_ship.momentum.Distance() / 20, 1.0 ), 0.2 ), true );
 
     const Vector screen{ static_cast< double >( m_windows.GetDimension().width ), static_cast< double >( m_windows.GetDimension().height ) };
     const Vector screenCenter{ screen * 0.5 };
+    
+    // stage information:
+    // TODO
+    //_frame.Text( screenCenter, "openSansBold", 80, "STAGE 1-1", colorWhite, NanoVGRenderer::Frame::eTextAlign::center );
+    // TODO details
+    //return; // TODO bypass when displaying stage information
+
     const Vector shipPosition{ screenCenter - m_ship.position };
 
     // draw particules:
@@ -680,7 +715,6 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
             const auto distance{ static_cast< int >( vector.Distance() ) };
             if( distance > 500 ) { // 500 is "close"
                 const auto position{ Vector::From( vector.Orientation(), m_ship.dynamic.boundingBoxRadius + 50 ) };
-                // TODO distance unit?
                 _frame.Text( position + screenCenter, "openSans", 14, std::to_string( distance / 10 ), { 1, 0.75, 0.5 } );
             }
         }
@@ -711,49 +745,53 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
     // display informations:
     _DisplayInfos( _frame );
 
+    // display score:
+    constexpr double margin{ 8 };
+    _frame.Text( { static_cast< double >( m_windows.GetDimension().width ) - margin, margin }, "openSansBold", 24, std::format( "{:010}", m_score ), colorWhite, NanoVGRenderer::Frame::eTextAlign::topRight );
+
     // cursor:
-    _frame.StrokeCircle( m_windows.CursorPosition().ToType< double >(), 15, { 0.25, 0.5, 1 }, 4 );
+    static double cursorFlash{ 0 };
+    cursorFlash += 0.15;
+    const auto sinCusorFlash{ std::sin( cursorFlash ) };
+    _frame.StrokeCircle( m_windows.CursorPosition().ToType< double >(), 15 - sinCusorFlash * 2.5, { 0.25, 0.5 + sinCusorFlash * 0.25, 1 }, 4 );
 }
 
 
 void Renderer::_DisplayInfos( const NanoVGRenderer::Frame & _frame )
 {
-    const Vector screen{ static_cast< double >( m_windows.GetDimension().width ), static_cast< double >( m_windows.GetDimension().height ) };
-    constexpr double margin{ 4 };
-    constexpr double spacing{ 4 };
+    constexpr double margin{ 8 };
+    constexpr double spacing{ 6 };
     constexpr double borderRadius{ 2 };
     constexpr double strokeWidth{ 1 };
     constexpr double xText{ margin };
-    constexpr double yText{ 14 };
-    constexpr double textHeight{ 14 };
-    constexpr double xMenu{ xText + 90 };
-    constexpr double barWidth{ 100 };
-    constexpr double barHeight{ 16 };
+    constexpr double yText{ 2 };
+    constexpr double textHeight{ 18 };
+    constexpr double xMenu{ xText + 110 };
+    constexpr double barWidth{ 150 };
+    constexpr double barHeight{ 18 };
     double yMenu{ 0 };
     
     // shield state:
     yMenu = margin;
-    _frame.Text( { xText, screen.v - yMenu - yText }, "openSansBold", textHeight, "Shield:", colorWhite );
+    _frame.Text( { xText, yMenu + yText }, "openSansBold", textHeight, "Shield:", colorWhite );
     const auto shieldRate{ std::round( m_ship.shield.value * barWidth ) / m_ship.shield.capacity };
-    _frame.FillRectangle( { xMenu, screen.v - yMenu }, { xMenu + shieldRate, screen.v - yMenu - barHeight }, Color_d::FireColor( 1 - ( shieldRate / barWidth ) ) );
-    _frame.StrokeRectangle( { xMenu, screen.v - yMenu }, { xMenu + barWidth, screen.v - yMenu - barHeight }, colorWhite, strokeWidth, borderRadius );
+    _frame.FillRectangle( { xMenu, yMenu }, { xMenu + shieldRate, yMenu + barHeight }, Color_d::FireColor( 1 - ( shieldRate / barWidth ) ) );
+    _frame.StrokeRectangle( { xMenu, yMenu }, { xMenu + barWidth, yMenu + barHeight }, colorWhite, strokeWidth, borderRadius );
 
     // propellant state:
     yMenu = margin + barHeight + spacing;
-    _frame.Text( { xText, screen.v - yMenu - yText }, "openSansBold", textHeight, "Propellant:", colorWhite );
+    _frame.Text( { xText, yMenu + yText }, "openSansBold", textHeight, "Propellant:", colorWhite );
     const auto propellantdRate{ std::round( m_ship.propellant.value * barWidth ) / m_ship.propellant.capacity };
-    _frame.FillRectangle( { xMenu, screen.v - yMenu }, { xMenu + propellantdRate, screen.v - yMenu - barHeight }, Color_d::FireColor( 1 - ( propellantdRate / barWidth ) ) );
-    _frame.StrokeRectangle( { xMenu, screen.v - yMenu }, { xMenu + barWidth, screen.v - yMenu - barHeight }, colorWhite, strokeWidth, borderRadius );
+    _frame.FillRectangle( { xMenu, yMenu }, { xMenu + propellantdRate, yMenu + barHeight }, Color_d::FireColor( 1 - ( propellantdRate / barWidth ) ) );
+    _frame.StrokeRectangle( { xMenu, yMenu }, { xMenu + barWidth, yMenu + barHeight }, colorWhite, strokeWidth, borderRadius );
 
     // laser power state:
     const int laserSpeed{ ( m_laserSpeed == eLaserSpeed::slow ) ? 0 : ( ( m_laserSpeed == eLaserSpeed::medium ) ? 1 : 2 ) };
     const int laserPass{ ( m_laserPass == eLaserPass::one ) ? 0 : ( m_laserPass == eLaserPass::two ? 1 : ( m_laserPass == eLaserPass::four ? 2 : ( m_laserPass == eLaserPass::six ? 3 : 4 ) ) ) };
-    const double maxLaserPower{ 14 }; // 4 * 3 + 2
+    const int maxLaserPower{ 14 }; // 4 * 3 + 2
     yMenu = margin + ( barHeight + spacing ) * 2;
-    _frame.Text( { xText, screen.v - yMenu - yText }, "openSansBold", textHeight, "Laser:", { 1, 0.5, 0.5 } );
-    const auto laserPower{ static_cast< double >( laserPass * 3 + laserSpeed ) * barWidth / maxLaserPower };
-    _frame.FillRectangle( { xMenu, screen.v - yMenu }, { xMenu + laserPower, screen.v - yMenu - barHeight }, Color_d::FireColor( 1 - ( laserPower / barWidth ) ) );
-    _frame.StrokeRectangle( { xMenu, screen.v - yMenu }, { xMenu + barWidth, screen.v - yMenu - barHeight }, colorWhite, strokeWidth, borderRadius );
+    const auto laserPower{ static_cast< int >( laserPass * 3 + laserSpeed ) * 100 / maxLaserPower };
+    _frame.Text( { xText, yMenu + yText }, "openSansBold", textHeight, "Laser power: " + std::to_string( laserPower ) + "%", { 1, 0.5, 0.5 } );
 
     int optionalInfos{ 2 };
     constexpr Color_d greenColor{ 0.5, 1, 0.5 };
@@ -761,12 +799,12 @@ void Renderer::_DisplayInfos( const NanoVGRenderer::Frame & _frame )
     // homing missiles count (temporary):
     if( m_homingMissiles != 0 ) {
         yMenu = margin + ( barHeight + spacing ) * ++optionalInfos;
-        _frame.Text( { xText, screen.v - yMenu - yText }, "openSansBold", textHeight, "Homing-missiles x" + std::to_string( m_homingMissiles ), greenColor );
+        _frame.Text( { xText, yMenu + yText }, "openSansBold", textHeight, "Homing-missiles x" + std::to_string( m_homingMissiles ), greenColor );
     }
     
     // plasma shield remaining time (temporary):
     if( m_plasmaShield != 0 ) {
         yMenu = margin + ( barHeight + spacing ) * ++optionalInfos;
-        _frame.Text( { xText, screen.v - yMenu - yText }, "openSansBold", textHeight, "Plasma-shield: " + std::to_string( static_cast< int >( std::ceil( static_cast< double >( m_plasmaShield ) / 60 ) ) ) + "s", greenColor );
+        _frame.Text( { xText, yMenu + yText }, "openSansBold", textHeight, "Plasma-shield: " + std::to_string( static_cast< int >( std::ceil( static_cast< double >( m_plasmaShield ) / 60 ) ) ) + "s", greenColor );
     }
 }

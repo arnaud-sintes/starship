@@ -30,6 +30,7 @@
   <ItemGroup>
     <ClInclude Include="Base64.h" />
     <ClInclude Include="File.h" />
+    <ClInclude Include="Macros.h" />
     <ClInclude Include="Maths.h" />
     <ClInclude Include="Packer.h" />
     <ClInclude Include="Sha1.h" />

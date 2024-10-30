@@ -35,7 +35,14 @@ public:
     void StrokeArc( const Position_d & _position, const double _radius, const double _angleA, const double _angleB, const Color_d & _color, const double _strokeWidth, const bool _clockWise = true ) const;
     void FillRectangle( const Position_d & _a, const Position_d & _b, const Color_d & _color, const double _borderRadius = 0 ) const;
     void StrokeRectangle( const Position_d & _a, const Position_d & _b, const Color_d & _color, const double _strokeWidth, const double _borderRadius = 0 ) const;
-    void Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color ) const;
+    enum class eTextAlign {
+        topLeft,
+        topRight,
+        bottomLeft,
+        bottomRight,
+        center
+    };
+    void Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color, const eTextAlign _textAlign = eTextAlign::topLeft ) const;
     void Reflect( const Position_d & _position, const double _radius, const Color_d & _color, const double _reflectAngle, const double _animation ) const;
 
 private:

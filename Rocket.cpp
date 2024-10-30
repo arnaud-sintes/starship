@@ -121,7 +121,6 @@ void Rocket::Update()
 }
 
 
-// TODO split class
 void Rocket::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation )
 {
     const auto translated{ position + _translation };

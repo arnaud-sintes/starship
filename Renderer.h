@@ -12,7 +12,6 @@
 
 
 // --------------
-// TODO way too big, move things at the right places (classes)
 class Renderer
 {
 public:
@@ -87,6 +86,8 @@ private:
     std::list< std::unique_ptr< Goody > > m_goodies;    
 
 private:
+    int m_score{ 0 };
+
     enum class eLaserSpeed : int
     {
         slow = 10,

@@ -95,8 +95,11 @@
       <AdditionalOptions>/ignore:4217 %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PreBuildEvent>
-      <Command>$(SolutionDir).runtime/$(Configuration)/packer.exe "$(SolutionDir)res" "$(SolutionDir).runtime/$(Configuration)/resource.dat"</Command>
+      <Command>$(SolutionDir).runtime/$(Configuration)/packer.exe "$(SolutionDir)resource" "$(SolutionDir).runtime/$(Configuration)/resource.dat"</Command>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>call $(SolutionDir)package\package.bat</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -119,8 +122,11 @@
       <AdditionalOptions>/ignore:4217 %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PreBuildEvent>
-      <Command>$(SolutionDir).runtime/$(Configuration)/packer.exe "$(SolutionDir)res" "$(SolutionDir).runtime/$(Configuration)/resource.dat"</Command>
+      <Command>$(SolutionDir).runtime/$(Configuration)/packer.exe "$(SolutionDir)resource" "$(SolutionDir).runtime/$(Configuration)/resource.dat"</Command>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>call $(SolutionDir)package\package.bat</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="external\glew\glew.c" />
@@ -156,6 +162,7 @@
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Rocket.h" />
     <ClInclude Include="StarField.h" />
+    <ClInclude Include="version.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="core\core.vcxproj">
@@ -164,6 +171,9 @@
     <ProjectReference Include="packer\packer.vcxproj">
       <Project>{e512667c-ca35-4509-b493-273755291a35}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="package\package.bat" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
