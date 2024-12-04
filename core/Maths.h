@@ -85,6 +85,8 @@ struct Vector
     Vector & Normalize();
     Vector Normalized() const;
     double Orientation() const;
+    Vector InfiniteAttraction( const Vector & _attracted, const double _attractorMass ) const;
+    Vector ProximityAttraction( const Vector & _attracted, const double _attractorMass ) const;
     Vector & operator += ( const Vector & _other );
     Vector operator + ( const Vector & _other ) const;
     Vector & operator -= ( const Vector & _other );

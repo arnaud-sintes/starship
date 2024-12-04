@@ -8,7 +8,6 @@
 
 #define _DISPLAY_FPS
 
-
 int main( int, char * )
 {
     Win32::ShowConsole( false );

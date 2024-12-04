@@ -11,24 +11,33 @@
 //      - general code refactoring (no struct...)
 // 
 // - engine:
-//      - add solar wind (waves)
-//      - add planets with gravity/attraction
+//      - add solar wind (waves) -> how to maintain a grid (with resolution) dealing with this kind of stuff
+//          and quickly interpolate a value for a given object position (any rocket/laser?/goodie?/particule?/...?)
+//      - add planets & rocks & mines with gravity/attraction
+//      -> the attraction formula may be reused to deal with goodies attraction (quite naïve today)
+//      -> rockets are subjected to all attraction forces
+//      -> goodies are subjected to ship's attraction force
 // 
 // - functional:
-//      - full screen
+//      - full screen option, "best fit" regarding current resolution option
 //
 //      - deal with shield / potential explosion/removal (game-over)
 //      - add stages, with different ennemies (more variety) and specific choregraphies
-//      - add special stages (asteroid field, rescue broken ship etc.)
+//      - add special stages (asteroid field, mine field, rescue broken ship etc.)
 //      - end of stage big boss
 // 
-//      - more special bonues (turel, external module, allied ship etc.)
+//      - more special bonues (turel, plasma, external module ala r-type, allied ship etc.)
 //      - non-guided missiles rotator goodie ?
 
 
 // debugging purpose
 //#define _NO_ENEMY
-#define _ENEMY_COUNT 2 // 10
+#define _ENEMY_COUNT 1 // 10
+//#define _TESTING_GOODIES
+#define _TESTING_ATTRACTORS
+
+// TODO collision with attractors -> magnetic mines <- new goody
+// TODO different attraction formula between "magnetic" and "gravity attraction"
 
 
 Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _resources )
@@ -71,13 +80,31 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
     for( int i{ 0 }; i < _ENEMY_COUNT; i++ )
         _AddEnemy();
     #endif
-    //double powerUpPos{ 200 };
-    //for( int i{ 0 }; i < 50; i++ )
-    //    m_goodies.emplace_back( new Goody{ { powerUpPos + i * 50, 200 }, Goody::eType::laserUp } );
-    //m_goodies.emplace_back( new Goody{ { 300, 200 }, Goody::eType::homingMissiles } );
-    //m_goodies.emplace_back( new Goody{ { 400, 200 }, Goody::eType::plasmaShield } );
-    //m_goodies.emplace_back( new Goody{ { 500, 200 }, Goody::eType::shieldAdd } );
-    //m_goodies.emplace_back( new Goody{ { 600, 200 }, Goody::eType::propellantAdd } );
+
+    #ifdef _TESTING_GOODIES
+    for( int i{ 0 }; i < 20; i++ )
+        m_goodies.emplace_back( new Goody{ { 100.0 + i * 30, 300 }, Goody::eType::laserUp } );
+    m_goodies.emplace_back( new Goody{ { 300, 200 }, Goody::eType::homingMissiles } );
+    m_goodies.emplace_back( new Goody{ { 400, 200 }, Goody::eType::plasmaShield } );
+    m_goodies.emplace_back( new Goody{ { 500, 200 }, Goody::eType::shieldAdd } );
+    m_goodies.emplace_back( new Goody{ { 600, 200 }, Goody::eType::propellantAdd } );
+    #endif
+
+    #ifdef _TESTING_ATTRACTORS
+    for( int i{ 0 }; i < 1000; i++ ) {
+        const auto radius{ Maths::Random( 1, 2 ) };
+        const double range{ 10000 };
+        const double securityDistance{ 400 };
+        L_generate:
+        double x{ 0 }, y{ 0 };
+        while( x > -securityDistance && x < securityDistance ) x = Maths::Random( -range, range );
+        while( y > -securityDistance && y < securityDistance ) y = Maths::Random( -range, range );
+        for( const auto & attractor : m_attractors )
+            if( Maths::Collision( { x, y }, radius * m_attractorMassSizeRatio, attractor.position, attractor.mass * m_attractorMassSizeRatio ) )
+                goto L_generate;
+        m_attractors.emplace_back( Attractor{ { x, y }, radius } );
+    }
+    #endif
 }
 
 
@@ -169,12 +196,15 @@ void Renderer::_Keys()
         if( m_homingMissiles == 0 )
             m_sounds.find( eSound::homingMissilesOff )->second.Play();
         missileShotRate = 0;
-        const auto & missile{ m_missiles.emplace_back( new Missile{ Rocket{ { 0.5, 0.75, 1 }, m_ship.position, m_ship.orientation, {}, m_ship.momentum, 0,
+        Vector motion{};
+        if( _ClosestEnemy( m_ship.position ) == nullptr )
+            motion = Vector::From( m_ship.orientation, -5 );
+        const auto & missile{ m_missiles.emplace_back( new Missile{ Rocket{ { 0.5, 0.75, 1 }, m_ship.position, m_ship.orientation, motion, m_ship.momentum, 0,
             3, // damage
             { 1, 1, 0.01, 0.5 }, // shield
             { 10, 10, 0.005, 0.9 }, // propellant
             { 0, 0.5, false, 0.01, 0.05, 0.8, 0 }, // engine
-            //{ { 0, 0 }, 0, { false, false }, 0, 0, 0, { 0, 0 } } } ); // non-guided missiles rotator
+            //{ { 0, 0 }, 0, { false, false }, 0, 0, 0, { 0, 0 } } }, // non-guided missiles rotator
             { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0.5, { 0, 0 } } }, // guided missiles rotator
             false, m_ship,
             { m_sounds.find( eSound::missileShot )->second, nullptr },
@@ -441,6 +471,10 @@ void Renderer::_Update()
             _RocketImpact( m_ship, enemy->rocket );
             m_score++;
         }
+        // enemy-attractors collision:
+        for( const auto & attractor : m_attractors )
+            if( Maths::Collision( enemy->rocket.position, enemy->rocket.dynamic.boundingBoxRadius, attractor.position, attractor.mass * m_attractorMassSizeRatio ) )
+                enemy->rocket.shield.value = -1;
     }
 
     // laser collision:
@@ -469,6 +503,11 @@ void Renderer::_Update()
         }
         if( pCollision != nullptr )
             laser->lifeSpan = laser->maxLifeSpan;
+        // laser-attractors collision:
+        for( const auto & attractor : m_attractors )
+            if( Maths::Collision( attractor.position, attractor.mass * m_attractorMassSizeRatio, laser->dynamic.positionA, laser->dynamic.positionB ) )
+                laser->lifeSpan = laser->maxLifeSpan;
+                // TODO sound & particles?
     }
         
     // missiles collision:
@@ -496,9 +535,12 @@ void Renderer::_Update()
         if( !collision )
             collision = _MissileRocketCollision( **it, m_ship );
         // missiles-plasma shield collision:
-        if( !collision && &it->get()->origin != &m_ship && m_plasmaShield > 0 ) {
+        if( !collision && &it->get()->origin != &m_ship && m_plasmaShield > 0 )
             collision = Maths::Collision( rocket.position, rocket.dynamic.boundingBoxRadius, m_ship.position, m_plasmaShieldRadius );
-        }
+        // missiles-attractors collision:
+        for( const auto & attractor : m_attractors )
+            if( Maths::Collision( rocket.position, rocket.dynamic.boundingBoxRadius, attractor.position, attractor.mass * m_attractorMassSizeRatio ) )
+                collision = true;
         // explode and remove:
         if( collision ) {
             _SetupSound( ( **it ).sound_run, rocket ).Stop();
@@ -526,7 +568,7 @@ void Renderer::_Update()
 
         // shield:
         if( enemy.rocket.shield.value <= 0 ) {
-            // 50% chance of goody addition, only if far enought (avoid volontary collision bonuses...)
+            // 50% chance of goody addition, only if far enough (avoid volontary collision bonuses...)
             if( ( enemy.rocket.position - m_ship.position ).Distance() > 100 && Maths::Random( 0, 1 ) < 0.5 ) { 
                 std::vector< Goody::eType > types{ Goody::eType::homingMissiles, Goody::eType::plasmaShield };
                 if( m_ship.shield.value < m_ship.shield.capacity ) types.emplace_back( Goody::eType::shieldAdd );
@@ -623,15 +665,29 @@ void Renderer::_Update()
     }
 
     // goodies attraction:
-    for( const auto & goody : m_goodies ) {
-        const auto posToShip{ m_ship.position - goody->position };
-        const double maxDistance{ 400 };
-        const auto distance{ ( maxDistance - std::min( posToShip.Distance(), maxDistance ) ) / maxDistance };
-        goody->position += posToShip.Normalized() * ( ( distance + 0.1 ) * 5 );
-    }
+    for( const auto & goody : m_goodies )
+        goody->position += m_ship.position.InfiniteAttraction( goody->position, m_ship.dynamic.totalMass );
 
     // update ship data:
     m_ship.Update();
+
+    // attractions
+    std::list< std::reference_wrapper< Rocket > > rockets;
+    rockets.emplace_back( m_ship );
+    for( auto & enemy : m_enemies )
+        rockets.emplace_back( enemy->rocket );
+    for( auto & missile : m_missiles )
+        rockets.emplace_back( missile->rocket );
+    for( auto & rrocket : rockets ) {
+        Rocket & rocket{ rrocket.get() };
+        Vector attraction;
+        const double precisionFactor{ 1000 }; // because of cumulative small additions
+        for( const auto & attractor : m_attractors )
+            attraction += ( attractor.position.ProximityAttraction( rocket.position, attractor.mass * rocket.dynamic.totalMass ) * precisionFactor );
+        attraction *= ( 1 / precisionFactor );
+        rocket.momentum += attraction;
+        rocket.position += attraction;
+    }
 
     if( m_ship.shield.value < 0 )
         m_ship.shield.value = 0;
@@ -681,7 +737,7 @@ void Renderer::_Update()
 
 
 void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
-{    
+{
     const Vector solarWind{ 0.05, 0.2 }; // TODO create a very subtile movement, even when not moving (avoid fixed starfield positions)
     // draw starfield, related to ship motion & solar wind:
     m_starField.Draw( _frame, m_ship.momentum * 2 + solarWind );
@@ -729,6 +785,22 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
     for( auto & missile : m_missiles )
         missile->rocket.Draw( _frame, shipPosition );
 
+    // draw attractors:
+    for( const auto & attractor : m_attractors ) {
+        const auto position{ attractor.position + shipPosition };
+        const auto radius{ attractor.mass * m_attractorMassSizeRatio };
+        // color depends of distance with ship:
+        const auto distance{ ( attractor.position - m_ship.position ).Distance() };
+        const double maxDistance{ 800 };
+        std::vector< double > colors;
+        for( int i{ 0 }; i < 3; i++ ) {
+            const auto currMaxDistance{ maxDistance / ( i + 1 ) };
+            colors.emplace_back( distance < currMaxDistance ? ( std::pow( 1 - ( distance / currMaxDistance ), 2 ) ) : 0 );
+        }
+        _frame.FillCircle( position, radius, Color_d{ colors.at( 2 ), colors.at( 1 ), colors.at( 0 ) } );
+        _frame.StrokeCircle( position, radius, Color_d{ 0.25, 0.5, 1 }, 2 );
+    }
+
     // plasma  shield:
     const auto plasmaShieldSin{ std::sin( m_plasmaShieldRamp * Maths::Pi ) };
     const auto plasmaShieldColor{ Color_d{ 0.5, 1, 0.75 } * plasmaShieldSin };
@@ -751,9 +823,7 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
 
     // cursor:
     static double cursorFlash{ 0 };
-    cursorFlash += 0.15;
-    const auto sinCusorFlash{ std::sin( cursorFlash ) };
-    _frame.StrokeCircle( m_windows.CursorPosition().ToType< double >(), 15 - sinCusorFlash * 2.5, { 0.25, 0.5 + sinCusorFlash * 0.25, 1 }, 4 );
+    _frame.StrokeCircle( m_windows.CursorPosition().ToType< double >(), 15, { 0.25, 0.5 + std::sin( cursorFlash += 0.15 ) * 0.25, 1 }, 4 );
 }
 
 

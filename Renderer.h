@@ -126,4 +126,12 @@ private:
     std::list< Sound > m_soundQueue;
     bool m_shieldAlert{ false };
     bool m_fuelAlert{ false };
+
+    struct Attractor
+    {
+        Vector position;
+        double mass;
+    };
+    std::list< Attractor > m_attractors;
+    inline static const double m_attractorMassSizeRatio{ 50 };
 };

@@ -52,6 +52,27 @@ double Vector::Orientation() const
 }
 
 
+Vector Vector::InfiniteAttraction( const Vector & _attracted, const double _attractorMass ) const
+{
+    const auto attractorVector{ *this - _attracted };
+    const auto distance{ std::log2( attractorVector.Distance() + 1 ) };
+    const double gravitationalConstant{ 6.6743 * 100 };
+    const auto attractiveForce{ ( gravitationalConstant * _attractorMass ) / std::pow( distance, 4 ) };
+    return attractorVector.Normalized() * attractiveForce;
+}
+
+
+Vector Vector::ProximityAttraction( const Vector & _attracted, const double _attractorMass ) const
+{
+    const auto attractorVector{ *this - _attracted };
+    // TODO new algorithm with a attraction distance limit
+    const auto distance{ std::log2( attractorVector.Distance() + 1 ) };
+    const double gravitationalConstant{ 6.6743 * 100 };
+    const auto attractiveForce{ ( gravitationalConstant * _attractorMass ) / std::pow( distance, 4 ) };
+    return attractorVector.Normalized() * attractiveForce;
+}
+
+
 Vector & Vector::operator += ( const Vector & _other )
 {
     u += _other.u;
