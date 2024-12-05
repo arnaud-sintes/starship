@@ -104,6 +104,7 @@ void Rocket::Update()
         Maths::Decrease( engine.thrust, engine.decceleration_rate );
     const auto thrust{ Vector::From( orientation + Maths::Pi, engine.thrust ) };
     thrustMotion += thrust;
+    thrustMotion += dynamic.attraction;
 
     // solar density thrust retention:
     // note: this is fake, but helps to avoid excessive speeds and momentum...

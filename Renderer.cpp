@@ -37,7 +37,6 @@
 #define _TESTING_ATTRACTORS
 
 // TODO collision with attractors -> magnetic mines <- new goody
-// TODO different attraction formula between "magnetic" and "gravity attraction"
 
 
 Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _resources )
@@ -92,17 +91,17 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
 
     #ifdef _TESTING_ATTRACTORS
     for( int i{ 0 }; i < 1000; i++ ) {
-        const auto radius{ Maths::Random( 1, 2 ) };
+        const auto mass{ Maths::Random( 1, 2 ) };
         const double range{ 10000 };
-        const double securityDistance{ 400 };
+        const double securityDistance{ 100 };
         L_generate:
         double x{ 0 }, y{ 0 };
         while( x > -securityDistance && x < securityDistance ) x = Maths::Random( -range, range );
         while( y > -securityDistance && y < securityDistance ) y = Maths::Random( -range, range );
         for( const auto & attractor : m_attractors )
-            if( Maths::Collision( { x, y }, radius * m_attractorMassSizeRatio, attractor.position, attractor.mass * m_attractorMassSizeRatio ) )
+            if( Maths::Collision( { x, y }, mass * m_attractorMassSizeRatio, attractor.position, attractor.mass * m_attractorMassSizeRatio ) )
                 goto L_generate;
-        m_attractors.emplace_back( Attractor{ { x, y }, radius } );
+        m_attractors.emplace_back( Attractor{ { x, y }, mass } );
     }
     #endif
 }
@@ -438,6 +437,23 @@ void Renderer::_Goody( const Goody::eType _type )
 
 void Renderer::_Update()
 {
+    // attractions
+    std::list< std::reference_wrapper< Rocket > > rockets;
+    rockets.emplace_back( m_ship );
+    for( auto & enemy : m_enemies )
+        rockets.emplace_back( enemy->rocket );
+    for( auto & missile : m_missiles )
+        rockets.emplace_back( missile->rocket );
+    for( auto & rrocket : rockets ) {
+        Rocket & rocket{ rrocket.get() };
+        Vector attraction;
+        const double precisionFactor{ 10000 }; // because of cumulative small additions
+        for( const auto & attractor : m_attractors )
+            attraction += ( attractor.position.ProximityAttraction( rocket.position, attractor.mass * rocket.dynamic.totalMass, m_attractorDistanceThreshold ) * precisionFactor );
+        attraction *= ( 1 / precisionFactor );
+        rocket.dynamic.attraction = attraction;
+    }
+
     // plasma shield:
     if( m_plasmaShield > 0 ) {
         m_plasmaShield--;
@@ -671,24 +687,6 @@ void Renderer::_Update()
     // update ship data:
     m_ship.Update();
 
-    // attractions
-    std::list< std::reference_wrapper< Rocket > > rockets;
-    rockets.emplace_back( m_ship );
-    for( auto & enemy : m_enemies )
-        rockets.emplace_back( enemy->rocket );
-    for( auto & missile : m_missiles )
-        rockets.emplace_back( missile->rocket );
-    for( auto & rrocket : rockets ) {
-        Rocket & rocket{ rrocket.get() };
-        Vector attraction;
-        const double precisionFactor{ 1000 }; // because of cumulative small additions
-        for( const auto & attractor : m_attractors )
-            attraction += ( attractor.position.ProximityAttraction( rocket.position, attractor.mass * rocket.dynamic.totalMass ) * precisionFactor );
-        attraction *= ( 1 / precisionFactor );
-        rocket.momentum += attraction;
-        rocket.position += attraction;
-    }
-
     if( m_ship.shield.value < 0 )
         m_ship.shield.value = 0;
     if( m_ship.shield.value < ( m_ship.shield.capacity * 0.25 ) ) {
@@ -738,6 +736,8 @@ void Renderer::_Update()
 
 void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
 {
+    // TODO variable background color (waves)
+
     const Vector solarWind{ 0.05, 0.2 }; // TODO create a very subtile movement, even when not moving (avoid fixed starfield positions)
     // draw starfield, related to ship motion & solar wind:
     m_starField.Draw( _frame, m_ship.momentum * 2 + solarWind );
@@ -791,14 +791,15 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
         const auto radius{ attractor.mass * m_attractorMassSizeRatio };
         // color depends of distance with ship:
         const auto distance{ ( attractor.position - m_ship.position ).Distance() };
-        const double maxDistance{ 800 };
+        const auto mass{ attractor.mass * m_ship.dynamic.totalMass };
+        const double maxDistance{ m_attractorDistanceThreshold * mass };
         std::vector< double > colors;
         for( int i{ 0 }; i < 3; i++ ) {
             const auto currMaxDistance{ maxDistance / ( i + 1 ) };
             colors.emplace_back( distance < currMaxDistance ? ( std::pow( 1 - ( distance / currMaxDistance ), 2 ) ) : 0 );
         }
         _frame.FillCircle( position, radius, Color_d{ colors.at( 2 ), colors.at( 1 ), colors.at( 0 ) } );
-        _frame.StrokeCircle( position, radius, Color_d{ 0.25, 0.5, 1 }, 2 );
+        _frame.StrokeCircle( position, radius, Color_d{ 0.25, 0.5, 1 }, ( distance < maxDistance ? ( 1 - std::pow( ( distance / maxDistance ), 2 ) ) : 0 ) * 5.5 + 0.5 );
     }
 
     // plasma  shield:

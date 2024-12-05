@@ -134,4 +134,5 @@ private:
     };
     std::list< Attractor > m_attractors;
     inline static const double m_attractorMassSizeRatio{ 50 };
+    inline static const double m_attractorDistanceThreshold{ 40 };
 };

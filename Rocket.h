@@ -74,6 +74,7 @@ struct Rocket
         Burst engine;
         std::array< std::array< Burst, 2 >, 2 > rotators;
         double totalMass{ 0 };
+        Vector attraction;
     };
     Dynamic dynamic;
 

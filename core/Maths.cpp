@@ -55,20 +55,19 @@ double Vector::Orientation() const
 Vector Vector::InfiniteAttraction( const Vector & _attracted, const double _attractorMass ) const
 {
     const auto attractorVector{ *this - _attracted };
-    const auto distance{ std::log2( attractorVector.Distance() + 1 ) };
-    const double gravitationalConstant{ 6.6743 * 100 };
-    const auto attractiveForce{ ( gravitationalConstant * _attractorMass ) / std::pow( distance, 4 ) };
+    const auto distanceLog{ std::log2( attractorVector.Distance() + 1 ) };
+    const auto attractiveForce{ ( gravitationalConstant * _attractorMass * 100 ) / std::pow( distanceLog, 4 ) };
     return attractorVector.Normalized() * attractiveForce;
 }
 
 
-Vector Vector::ProximityAttraction( const Vector & _attracted, const double _attractorMass ) const
+Vector Vector::ProximityAttraction( const Vector & _attracted, const double _attractorMass, const double _distanceThreshold ) const
 {
     const auto attractorVector{ *this - _attracted };
-    // TODO new algorithm with a attraction distance limit
-    const auto distance{ std::log2( attractorVector.Distance() + 1 ) };
-    const double gravitationalConstant{ 6.6743 * 100 };
-    const auto attractiveForce{ ( gravitationalConstant * _attractorMass ) / std::pow( distance, 4 ) };
+    const auto distance{ attractorVector.Distance() };
+    const double maxDistance{ _distanceThreshold * _attractorMass };
+    const auto ratio{ distance > maxDistance ? 0 :  1 - std::pow(( distance / maxDistance ), 2 ) };
+    const auto attractiveForce{ gravitationalConstant * _attractorMass * ratio * 0.0025 };
     return attractorVector.Normalized() * attractiveForce;
 }
 
