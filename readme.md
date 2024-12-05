@@ -1,4 +1,4 @@
-# Starship beta 0.0.1
+# Starship beta 0.0.3
 
 ## Goal
 
@@ -34,9 +34,10 @@ When destroying an enemy, goodies may appears (50% chance):
 - Propellant tank of all rockets got a *capacity*, a natural *production rate* (refill when no thrust) and a *quality factor* that will reduce the overall *ship form factor* (therefore the ship *mass*) regarding its capacity
 - Shield of all rockets got a *capacity*, a natural *repair rate* and a *quality factor* that will reduce the *shield form factor* (therefore the ship *mass*) regarding its capacity
 - Engines of all rockets (both *main engine* and lateral *rotator engines*) got a *power*, an *acceleration* and *deceleration rates* and a *quality factor* that will reduce the *engine form factor* (therefore the ship *mass*) regarding its power
-- The cumulated *form factor* (so called "*mass*") influences the *drag force* power that will directly influence the *thrust motion* then the ship's *momentum*
+- The cumulated *form factor* (so called "*mass*") influences the *drag force* power that will directly influence the *thrust motion*, the ship's *momentum* and the *attraction effects*
 - Rotation occurs using a proper rotation momentum, created thanks to the four lateral engines, as it's hard to manually manage, a change of mouse position will automatically deal with these engine to properly rotate the ship as expected (front of the ship pointing in the mouse cursor current position)
 - A slight *solar density* factor will slowly reduce the thrust motion
+- *Strange attractors* with variable masses attracts all rockets at proximity, can be used as natural shield with some training
 - A shield alert will occur when being under 25% of the shield capacity
 - A low propellant alert will occur when being under 25% of the propellant tank capacity
 - Collision engine takes properly in account *enemies* (including enemy/enemy collisions), *ship*, *plasma shield*, *laser beam* and *missiles* (including missile/missile collisions)
