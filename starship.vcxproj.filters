@@ -20,17 +20,17 @@
     <ClCompile Include="StarField.cpp">
       <Filter>game</Filter>
     </ClCompile>
-    <ClCompile Include="OpenGL.cpp">
-      <Filter>core\Wrapper</Filter>
-    </ClCompile>
-    <ClCompile Include="NanoVGRenderer.cpp">
-      <Filter>core\Wrapper</Filter>
-    </ClCompile>
-    <ClCompile Include="MiniAudio.cpp">
-      <Filter>core\Wrapper</Filter>
-    </ClCompile>
     <ClCompile Include="Goody.cpp">
       <Filter>game</Filter>
+    </ClCompile>
+    <ClCompile Include="MiniAudio.cpp">
+      <Filter>wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="NanoVGRenderer.cpp">
+      <Filter>wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="OpenGL.cpp">
+      <Filter>wrapper</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -82,24 +82,21 @@
     <ClInclude Include="external\miniaudio\miniaudio.h">
       <Filter>external\miniaudio</Filter>
     </ClInclude>
-    <ClInclude Include="OpenGL.h">
-      <Filter>core\Wrapper</Filter>
-    </ClInclude>
-    <ClInclude Include="NanoVGRenderer.h">
-      <Filter>core\Wrapper</Filter>
-    </ClInclude>
-    <ClInclude Include="MiniAudio.h">
-      <Filter>core\Wrapper</Filter>
-    </ClInclude>
     <ClInclude Include="Goody.h">
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="version.h" />
+    <ClInclude Include="MiniAudio.h">
+      <Filter>wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="NanoVGRenderer.h">
+      <Filter>wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenGL.h">
+      <Filter>wrapper</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="core">
-      <UniqueIdentifier>{eac33817-2242-4833-bd95-972c8e46f2d3}</UniqueIdentifier>
-    </Filter>
     <Filter Include="external">
       <UniqueIdentifier>{125b2f26-06f0-4cc9-8d0b-ab7d82d6a9fd}</UniqueIdentifier>
     </Filter>
@@ -115,11 +112,11 @@
     <Filter Include="external\miniaudio">
       <UniqueIdentifier>{8be31e32-751d-4aa8-bb6d-02ff5aaf9d7b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="core\Wrapper">
-      <UniqueIdentifier>{cfbe8b6a-b42c-4b1e-96ad-6d62c5d52e86}</UniqueIdentifier>
-    </Filter>
     <Filter Include="package">
       <UniqueIdentifier>{c21a32b3-a972-4bde-b934-6eadf8382bf8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="wrapper">
+      <UniqueIdentifier>{295c4774-9603-414d-ab1d-82b4a432e9ca}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

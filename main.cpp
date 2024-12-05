@@ -6,16 +6,18 @@
 #include "version.h"
 
 
-#define _DISPLAY_FPS
+//#define _DISPLAY_FPS
 
 int main( int, char * )
 {
+    const bool fullscreen{ true };
     Win32::ShowConsole( false );
-    const Dimension_ui windowDimension{ 1500, 900 };
-    Win32::Windows window{ L"Starship v" + std::wstring{ _ToWideString( __ToString( VERSION ) ) }, windowDimension };
+    const Dimension_ui defaultWindowedDimension{ 1500, 900 };
+    Win32::Windows window{ L"Starship v" + std::wstring{ _ToWideString( __ToString( VERSION ) ) }, defaultWindowedDimension, fullscreen };
+    const Dimension_ui & windowDimension{ window.GetDimension() };
     window.ShowCursor( false );
     auto & timer{ Timer::GetInstance() }; // init nano precision
-    //Win32::SetThreadRealtimePriority();
+    Win32::SetThreadRealtimePriority();
     OpenGL ogl{ window };
     NanoVGRenderer nanoVG{ ogl };
     const auto resources{ Packer::UnPack( "./resource.dat" ) };

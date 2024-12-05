@@ -121,17 +121,17 @@ Win32::Handle::~Handle()
 
 // ----------------
 
-Win32::Windows::Windows( const std::wstring & _name, const Dimension_ui & _dimension )
+Win32::Windows::Windows( const std::wstring & _name, const Dimension_ui & _dimension, const bool _fullscreen )
     : m_class{ _CreateClass( _name ) }
-    , m_dimension{ _dimension }
+    , m_dimension{ _fullscreen ? Dimension_ui{ static_cast< unsigned int >( ::GetSystemMetrics( SM_CXSCREEN ) ), static_cast< unsigned int >( ::GetSystemMetrics( SM_CYSCREEN ) ) } : _dimension }
     , m_wnd{ nullptr, false }
     , m_dc{ nullptr, false }
 {   
     // create window:
     const_cast< Handle & >( m_wnd ).handle = ::CreateWindowExW( 0, _name.c_str(), _name.c_str(),
-        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX, 0, 0, 0, 0,
+        _fullscreen ? WS_POPUP : ( WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX ), 0, 0, 0, 0,
         nullptr, nullptr, m_class.instance.As< ::HINSTANCE >(), nullptr );
-    _ResizeWindow( m_wnd, _dimension );
+    _ResizeWindow( m_wnd, m_dimension );
     
     // center by default:
     Center();
