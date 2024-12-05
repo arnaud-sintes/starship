@@ -48,6 +48,29 @@ NanoVGRenderer::Frame::~Frame()
 }
 
 
+NanoVGRenderer::Frame::Composition::Composition( void * _context, const eType _type )
+    : m_context{ _context }
+{
+    auto context{ static_cast< NVGcontext * >( m_context ) };
+    ::nvgSave( context );
+    if( _type == eType::add )
+        ::nvgGlobalCompositeBlendFunc( context, NVG_ONE, NVG_ONE );
+}
+
+
+NanoVGRenderer::Frame::Composition::~Composition()
+{
+    auto context{ static_cast< NVGcontext * >( m_context ) };
+    ::nvgRestore( context );
+}
+
+
+NanoVGRenderer::Frame::Composition NanoVGRenderer::Frame::SetComposition( const Composition::eType _type ) const
+{
+    return { m_context, _type };
+}
+
+
 void NanoVGRenderer::Frame::Line( const Position_d & _a, const Position_d & _b, const Color_d & _color, const double _strokeWidth ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };
@@ -57,7 +80,7 @@ void NanoVGRenderer::Frame::Line( const Position_d & _a, const Position_d & _b, 
     const auto b{ _b.ToType< float >() };
     ::nvgLineTo( context, b.x, b.y );
     const auto color{ ( _color * 255 ).ToType< unsigned char >() };
-    ::nvgStrokeColor( context, ::nvgRGBA( color.r, color.g, color.b, 255 ) );
+    ::nvgStrokeColor( context, ::nvgRGBA( color.r, color.g, color.b, color.a ) );
     ::nvgStrokeWidth( context, static_cast< float >( _strokeWidth ) );
     ::nvgStroke( context );
 }
@@ -70,7 +93,22 @@ void NanoVGRenderer::Frame::FillCircle( const Position_d & _position, const doub
     const auto position{ _position.ToType< float >() };
     ::nvgCircle( context, position.x, position.y, static_cast< float >( _radius ) );
     const auto color{ ( _color * 255 ).ToType< unsigned char >() };
-    ::nvgFillColor( context, ::nvgRGBA( color.r, color.g, color.b, 255 ) );
+    ::nvgFillColor( context, ::nvgRGBA( color.r, color.g, color.b, color.a ) );
+    ::nvgFill( context );
+}
+
+
+void NanoVGRenderer::Frame::GradientCircle( const Position_d & _position, const double _radius, const Color_d & _colorInner, const Color_d & _colorOuter ) const
+{
+    auto context{ static_cast< NVGcontext * >( m_context ) };
+    ::nvgBeginPath( context );
+    const auto position{ _position.ToType< float >() };
+    const auto radius{ static_cast< float >( _radius ) };
+    ::nvgCircle( context, position.x, position.y, radius );
+    const auto colorInner{ ( _colorInner * 255 ).ToType< unsigned char >() };
+    const auto colorOuter{ ( _colorOuter * 255 ).ToType< unsigned char >() };
+    const NVGpaint gradient{ ::nvgRadialGradient( context, position.x, position.y, 0, radius, ::nvgRGBA( colorInner.r, colorInner.g, colorInner.b, colorInner.a ), ::nvgRGBA( colorOuter.r, colorOuter.g, colorOuter.b, colorOuter.a ) ) };
+    ::nvgFillPaint( context, gradient );
     ::nvgFill( context );
 }
 
@@ -82,7 +120,7 @@ void NanoVGRenderer::Frame::StrokeCircle( const Position_d & _position, const do
     const auto position{ _position.ToType< float >() };
     ::nvgCircle( context, position.x, position.y, static_cast< float >( _radius ) );
     const auto color{ ( _color * 255 ).ToType< unsigned char >() };
-    ::nvgStrokeColor( context, ::nvgRGBA( color.r, color.g, color.b, 255 ) );
+    ::nvgStrokeColor( context, ::nvgRGBA( color.r, color.g, color.b, color.a ) );
     ::nvgStrokeWidth( context, static_cast< float >( _strokeWidth ) );
     ::nvgStroke( context );
 }
@@ -95,7 +133,7 @@ void NanoVGRenderer::Frame::FillArc( const Position_d & _position, const double 
     const auto position{ _position.ToType< float >() };
     ::nvgArc( context, position.x, position.y, static_cast< float >( _radius ), static_cast< float >( _angleA ), static_cast< float >( _angleB ), _clockWise ? NVG_CW : NVG_CCW );
     const auto color{ ( _color * 255 ).ToType< unsigned char >() };
-    ::nvgFillColor( context, ::nvgRGBA( color.r, color.g, color.b, 255 ) );
+    ::nvgFillColor( context, ::nvgRGBA( color.r, color.g, color.b, color.a ) );
     ::nvgFill( context );
 }
 
@@ -107,7 +145,7 @@ void NanoVGRenderer::Frame::StrokeArc( const Position_d & _position, const doubl
     const auto position{ _position.ToType< float >() };
     ::nvgArc( context, position.x, position.y, static_cast< float >( _radius ), static_cast< float >( _angleA ), static_cast< float >( _angleB ), _clockWise ? NVG_CW : NVG_CCW );
     const auto color{ ( _color * 255 ).ToType< unsigned char >() };
-    ::nvgStrokeColor( context, ::nvgRGBA( color.r, color.g, color.b, 255 ) );
+    ::nvgStrokeColor( context, ::nvgRGBA( color.r, color.g, color.b, color.a ) );
     ::nvgStrokeWidth( context, static_cast< float >( _strokeWidth ) );
     ::nvgStroke( context );
 }
@@ -124,7 +162,7 @@ void NanoVGRenderer::Frame::FillRectangle( const Position_d & _a, const Position
     else
         ::nvgRect( context, a.x, a.y, d.u, d.v );
     const auto color{ ( _color * 255 ).ToType< unsigned char >() };
-    ::nvgFillColor( context, ::nvgRGBA( color.r, color.g, color.b, 255 ) );
+    ::nvgFillColor( context, ::nvgRGBA( color.r, color.g, color.b, color.a ) );
     ::nvgFill( context );
 }
 
@@ -140,7 +178,7 @@ void NanoVGRenderer::Frame::StrokeRectangle( const Position_d & _a, const Positi
     else
         ::nvgRect( context, a.x, a.y, d.u, d.v );
     const auto color{ ( _color * 255 ).ToType< unsigned char >() };
-    ::nvgStrokeColor( context, ::nvgRGBA( color.r, color.g, color.b, 255 ) );
+    ::nvgStrokeColor( context, ::nvgRGBA( color.r, color.g, color.b, color.a ) );
     ::nvgStrokeWidth( context, static_cast< float >( _strokeWidth ) );
     ::nvgStroke( context );
 }
@@ -160,7 +198,7 @@ void NanoVGRenderer::Frame::Text( const Position_d & _position, const std::strin
     };
     ::nvgTextAlign( context, textAligns.find( _textAlign )->second );
     const auto color{ ( _color * 255 ).ToType< unsigned char >() };
-    ::nvgFillColor( context, ::nvgRGBA( color.r, color.g, color.b, 255 ) );
+    ::nvgFillColor( context, ::nvgRGBA( color.r, color.g, color.b, color.a ) );
     const auto position{ _position.ToType< float >() };
     ::nvgText( context, position.x, position.y, _text.c_str(), 0 );
 }

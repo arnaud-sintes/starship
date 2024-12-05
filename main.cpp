@@ -32,7 +32,7 @@ int main( int, char * )
         const auto temper{ timer.Temper( fpsContext ) };
         const auto context{ ogl.MakeCurrent() };
         context.Viewport( windowDimension );
-        context.Clear( { 0, 0.05, 0.1 } );
+        context.Clear( { 0, 0.035, 0.075 } );
         const auto frame{ nanoVG.CreateFrame( windowDimension ) };
 
         // main loop:

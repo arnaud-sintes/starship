@@ -190,7 +190,7 @@ void Renderer::_Keys()
     
     // shoot missile:
     static int missileShotRate{ 0 };
-    if( m_homingMissiles > 0 && missileShotRate++ > 20 && m_windows.LeftMouseButtonPressed() ) {
+    if( m_homingMissiles > 0 && missileShotRate++ > 25 && m_windows.LeftMouseButtonPressed() ) {
         m_homingMissiles--;
         if( m_homingMissiles == 0 )
             m_sounds.find( eSound::homingMissilesOff )->second.Play();
@@ -332,7 +332,7 @@ bool Renderer::_MissileRocketCollision( Missile & _missile, Rocket & _other )
 {
     // prevent collision when launched:
     if( &_missile.origin == &_other && !_missile.bypassCollision ) {
-        if( !Maths::Collision( _missile.rocket.position, _missile.rocket.dynamic.boundingBoxRadius, _other.position, _other.dynamic.boundingBoxRadius ) )
+        if( !Maths::Collision( _missile.rocket.position, _missile.rocket.dynamic.boundingBoxRadius * 2, _other.position, _other.dynamic.boundingBoxRadius * 4 ) )
             _missile.bypassCollision = true;
         return false;
     }
@@ -403,7 +403,7 @@ void Renderer::_Goody( const Goody::eType _type )
         return;
     }
     if( _type == Goody::eType::homingMissiles ) {
-        m_homingMissiles += 20; // 20x missiles pack
+        m_homingMissiles += 30; // 30x missiles pack
         m_sounds.find( eSound::homingMissiles )->second.Play();
         return;
     }
@@ -635,6 +635,7 @@ void Renderer::_Update()
     }
 
     // update laser data:
+    // TODO bad collision detection with attractors!
     for( auto it{ m_lasers.begin() }; it != m_lasers.end(); ) {
         auto & laser{ **it };
         if( laser.lifeSpan++ >= laser.maxLifeSpan ) {
@@ -736,23 +737,20 @@ void Renderer::_Update()
 
 void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
 {
-    // TODO variable background color (waves)
+    const Vector screen{ static_cast< double >( m_windows.GetDimension().width ), static_cast< double >( m_windows.GetDimension().height ) };
+    const Vector screenCenter{ screen * 0.5 };
+    const Vector shipPosition{ screenCenter - m_ship.position };
 
     const Vector solarWind{ 0.05, 0.2 }; // TODO create a very subtile movement, even when not moving (avoid fixed starfield positions)
     // draw starfield, related to ship motion & solar wind:
     m_starField.Draw( _frame, m_ship.momentum * 2 + solarWind );
     _SetupSound( eSound::spaceWind, m_ship, std::max( std::min( m_ship.momentum.Distance() / 20, 1.0 ), 0.2 ), true );
 
-    const Vector screen{ static_cast< double >( m_windows.GetDimension().width ), static_cast< double >( m_windows.GetDimension().height ) };
-    const Vector screenCenter{ screen * 0.5 };
-    
     // stage information:
     // TODO
     //_frame.Text( screenCenter, "openSansBold", 80, "STAGE 1-1", colorWhite, NanoVGRenderer::Frame::eTextAlign::center );
     // TODO details
     //return; // TODO bypass when displaying stage information
-
-    const Vector shipPosition{ screenCenter - m_ship.position };
 
     // draw particules:
     for( auto & particule : m_particules )
@@ -799,7 +797,10 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
             colors.emplace_back( distance < currMaxDistance ? ( std::pow( 1 - ( distance / currMaxDistance ), 2 ) ) : 0 );
         }
         _frame.FillCircle( position, radius, Color_d{ colors.at( 2 ), colors.at( 1 ), colors.at( 0 ) } );
-        _frame.StrokeCircle( position, radius, Color_d{ 0.25, 0.5, 1 }, ( distance < maxDistance ? ( 1 - std::pow( ( distance / maxDistance ), 2 ) ) : 0 ) * 5.5 + 0.5 );
+        const auto intensity{ ( distance < maxDistance ? ( 1 - std::pow( ( distance / maxDistance ), 2 ) ) : 0 ) };
+        _frame.StrokeCircle( position, radius, Color_d{ 0.25, 0.5, 1 }, intensity * 5.5 + 0.5 );
+        const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+        _frame.GradientCircle( position, radius * 5, Color_d{ 0.01, 0.075, 0.15, intensity * 0.5 + 0.5 }, Color_d{ 0, 0.05, 0.1, 0 } );
     }
 
     // plasma  shield:

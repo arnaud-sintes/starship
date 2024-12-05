@@ -44,12 +44,12 @@ using Position_d = Position< double >;
 template< typename _Type >
 struct Color
 {
-    _Type r, g, b;
+    _Type r, g, b, a{ 1 };
 
-    Color operator *( const _Type _v ) const { return { r * _v, g *_v, b *_v }; }
+    Color operator *( const _Type _v ) const { return { r * _v, g *_v, b *_v, a *_v }; }
 
     template< typename _Type >
-    Color< _Type > ToType() const { return { static_cast< _Type >( r ), static_cast< _Type >( g ), static_cast< _Type >( b ) }; }
+    Color< _Type > ToType() const { return { static_cast< _Type >( r ), static_cast< _Type >( g ), static_cast< _Type >( b ), static_cast< _Type >( a ) }; }
 
     static Color FireColor( double _ratio )
     {
@@ -63,7 +63,7 @@ struct Color
 
 using Color_d = Color< double >;
 
-inline static const Color_d colorWhite{ 1, 1, 1 };
+inline static const Color_d colorWhite{ 1, 1, 1, 1 };
 
 
 // --------------
