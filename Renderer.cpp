@@ -14,12 +14,9 @@
 //      - add solar wind (waves) -> how to maintain a grid (with resolution) dealing with this kind of stuff
 //          and quickly interpolate a value for a given object position (any rocket/laser?/goodie?/particule?/...?)
 //      - add planets & rocks & mines with gravity/attraction
-//      -> the attraction formula may be reused to deal with goodies attraction (quite naïve today)
-//      -> rockets are subjected to all attraction forces
-//      -> goodies are subjected to ship's attraction force
 // 
 // - functional:
-//      - full screen option, "best fit" regarding current resolution option
+//      - "best fit" regarding current resolution option
 //
 //      - deal with shield / potential explosion/removal (game-over)
 //      - add stages, with different ennemies (more variety) and specific choregraphies
@@ -93,7 +90,7 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
     for( int i{ 0 }; i < 1000; i++ ) {
         const auto mass{ Maths::Random( 1, 2 ) };
         const double range{ 10000 };
-        const double securityDistance{ 100 };
+        const double securityDistance{ 200 };
         L_generate:
         double x{ 0 }, y{ 0 };
         while( x > -securityDistance && x < securityDistance ) x = Maths::Random( -range, range );
@@ -132,6 +129,12 @@ void Renderer::_AddEnemy()
 
 void Renderer::Loop( const NanoVGRenderer::Frame & _frame )
 {
+    // prologues:
+    if( _IsPrologue() ) {
+        _Draw( _frame );
+        return;
+    }
+
     // reset:
     _Reset();
 
@@ -139,7 +142,7 @@ void Renderer::Loop( const NanoVGRenderer::Frame & _frame )
     _Keys();
 
     // update:
-    _Update(); // TODO bypass when displaying stage information
+    _Update();
 
     // draw:
     _Draw( _frame );
@@ -735,6 +738,42 @@ void Renderer::_Update()
 }
 
 
+bool Renderer::_IsPrologue()
+{
+    return m_step == eStep::stage11_prologue;
+}
+
+
+void Renderer::_DisplayPrologue( const NanoVGRenderer::Frame & _frame, const Vector & _screenCenter )
+{
+    if( m_step == eStep::stage11_prologue ) {
+        _frame.Text( _screenCenter, "openSansBold", 80, "STAGE 1-1", colorWhite, NanoVGRenderer::Frame::eTextAlign::center );
+        Vector verticalText{ 0, 100 };
+        for( const auto & text : std::list< std::string >{
+            "By jumping out of hyperdrive to reach the Rexxus-3b system, you encounter hostile resistance from the",
+            "space mining guild who are illegally exploiting the strange attractors energy around the planet Stellis Secura.",
+            "",
+            "As a faithful member of the Universal Alliance for Peace, you cannot tolerate such a defiance to our glorious",
+            "open-despocracy and the uncontestable authority of our galactic emperator Muhammad Silmane XIV!",
+            "",
+            "Let's teach this gang of small-time smugglers a lesson to remember..." } ) {
+            _frame.Text( _screenCenter + verticalText, "openSans", 24, text, { 0.6, 0.85, 1 }, NanoVGRenderer::Frame::eTextAlign::center );
+            verticalText.v += 32;
+        }
+        if( m_windows.LeftMouseButtonPressed() )
+            m_step = eStep::stage11;
+        return;
+    }
+}
+
+
+void Renderer::_DrawCursor( const NanoVGRenderer::Frame & _frame )
+{
+    static double cursorFlash{ 0 };
+    _frame.StrokeCircle( m_windows.CursorPosition().ToType< double >(), 15, { 0.25, 0.5 + std::sin( cursorFlash += 0.15 ) * 0.25, 1 }, 4 );
+}
+
+
 void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
 {
     const Vector screen{ static_cast< double >( m_windows.GetDimension().width ), static_cast< double >( m_windows.GetDimension().height ) };
@@ -746,11 +785,12 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
     m_starField.Draw( _frame, m_ship.momentum * 2 + solarWind );
     _SetupSound( eSound::spaceWind, m_ship, std::max( std::min( m_ship.momentum.Distance() / 20, 1.0 ), 0.2 ), true );
 
-    // stage information:
-    // TODO
-    //_frame.Text( screenCenter, "openSansBold", 80, "STAGE 1-1", colorWhite, NanoVGRenderer::Frame::eTextAlign::center );
-    // TODO details
-    //return; // TODO bypass when displaying stage information
+    // prologues:
+    if( _IsPrologue() ) {
+        _DisplayPrologue( _frame, screenCenter );
+        _DrawCursor( _frame );
+        return;
+    }
 
     // draw particules:
     for( auto & particule : m_particules )
@@ -824,8 +864,7 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
     _frame.Text( { static_cast< double >( m_windows.GetDimension().width ) - margin, margin }, "openSansBold", 24, std::format( "{:010}", m_score ), colorWhite, NanoVGRenderer::Frame::eTextAlign::topRight );
 
     // cursor:
-    static double cursorFlash{ 0 };
-    _frame.StrokeCircle( m_windows.CursorPosition().ToType< double >(), 15, { 0.25, 0.5 + std::sin( cursorFlash += 0.15 ) * 0.25, 1 }, 4 );
+    _DrawCursor( _frame );
 }
 
 

@@ -75,6 +75,10 @@ private:
     void _PurgeSoundQueue();
     void _DisplayInfos( const NanoVGRenderer::Frame & _frame );
 
+    bool _IsPrologue();
+    void _DisplayPrologue( const NanoVGRenderer::Frame & _frame, const Vector & _screenCenter );
+    void _DrawCursor( const NanoVGRenderer::Frame & _frame );
+
 private:
     const Win32::Windows & m_windows;
     StarField m_starField;
@@ -135,4 +139,13 @@ private:
     std::list< Attractor > m_attractors;
     inline static const double m_attractorMassSizeRatio{ 50 };
     inline static const double m_attractorDistanceThreshold{ 40 };
+
+private:
+    enum class eStep
+    {
+        stage11_prologue,
+        stage11,
+    };
+
+    eStep m_step = { eStep::stage11_prologue };
 };

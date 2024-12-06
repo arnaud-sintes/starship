@@ -17,6 +17,7 @@ int main( int, char * )
     const Dimension_ui & windowDimension{ window.GetDimension() };
     window.ShowCursor( false );
     auto & timer{ Timer::GetInstance() }; // init nano precision
+    Win32::SetProcessRealtimePriority();
     Win32::SetThreadRealtimePriority();
     OpenGL ogl{ window };
     NanoVGRenderer nanoVG{ ogl };
