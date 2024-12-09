@@ -29,9 +29,10 @@
 
 // debugging purpose
 //#define _NO_ENEMY
-#define _ENEMY_COUNT 1 // 10
+#define _ENEMY_COUNT 3
 //#define _TESTING_GOODIES
 #define _TESTING_ATTRACTORS
+#define _ATTRACTORS_COUNT 1000
 
 // TODO collision with attractors -> magnetic mines <- new goody
 
@@ -87,7 +88,7 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
     #endif
 
     #ifdef _TESTING_ATTRACTORS
-    for( int i{ 0 }; i < 1000; i++ ) {
+    for( int i{ 0 }; i < _ATTRACTORS_COUNT; i++ ) {
         const auto mass{ Maths::Random( 1, 2 ) };
         const double range{ 10000 };
         const double securityDistance{ 200 };
