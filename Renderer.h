@@ -7,6 +7,7 @@
 #include "StarField.h"
 #include "Particule.h"
 #include "Goody.h"
+#include "Mine.h"
 #include "MiniAudio.h"
 #include "core/Packer.h"
 
@@ -15,7 +16,7 @@
 class Renderer
 {
 public:
-    Renderer( const Win32::Windows & _windows, const Packer::Resources & _resources );
+    Renderer( const Win32::Windows & _windows, const Packer::Resources & _resources, const int _frameRate );
     ~Renderer() = default;
 
 private:
@@ -25,21 +26,24 @@ public:
     void Loop( const NanoVGRenderer::Frame & _frame );
 
 private:
-    inline static const int bigExplosion{ 200 };
-    inline static const int mediumExplosion{ 200 };
-    inline static const int smallExplosion{ 20 };
+    enum class eExplosion : int {
+        small = 20,
+        medium = 100,
+        big = 200,
+    };
 
 private:
     Rocket * _ClosestEnemy( const Vector & _position );
     void _Keys();
     void _Reset();
-    void _AddParticule( const Vector & _position, const Vector & _direction, const double _orientation, const double _speed, const double _size );
-    void _AddExplosion( const Vector & _position, const Vector & _direction, const int _count = mediumExplosion );
+    void _AddParticule( const Vector & _position, const Vector & _direction, const double _orientation, const double _speed, const double _size, const eFadeColor _color = eFadeColor::orange );
+    void _AddExplosion( const Vector & _position, const Vector & _direction, const eExplosion _explosion = eExplosion::medium, const eFadeColor _color = eFadeColor::orange );
     void _AddEngineParticules( const Vector & _position, const Rocket::Dynamic::Burst & _burst, const double _rate, const int _maxPass, const double _limiter );
     void _AddEnginesParticules( const Rocket & _rocket );
     bool _RocketCollision( const Rocket & _a, const Rocket & _b );
     void _TransmitMomentum( const Vector & _position, const Vector & _momentum, const double _impact, Rocket & _b );
     void _TransmitMomentum( Rocket & _a, Rocket & _b );
+    void _LaserImpact( const Laser & _a, const Vector & _b, const eFadeColor _color = eFadeColor::orange );
     void _LaserImpact( Laser & _a, Rocket & _b );
     void _RocketImpact( Rocket & _a, Rocket & _b );
     bool _LaserRocketCollision( Laser & _laser, Rocket & _other );
@@ -69,9 +73,10 @@ private:
         shieldRepair,
         propellantRefuel,
     };
-    MiniAudio::Sound & _SetupSound( MiniAudio::Sound & _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
-    MiniAudio::Sound & _SetupSound( const eSound _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
-    void _QueueSoundPlay( MiniAudio::Sound & _sound );
+    const MiniAudio::Sound & _SetupSound( const MiniAudio::Sound & _sound, const Vector & _relativePosition, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
+    const MiniAudio::Sound & _SetupSound( const MiniAudio::Sound & _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
+    const MiniAudio::Sound & _SetupSound( const eSound _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
+    void _QueueSoundPlay( const MiniAudio::Sound & _sound );
     void _PurgeSoundQueue();
     void _DisplayInfos( const NanoVGRenderer::Frame & _frame );
 
@@ -81,13 +86,15 @@ private:
 
 private:
     const Win32::Windows & m_windows;
+    const int m_frameRate;
     StarField m_starField;
     Rocket m_ship;
     std::list< std::unique_ptr< Enemy > > m_enemies;
     std::list< std::unique_ptr< Laser > > m_lasers;
     std::list< std::unique_ptr< Missile > > m_missiles;
     std::list< std::unique_ptr< Particule > > m_particules;
-    std::list< std::unique_ptr< Goody > > m_goodies;    
+    std::list< std::unique_ptr< Goody > > m_goodies;
+    std::list< std::unique_ptr< Mine > > m_mines;
 
 private:
     int m_score{ 0 };
@@ -111,6 +118,7 @@ private:
     eLaserPass m_laserPass{ eLaserPass::one };
 
     int m_homingMissiles{ 0 };
+    int m_magneticMines{ 0 };
 
 private:
     int m_plasmaShield{ 0 };
@@ -135,10 +143,19 @@ private:
     {
         Vector position;
         double mass;
+        double shield;
+        MiniAudio::Sound sound_laserCollision;
+        MiniAudio::Sound sound_explosion;
     };
     std::list< Attractor > m_attractors;
     inline static const double m_attractorMassSizeRatio{ 50 };
     inline static const double m_attractorDistanceThreshold{ 40 };
+
+    int m_mineDrop{ 0 };
+
+    Vector m_solarWind{ 0.05, 0.2 };
+    Vector m_solarWindCurrent, m_solarWindTarget;
+    int m_solarWindIndex{ 0 }, m_solarWindCount{ 0 };
 
 private:
     enum class eStep

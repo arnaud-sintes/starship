@@ -11,6 +11,7 @@ struct Goody
     enum class eType {
         laserUp,        // increase laser power
         homingMissiles, // homing missiles pack
+        magneticMines,  // magnetic mines pack
         plasmaShield,   // temporary plasma shield
         shieldAdd,      // shield addition
         propellantAdd,  // propellant addition

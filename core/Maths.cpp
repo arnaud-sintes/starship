@@ -1,7 +1,5 @@
 #include "Maths.h"
 
-#include "std.h"
-
 
 // --------------
 
@@ -123,8 +121,7 @@ bool Maths::Collision( const Vector & _circleA, const double _radiusA, const Vec
     return std::sqrt( u * u + v * v ) <= _radiusA + _radiusB;
 }
 
-
-bool Maths::Collision( const Vector & _circle, const double _radius, const Vector & _segmentA, const Vector & _segmentB )
+std::optional< Vector > Maths::Collision( const Vector & _circle, const double _radius, const Vector & _segmentA, const Vector & _segmentB )
 {
     const Vector d{ _segmentB - _segmentA };
     const Vector f{ _segmentA - _circle };
@@ -133,15 +130,15 @@ bool Maths::Collision( const Vector & _circle, const double _radius, const Vecto
     double c{ f.DotProd( f ) - _radius * _radius };
     double discriminant{ b * b - 4 * a * c };
     if( discriminant < 0 )
-        return false;
+        return {};
     discriminant = std::sqrt( discriminant );
     double t1{ ( -b - discriminant ) / ( 2 * a ) };
     double t2{ ( -b + discriminant ) / ( 2 * a ) };
     if( t1 >= 0 && t1 <= 1 )
-        return true;
+        return _segmentA + d * std::min( 1.0, std::max( 0.0, t1 ) );
     if( t2 >= 0 && t2 <= 1 )
-        return true;
-    return false;
+        return _segmentA + d * std::min( 1.0, std::max( 0.0, t2 ) );
+    return {};
 }
 
 

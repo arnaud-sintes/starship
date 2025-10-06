@@ -20,7 +20,8 @@ void Goody::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translat
     };
     static std::unordered_map< eType, TypeInfo > infos{
         { eType::laserUp, { "L", { 5, 8 }, TypeInfo::eColorScheme::red } },
-        { eType::homingMissiles, { "M", { 9, 8 }, TypeInfo::eColorScheme::green } },
+        { eType::homingMissiles, { "H", { 7, 8 }, TypeInfo::eColorScheme::green } },
+        { eType::magneticMines, { "M", { 9, 8 }, TypeInfo::eColorScheme::green } },
         { eType::plasmaShield, { "S", { 5, 8 }, TypeInfo::eColorScheme::green } },
         { eType::shieldAdd, { "S", { 5, 8 }, TypeInfo::eColorScheme::blue } },
         { eType::propellantAdd, { "P", { 5, 8 }, TypeInfo::eColorScheme::blue } },

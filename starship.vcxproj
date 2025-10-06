@@ -134,6 +134,7 @@
     <ClCompile Include="Goody.cpp" />
     <ClCompile Include="Laser.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Mine.cpp" />
     <ClCompile Include="MiniAudio.cpp" />
     <ClCompile Include="NanoVGRenderer.cpp" />
     <ClCompile Include="OpenGL.cpp" />
@@ -154,6 +155,7 @@
     <ClInclude Include="external\nanovg\stb_truetype.h" />
     <ClInclude Include="Goody.h" />
     <ClInclude Include="Laser.h" />
+    <ClInclude Include="Mine.h" />
     <ClInclude Include="MiniAudio.h" />
     <ClInclude Include="Missile.h" />
     <ClInclude Include="NanoVGRenderer.h" />

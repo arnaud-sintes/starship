@@ -28,9 +28,10 @@ int main( int, char * )
     nanoVG.CreateFont( "openSansBold", resources->find( "OpenSans-ExtraBold.ttf" )->second );
     nanoVG.CreateFont( "sourceCodePro", resources->find( "SourceCodePro-Regular.ttf" )->second );
 
-    Renderer renderer{ window, *resources };
+    const unsigned long long frameRate{ 60 };
+    Renderer renderer{ window, *resources, frameRate };
 
-    Timer::FpsContext fpsContext{ 60 }; // 60 fps loop
+    Timer::FpsContext fpsContext{ frameRate };
     while( window.Dispatch() ) {
         const auto temper{ timer.Temper( fpsContext ) };
         const auto context{ ogl.MakeCurrent() };

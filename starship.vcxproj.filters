@@ -32,6 +32,9 @@
     <ClCompile Include="OpenGL.cpp">
       <Filter>wrapper</Filter>
     </ClCompile>
+    <ClCompile Include="Mine.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="external\nanovg\fontstash.h">
@@ -94,6 +97,9 @@
     </ClInclude>
     <ClInclude Include="OpenGL.h">
       <Filter>wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="Mine.h">
+      <Filter>game</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

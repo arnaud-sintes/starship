@@ -20,7 +20,8 @@ None currently, just enjoy the game engine and destroy everything for maximum fu
 When destroying an enemy, goodies may appears (50% chance):
 
 - **laser power up** (*red* "**L**") that will increase the fire power of the main laser weapon: it will increase first the laser **speed**, from *slow* to *medium* and from *medium* to *fast*, then will increase the laser **pass count** (while resetting the speed to *slow*), from *one pass* to *two passes*, then *four passes*, *six passes* and finally to a maximum of *height passes*
-- **homing missiles pack** (*green* "**M**") that will add **20 missiles** reaching automatically the closest enemy
+- **homing missiles pack** (*green* "**H**") that will add **20 missiles** reaching automatically the closest enemy
+- **magnetic mines pack** (*green* "**M**") that will add **10 magnetic** mines, attracted by the closest enemies
 - **plasma shield** (*green* "**S**") that will activate a **shield** during **5 seconds** (dynamic radius from *30* to *100* units)
 - **shield addition** (*blue* "**S**") that will boost the shield up to 50% of its current capacity
 - **propellant addition** (*blue* "**P**") that will boost the propellant value up to 50% of its current capacity

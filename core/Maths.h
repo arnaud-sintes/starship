@@ -1,5 +1,7 @@
 #pragma once
 
+#include "std.h"
+
 
 // ----------------
 template< typename _Type >
@@ -41,6 +43,16 @@ using Position_d = Position< double >;
 
 
 // ----------------
+    
+enum eFadeColor {
+    orange,
+    rose,
+    radium,
+    green,
+    violet,
+    azure,
+};
+
 template< typename _Type >
 struct Color
 {
@@ -51,12 +63,56 @@ struct Color
     template< typename _Type >
     Color< _Type > ToType() const { return { static_cast< _Type >( r ), static_cast< _Type >( g ), static_cast< _Type >( b ), static_cast< _Type >( a ) }; }
 
-    static Color FireColor( double _ratio )
+    static Color FadeOrange( double _ratio )
     {
         _ratio = ( 1 - ( _ratio * _ratio ) ) * 3;
         return Color{ _ratio > 1 ? 1 : _ratio,
             _ratio > 2 ? 1 : ( _ratio > 1 ? _ratio - 1 : 0 ),
             _ratio > 2 ? _ratio - 2 : 0 };
+    }
+
+    static Color FadeRose( double _ratio )
+    {
+        const auto color{ FadeOrange( _ratio ) };
+        return Color{ color.r, color.b, color.g };
+    }
+
+    static Color FadeRadium( double _ratio )
+    {
+        const auto color{ FadeOrange( _ratio ) };
+        return Color{ color.g, color.r, color.b };
+    }
+
+    static Color FadeGreen( double _ratio )
+    {
+        const auto color{ FadeOrange( _ratio ) };
+        return Color{ color.b, color.r, color.g };
+    }
+
+    static Color FadeViolet( double _ratio )
+    {
+        const auto color{ FadeOrange( _ratio ) };
+        return Color{ color.g, color.b, color.r };
+    }
+
+    static Color FadeAzure( double _ratio )
+    {
+        const auto color{ FadeOrange( _ratio ) };
+        return Color{ color.b, color.g, color.r };
+    }
+
+    static Color FadeColor( const eFadeColor _color, double _ratio )
+    {
+        static const std::unordered_map< eFadeColor, std::function< Color( const double ) > > funcs
+        {
+            { eFadeColor::orange, []( const double _ratio ){ return FadeOrange( _ratio ); } },
+            { eFadeColor::rose, []( const double _ratio ){ return FadeRose( _ratio ); } },
+            { eFadeColor::radium, []( const double _ratio ){ return FadeRadium( _ratio ); } },
+            { eFadeColor::green, []( const double _ratio ){ return FadeGreen( _ratio ); } },
+            { eFadeColor::violet, []( const double _ratio ){ return FadeViolet( _ratio ); } },
+            { eFadeColor::azure, []( const double _ratio ){ return FadeAzure( _ratio ); } },
+        };
+        return funcs.find( _color )->second( _ratio );
     }
 };
 
@@ -112,7 +168,7 @@ struct Maths
     inline static const double PiQuarter{ Pi / 4 };
 
     static bool Collision( const Vector & _circleA, const double _radiusA, const Vector & _circleB, const double _radiusB );
-    static bool Collision( const Vector & _circle, const double _radius, const Vector & _segmentA, const Vector & _segmentB );
+    static std::optional< Vector > Collision( const Vector & _circle, const double _radius, const Vector & _segmentA, const Vector & _segmentB );
     static double NormalizeAngle( const double _angle );
     static double Random( const double _min, const double _max );
     static void Increase( double & _value, const double _increaser, const double _max );
