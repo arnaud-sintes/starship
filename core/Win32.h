@@ -63,7 +63,7 @@ class Win32::Windows
     friend Win32;
 
 public:
-    Windows( const std::wstring & _name, const Dimension_ui & _dimension, const bool _fullscreen = false );
+    Windows( const std::wstring & _name, const Dimension_ui & _dimension, const bool _fullscreen = false, const bool _doubleBuffer = true );
     ~Windows();
 
 public:

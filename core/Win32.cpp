@@ -121,7 +121,7 @@ Win32::Handle::~Handle()
 
 // ----------------
 
-Win32::Windows::Windows( const std::wstring & _name, const Dimension_ui & _dimension, const bool _fullscreen )
+Win32::Windows::Windows( const std::wstring & _name, const Dimension_ui & _dimension, const bool _fullscreen, const bool _doubleBuffer )
     : m_class{ _CreateClass( _name ) }
     , m_dimension{ _fullscreen ? Dimension_ui{ static_cast< unsigned int >( ::GetSystemMetrics( SM_CXSCREEN ) ), static_cast< unsigned int >( ::GetSystemMetrics( SM_CYSCREEN ) ) } : _dimension }
     , m_wnd{ nullptr, false }
@@ -146,7 +146,7 @@ Win32::Windows::Windows( const std::wstring & _name, const Dimension_ui & _dimen
 
     // set pixel format:
 	::PIXELFORMATDESCRIPTOR pfdesc{
-		sizeof( ::PIXELFORMATDESCRIPTOR ), 1, PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_SUPPORT_COMPOSITION | PFD_DOUBLEBUFFER,
+        sizeof( ::PIXELFORMATDESCRIPTOR ), 1, PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | ( _doubleBuffer ? PFD_DOUBLEBUFFER : ::DWORD{ 0 } ),
 		PFD_TYPE_RGBA, 32, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 24, 8, 0, PFD_MAIN_PLANE, 0, 0, 0, 0
 	};
 	::SetPixelFormat( m_dc.As< ::HDC >(), ::ChoosePixelFormat( m_dc.As< ::HDC >(), &pfdesc ), &pfdesc );

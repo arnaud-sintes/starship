@@ -61,10 +61,17 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
         { eSound::laserPowerUp, m_audioEngine.LoadSound( _resources.find( "laserPowerUp.wav" )->second ) },
         { eSound::homingMissiles, m_audioEngine.LoadSound( _resources.find( "homingMissiles.wav" )->second ) },
         { eSound::homingMissilesOff, m_audioEngine.LoadSound( _resources.find( "homingMissilesOff.wav" )->second ) },
+        { eSound::magneticMines, m_audioEngine.LoadSound( _resources.find( "magneticMines.wav" )->second ) },
+        { eSound::magneticMinesOff, m_audioEngine.LoadSound( _resources.find( "magneticMinesOff.wav" )->second ) },
+        { eSound::magneticMinesDrop, m_audioEngine.LoadSound( _resources.find( "magneticMinesDrop.wav" )->second ) },
+        { eSound::mineExplosion, m_audioEngine.LoadSound( _resources.find( "mineExplosion.wav" )->second ) },
         { eSound::plasmaShield, m_audioEngine.LoadSound( _resources.find( "plasmaShield.wav" )->second ) },
         { eSound::plasmaShieldOff, m_audioEngine.LoadSound( _resources.find( "plasmaShieldOff.wav" )->second ) },
         { eSound::shieldRepair, m_audioEngine.LoadSound( _resources.find( "shieldRepair.wav" )->second ) },
         { eSound::propellantRefuel, m_audioEngine.LoadSound( _resources.find( "propellantRefuel.wav" )->second ) },
+        { eSound::attractorLaserCollision, m_audioEngine.LoadSound( _resources.find( "attractorLaserCollision.wav" )->second ) },
+        { eSound::attractorExplosion, m_audioEngine.LoadSound( _resources.find( "attractorExplosion.wav" )->second ) },
+        { eSound::attractorShipCollision, m_audioEngine.LoadSound( _resources.find( "attractorShipCollision.wav" )->second ) },
     }
     , m_plasmaShield{ m_frameRate * 10 } // 10 seconds immunity at startup
 {
@@ -102,8 +109,9 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
             if( Maths::Collision( { x, y }, mass * m_attractorMassSizeRatio, attractor.position, attractor.mass * m_attractorMassSizeRatio ) )
                 goto L_generate;
         m_attractors.emplace_back( Attractor{ { x, y }, mass, 10.0 * mass,
-            { m_sounds.find( eSound::laserCollision )->second, nullptr },    // TODO proper attractor/laser collision sound
-            { m_sounds.find( eSound::shipExplosion )->second, nullptr } } ); // TODO proper attractor explosion sound
+            { m_sounds.find( eSound::attractorLaserCollision )->second, nullptr },
+            { m_sounds.find( eSound::attractorShipCollision )->second, nullptr },
+            { m_sounds.find( eSound::attractorExplosion )->second, nullptr } } );
     }
     #endif
 }
@@ -236,11 +244,13 @@ void Renderer::_Keys()
         if( shortestDistance > 50 ) {
             m_mineDrop = 0;
             m_mines.emplace_back( new Mine{ m_ship.position, 0.5,
-                { m_sounds.find( eSound::shipExplosion )->second, nullptr } } ); // TODO proper mine explosion sound
-
+                { m_sounds.find( eSound::magneticMinesDrop )->second, nullptr },
+                { m_sounds.find( eSound::mineExplosion )->second, nullptr } } );
+                        
             m_magneticMines--;
+            _SetupSound( m_mines.back()->sound_drop, m_ship ).Play();
             if( m_magneticMines == 0 )
-                m_sounds.find( eSound::homingMissilesOff )->second.Play(); // TODO proper mine off sound
+                m_sounds.find( eSound::magneticMinesOff )->second.Play();
         }
     }
 }
@@ -457,7 +467,7 @@ void Renderer::_Goody( const Goody::eType _type )
     }
     if( _type == Goody::eType::magneticMines ) {
         m_magneticMines += 10; // 10x mines pack
-        m_sounds.find( eSound::homingMissiles )->second.Play(); // TODO proper mine on sound
+        m_sounds.find( eSound::magneticMines )->second.Play();
         return;
     }
     if( _type == Goody::eType::plasmaShield ) {
@@ -663,7 +673,7 @@ void Renderer::_Update()
         if( Maths::Collision( m_ship.position, m_ship.dynamic.boundingBoxRadius, attractor.position, attractor.mass * m_attractorMassSizeRatio ) ) {
             m_ship.shield.value -= attractor.mass;
             attractor.shield -= m_ship.damage;
-            _QueueSoundPlay( _SetupSound( attractor.sound_explosion, m_ship.position ) ); // TODO proper ship/attractor collision sound
+            _QueueSoundPlay( _SetupSound( attractor.sound_shipCollision, m_ship.position ) );
             const auto collisionPoint{ Maths::Collision( attractor.position, attractor.mass * m_attractorMassSizeRatio, attractor.position, m_ship.position ) };
             const auto counterMomentum{ Vector{ m_ship.position - attractor.position } * m_ship.momentum.Distance() * 0.01 };
             _AddExplosion( *collisionPoint, counterMomentum, eExplosion::medium, eFadeColor::azure );
@@ -983,6 +993,7 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
         missile->rocket.Draw( _frame, shipPosition );
 
     // draw attractors:
+    std::vector< std::function< void( const NanoVGRenderer::Frame & ) > > attractors;
     for( const auto & attractor : m_attractors ) {
         const auto position{ attractor.position + shipPosition };
         const auto radius{ attractor.mass * m_attractorMassSizeRatio };
@@ -995,12 +1006,16 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
             const auto currMaxDistance{ maxDistance / ( i + 1 ) };
             colors.emplace_back( distance < currMaxDistance ? ( std::pow( 1 - ( distance / currMaxDistance ), 2 ) ) : 0 );
         }
-        _frame.FillCircle( position, radius, Color_d{ colors.at( 2 ), colors.at( 1 ), colors.at( 0 ) } );
         const auto intensity{ ( distance < maxDistance ? ( 1 - std::pow( ( distance / maxDistance ), 2 ) ) : 0 ) };
-        _frame.StrokeCircle( position, radius, Color_d{ 0.25, 0.5, 1 }, intensity * 5.5 + 0.5 );
+        attractors.emplace_back( [ = ]( const NanoVGRenderer::Frame & _frame ){
+            _frame.FillCircle( position, radius, Color_d{ colors.at( 2 ), colors.at( 1 ), colors.at( 0 ) }, false );
+            _frame.StrokeCircle( position, radius, Color_d{ 0.25, 0.5, 1 }, intensity * 5.5 + 0.5 );
+        } );
         const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
-        _frame.GradientCircle( position, radius * 5, Color_d{ 0.01, 0.075, 0.15, intensity * 0.5 + 0.5 }, Color_d{ 0, 0.05, 0.1, 0 } );
+        _frame.GradientCircle( position, radius * 7, Color_d{ 0.01, 0.2, 0.2, intensity * 0.5 + 0.5 }, Color_d{ 0, 0.05, 0.1, 0 } );
     }
+    for( const auto & attractor : attractors )
+        attractor( _frame );
 
     // plasma  shield:
     const auto plasmaShieldSin{ std::sin( m_plasmaShieldRamp * Maths::Pi ) };

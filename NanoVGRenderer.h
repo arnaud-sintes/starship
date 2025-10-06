@@ -43,7 +43,7 @@ public:
     Composition SetComposition( const Composition::eType _type ) const;
 
     void Line( const Position_d & _a, const Position_d & _b, const Color_d & _color, const double _strokeWidth ) const;
-    void FillCircle( const Position_d & _position, const double _radius, const Color_d & _color ) const;
+    void FillCircle( const Position_d & _position, const double _radius, const Color_d & _color, const bool _antialias = true ) const;
     void StrokeCircle( const Position_d & _position, const double _radius, const Color_d & _color, const double _strokeWidth ) const;
     void GradientCircle( const Position_d & _position, const double _radius, const Color_d & _colorInner, const Color_d & _colorOuter ) const;
     void FillArc( const Position_d & _position, const double _radius, const double _angleA, const double _angleB, const Color_d & _color, const bool _clockWise = true ) const;

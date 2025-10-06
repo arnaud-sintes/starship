@@ -68,10 +68,17 @@ private:
         laserPowerUp,
         homingMissiles,
         homingMissilesOff,
+        magneticMines,
+        magneticMinesOff,
+        magneticMinesDrop,
+        mineExplosion,
         plasmaShield,
         plasmaShieldOff,
         shieldRepair,
         propellantRefuel,
+        attractorLaserCollision,
+        attractorExplosion,
+        attractorShipCollision,
     };
     const MiniAudio::Sound & _SetupSound( const MiniAudio::Sound & _sound, const Vector & _relativePosition, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
     const MiniAudio::Sound & _SetupSound( const MiniAudio::Sound & _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
@@ -145,6 +152,7 @@ private:
         double mass;
         double shield;
         MiniAudio::Sound sound_laserCollision;
+        MiniAudio::Sound sound_shipCollision;
         MiniAudio::Sound sound_explosion;
     };
     std::list< Attractor > m_attractors;

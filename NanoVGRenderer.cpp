@@ -37,7 +37,8 @@ bool NanoVGRenderer::CreateFont( const std::string & _name, const std::string & 
 
 NanoVGRenderer::Frame::Frame(const Dimension_ui & _dimension, void * _context )
     : m_context{ _context }
-{   ::nvgBeginFrame( static_cast< NVGcontext * >( m_context ),
+{
+    ::nvgBeginFrame( static_cast< NVGcontext * >( m_context ),
         static_cast< float >( _dimension.width ), static_cast< float >( _dimension.height ), 1 );
 }
 
@@ -86,30 +87,36 @@ void NanoVGRenderer::Frame::Line( const Position_d & _a, const Position_d & _b, 
 }
 
 
-void NanoVGRenderer::Frame::FillCircle( const Position_d & _position, const double _radius, const Color_d & _color ) const
+void NanoVGRenderer::Frame::FillCircle( const Position_d & _position, const double _radius, const Color_d & _color, const bool _antialias ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };
+    if( !_antialias )
+        ::nvgShapeAntiAlias( context, 0 );
     ::nvgBeginPath( context );
     const auto position{ _position.ToType< float >() };
     ::nvgCircle( context, position.x, position.y, static_cast< float >( _radius ) );
     const auto color{ ( _color * 255 ).ToType< unsigned char >() };
     ::nvgFillColor( context, ::nvgRGBA( color.r, color.g, color.b, color.a ) );
     ::nvgFill( context );
+    if( !_antialias )
+        ::nvgShapeAntiAlias( context, 1 );
 }
 
 
 void NanoVGRenderer::Frame::GradientCircle( const Position_d & _position, const double _radius, const Color_d & _colorInner, const Color_d & _colorOuter ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };
+    ::nvgShapeAntiAlias( context, 0 );
     ::nvgBeginPath( context );
     const auto position{ _position.ToType< float >() };
     const auto radius{ static_cast< float >( _radius ) };
-    ::nvgCircle( context, position.x, position.y, radius );
+    ::nvgRect( context, position.x - radius, position.y - radius, 2 * radius, 2 * radius ); // it's faster to draw a rect
     const auto colorInner{ ( _colorInner * 255 ).ToType< unsigned char >() };
     const auto colorOuter{ ( _colorOuter * 255 ).ToType< unsigned char >() };
     const NVGpaint gradient{ ::nvgRadialGradient( context, position.x, position.y, 0, radius, ::nvgRGBA( colorInner.r, colorInner.g, colorInner.b, colorInner.a ), ::nvgRGBA( colorOuter.r, colorOuter.g, colorOuter.b, colorOuter.a ) ) };
     ::nvgFillPaint( context, gradient );
     ::nvgFill( context );
+    ::nvgShapeAntiAlias( context, 1 );
 }
 
 

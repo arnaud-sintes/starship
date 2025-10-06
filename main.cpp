@@ -6,7 +6,7 @@
 #include "version.h"
 
 
-//#define _DISPLAY_FPS
+#define _DISPLAY_FPS
 
 int main( int, char * )
 {
@@ -28,7 +28,7 @@ int main( int, char * )
     nanoVG.CreateFont( "openSansBold", resources->find( "OpenSans-ExtraBold.ttf" )->second );
     nanoVG.CreateFont( "sourceCodePro", resources->find( "SourceCodePro-Regular.ttf" )->second );
 
-    const unsigned long long frameRate{ 60 };
+    const unsigned long long frameRate{ 60 }; // 60 fps target
     Renderer renderer{ window, *resources, frameRate };
 
     Timer::FpsContext fpsContext{ frameRate };
@@ -44,6 +44,7 @@ int main( int, char * )
             
         // frame rate information:
         #ifdef _DISPLAY_FPS
+        temper.Update();
         const auto & fpsState{ fpsContext.Update() };
         std::stringstream ssFps;
         ssFps << "FPS: " << std::setprecision( 3 ) << fpsState.avgFrameRate;

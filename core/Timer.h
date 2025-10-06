@@ -65,8 +65,12 @@ public:
     TemperContext( FpsContext & _fpsContext );
     ~TemperContext();
 
+public:
+    void Update() const;
+
 private:
     FpsContext & m_fpsContext;
+    const Timer & m_instance;
     const unsigned long long m_loopStartTime;
     const unsigned long long m_maxLoopDuration;
 };
