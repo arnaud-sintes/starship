@@ -1,8 +1,7 @@
 #pragma once
 
 #include "Rocket.h"
-#include "MiniAudio.h"
-
+#include "CuteSound.h"
 
 // --------------
 struct Missile
@@ -10,9 +9,12 @@ struct Missile
     Rocket rocket;
     bool targetShip;
     const Rocket & origin;
-    MiniAudio::Sound sound_shot;
-    MiniAudio::Sound sound_run;
-    MiniAudio::Sound sound_explosion;
+    CuteSound::Instance & sound_run;
     bool bypassCollision{ false };
     int lifeSpan{ 0 };
+
+    ~Missile()
+    {
+        sound_run.Stop();
+    }
 };

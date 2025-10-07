@@ -23,9 +23,6 @@
     <ClCompile Include="Goody.cpp">
       <Filter>game</Filter>
     </ClCompile>
-    <ClCompile Include="MiniAudio.cpp">
-      <Filter>wrapper</Filter>
-    </ClCompile>
     <ClCompile Include="NanoVGRenderer.cpp">
       <Filter>wrapper</Filter>
     </ClCompile>
@@ -34,6 +31,9 @@
     </ClCompile>
     <ClCompile Include="Mine.cpp">
       <Filter>game</Filter>
+    </ClCompile>
+    <ClCompile Include="CuteSound.cpp">
+      <Filter>wrapper</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -89,9 +89,6 @@
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="version.h" />
-    <ClInclude Include="MiniAudio.h">
-      <Filter>wrapper</Filter>
-    </ClInclude>
     <ClInclude Include="NanoVGRenderer.h">
       <Filter>wrapper</Filter>
     </ClInclude>
@@ -100,6 +97,9 @@
     </ClInclude>
     <ClInclude Include="Mine.h">
       <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="CuteSound.h">
+      <Filter>wrapper</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

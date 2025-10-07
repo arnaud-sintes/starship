@@ -1,16 +1,12 @@
 #pragma once
 
 #include "NanoVGRenderer.h"
-#include "MiniAudio.h"
-
 
 // --------------
 struct Mine
 {
     Vector position;
     const double damage;
-    MiniAudio::Sound sound_drop;
-    MiniAudio::Sound sound_explosion;
 
     struct Dynamic
     {

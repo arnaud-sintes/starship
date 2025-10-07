@@ -84,6 +84,7 @@ public:
     bool RightMouseButtonPressed() const { return m_rightMouseButtonPressed; }
     void ShowCursor( const bool _show = true ) const;
     Position_i CursorPosition() const;
+    const Handle & GetWindowHandle() const { return m_wnd; }
     const Handle & GetDeviceContext() const { return m_dc; }
     const Dimension_ui & GetDimension() const{ return m_dimension; }
     void Show( const bool _show = true ) const;

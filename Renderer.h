@@ -8,8 +8,8 @@
 #include "Particule.h"
 #include "Goody.h"
 #include "Mine.h"
-#include "MiniAudio.h"
 #include "core/Packer.h"
+#include "CuteSound.h"
 
 
 // --------------
@@ -80,11 +80,10 @@ private:
         attractorExplosion,
         attractorShipCollision,
     };
-    const MiniAudio::Sound & _SetupSound( const MiniAudio::Sound & _sound, const Vector & _relativePosition, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
-    const MiniAudio::Sound & _SetupSound( const MiniAudio::Sound & _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
-    const MiniAudio::Sound & _SetupSound( const eSound _sound, const Rocket & _rocket, const double _pitch = 0, const bool _loop = false, const std::optional< double > & _volume = {} );
-    void _QueueSoundPlay( const MiniAudio::Sound & _sound );
-    void _PurgeSoundQueue();
+    
+    CuteSound::Param _SoundParam( const Vector & _relativePosition, const std::optional< double > & _volume = {} ) const;
+    CuteSound::Param _SoundParam( const Rocket & _rocket, const std::optional< double > & _volume = {} ) const;
+
     void _DisplayInfos( const NanoVGRenderer::Frame & _frame );
 
     bool _IsPrologue();
@@ -93,6 +92,7 @@ private:
 
 private:
     const Win32::Windows & m_windows;
+    CuteSound m_sound;
     const int m_frameRate;
     StarField m_starField;
     Rocket m_ship;
@@ -135,14 +135,10 @@ private:
     double m_plasmaShieldReflectAnimation{ 0 };
 
 private:
-    MiniAudio m_audioEngine;
-    std::unordered_map< eSound, MiniAudio::Sound > m_sounds;
-    struct Sound
-    {
-        MiniAudio::Sound sound;
-        int lifeSpan;
-    };
-    std::list< Sound > m_soundQueue;
+    CuteSound::InstanceWeakPtr m_sound_spaceWind;
+    CuteSound::InstanceWeakPtr m_sound_shipMainEngine;
+    CuteSound::InstanceWeakPtr m_sound_shipRotationEngine;
+
     bool m_shieldAlert{ false };
     bool m_fuelAlert{ false };
 
@@ -151,9 +147,6 @@ private:
         Vector position;
         double mass;
         double shield;
-        MiniAudio::Sound sound_laserCollision;
-        MiniAudio::Sound sound_shipCollision;
-        MiniAudio::Sound sound_explosion;
     };
     std::list< Attractor > m_attractors;
     inline static const double m_attractorMassSizeRatio{ 50 };

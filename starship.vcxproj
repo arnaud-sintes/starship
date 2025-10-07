@@ -87,12 +87,16 @@
       <PreprocessorDefinitions>NANOVG_GL3_IMPLEMENTATION;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4217 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
       <Command>$(SolutionDir).runtime/$(Configuration)/packer.exe "$(SolutionDir)resource" "$(SolutionDir).runtime/$(Configuration)/resource.dat"</Command>
@@ -112,6 +116,8 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -120,6 +126,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4217 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
       <Command>$(SolutionDir).runtime/$(Configuration)/packer.exe "$(SolutionDir)resource" "$(SolutionDir).runtime/$(Configuration)/resource.dat"</Command>
@@ -128,6 +136,28 @@
       <Command>call $(SolutionDir)package\package.bat</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="external\glew\glew.c" />
     <ClCompile Include="external\nanovg\nanovg.c" />
@@ -135,11 +165,11 @@
     <ClCompile Include="Laser.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Mine.cpp" />
-    <ClCompile Include="MiniAudio.cpp" />
     <ClCompile Include="NanoVGRenderer.cpp" />
     <ClCompile Include="OpenGL.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="Rocket.cpp" />
+    <ClCompile Include="CuteSound.cpp" />
     <ClCompile Include="StarField.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -156,13 +186,13 @@
     <ClInclude Include="Goody.h" />
     <ClInclude Include="Laser.h" />
     <ClInclude Include="Mine.h" />
-    <ClInclude Include="MiniAudio.h" />
     <ClInclude Include="Missile.h" />
     <ClInclude Include="NanoVGRenderer.h" />
     <ClInclude Include="OpenGL.h" />
     <ClInclude Include="Particule.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Rocket.h" />
+    <ClInclude Include="CuteSound.h" />
     <ClInclude Include="StarField.h" />
     <ClInclude Include="version.h" />
   </ItemGroup>
