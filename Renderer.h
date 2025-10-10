@@ -81,8 +81,17 @@ private:
         attractorShipCollision,
     };
     
-    CuteSound::Param _SoundParam( const Vector & _relativePosition, const std::optional< double > & _volume = {} ) const;
-    CuteSound::Param _SoundParam( const Rocket & _rocket, const std::optional< double > & _volume = {} ) const;
+    struct SoundPosition
+    {
+        const double volume;
+        const double pan;
+        operator CuteSound::Param() const { return { volume, pan, {} }; }
+    };
+    SoundPosition _PositionSound( const Vector & _position ) const;
+    SoundPosition _PositionSound( const Rocket & _rocket ) const;
+    CuteSound::Instance & _PlaySoundLooped( const size_t _sound, const CuteSound::Param & _param = {} );
+    void _PlaySound( const size_t _sound, const CuteSound::Param & _param = {} );
+    void _SetSoundParam( CuteSound::Instance & _instance, const CuteSound::Param & _param );
 
     void _DisplayInfos( const NanoVGRenderer::Frame & _frame );
 
@@ -135,9 +144,9 @@ private:
     double m_plasmaShieldReflectAnimation{ 0 };
 
 private:
-    CuteSound::InstanceWeakPtr m_sound_spaceWind;
-    CuteSound::InstanceWeakPtr m_sound_shipMainEngine;
-    CuteSound::InstanceWeakPtr m_sound_shipRotationEngine;
+    std::optional< std::reference_wrapper< CuteSound::Instance > > m_sound_spaceWind;
+    std::optional< std::reference_wrapper< CuteSound::Instance > > m_sound_shipMainEngine;
+    std::optional< std::reference_wrapper< CuteSound::Instance > > m_sound_shipRotationEngine;
 
     bool m_shieldAlert{ false };
     bool m_fuelAlert{ false };

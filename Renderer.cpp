@@ -26,6 +26,10 @@
 //      - more special bonues (turel, plasma, external module ala r-type, allied ship etc.)
 //      - non-guided missiles rotator goodie ?
 
+// TODO explosions got a range -> explosion chaining / impact zone / affect momentum
+
+// TODO Sound:
+// add concurrent conditions (e.g.: multiple missiles: no need to deal with all the sounds concurrently, same for combined explosions)
 
 // debugging purpose
 //#define _NO_ENEMY
@@ -79,9 +83,9 @@ Renderer::Renderer( const Win32::Windows & _windows, const Packer::Resources & _
 
     m_ship.momentum -= m_solarWind;
 
-    m_sound_spaceWind = m_sound.Play( static_cast< size_t >( eSound::spaceWind ), { 0.2 }, true );
-    m_sound_shipMainEngine = m_sound.Play( static_cast< size_t >( eSound::shipMainEngine ), { 0, {}, 0 }, true );
-    m_sound_shipRotationEngine = m_sound.Play( static_cast< size_t >( eSound::shipRotationEngine ), { 0, {}, 0 }, true );
+    m_sound_spaceWind = _PlaySoundLooped( static_cast< size_t >( eSound::spaceWind ), { 0 } );
+    m_sound_shipMainEngine = _PlaySoundLooped( static_cast< size_t >( eSound::shipMainEngine ), { 0, {}, {} } );
+    m_sound_shipRotationEngine = _PlaySoundLooped( static_cast< size_t >( eSound::shipRotationEngine ), { 0, {}, {} } );
 
     #ifndef _NO_ENEMY
     for( int i{ 0 }; i < _ENEMY_COUNT; i++ )
@@ -128,8 +132,8 @@ void Renderer::_AddEnemy()
             { 0, Maths::Random( 0.1, 0.5 ), false, 0.005, 0.01, Maths::Random( 0.2, 0.75 ), 0 }, // engine
             { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0, { 0, 0 } } }, // rotators
             static_cast< int >( Maths::Random( 0, m_frameRate * 5 ) ),
-            m_sound.Play( static_cast< size_t >( eSound::shipMainEngine ), { 0, {}, 0 }, true )->get(),
-            m_sound.Play( static_cast< size_t >( eSound::shipRotationEngine ), { 0, {}, 0 }, true )->get()
+            _PlaySoundLooped( static_cast< size_t >( eSound::shipMainEngine ), { 0, {}, {} } ),
+            _PlaySoundLooped( static_cast< size_t >( eSound::shipRotationEngine ), { 0, {}, {} } )
         } );
 }
 
@@ -184,7 +188,7 @@ void Renderer::_Keys()
     // laser:
     static int laserShotRate{ 0 };
     if( laserShotRate++ % static_cast< int >( m_laserSpeed ) == 0  && m_windows.LeftMouseButtonPressed() ) {
-        m_sound.Play( static_cast< size_t >( eSound::laserShot ) );
+        _PlaySound( static_cast< size_t >( eSound::laserShot ) );
         for( int i{ 0 }; i < static_cast< int >( m_laserPass ); i++ ) {
             static int alternateLazerPosition{ 0 };
             const auto rightSide{ ( alternateLazerPosition % 2 ) == 0 };
@@ -203,7 +207,7 @@ void Renderer::_Keys()
     if( m_homingMissiles > 0 && missileShotRate++ > 25 && m_windows.LeftMouseButtonPressed() ) {
         m_homingMissiles--;
         if( m_homingMissiles == 0 )
-            m_sound.Play( static_cast< size_t >( eSound::homingMissilesOff ) );
+            _PlaySound( static_cast< size_t >( eSound::homingMissilesOff ), { 0.75 } );
         missileShotRate = 0;
         Vector motion{};
         if( _ClosestEnemy( m_ship.position ) == nullptr )
@@ -216,9 +220,9 @@ void Renderer::_Keys()
             //{ { 0, 0 }, 0, { false, false }, 0, 0, 0, { 0, 0 } } }, // non-guided missiles rotator
             { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0.5, { 0, 0 } } }, // guided missiles rotator
             false, m_ship,
-            m_sound.Play( static_cast< size_t >( eSound::missileRun ), { 0, {}, 0 }, true )->get()
+            _PlaySoundLooped( static_cast< size_t >( eSound::missileRun ), { 0, {}, 0 } )
             } );
-        m_sound.Play( static_cast< size_t >( eSound::missileShot ) );
+        _PlaySound( static_cast< size_t >( eSound::missileShot ) );
     }
     
     // drop mines:
@@ -237,9 +241,9 @@ void Renderer::_Keys()
             m_mines.emplace_back( new Mine{ m_ship.position, 0.5 } );
                         
             m_magneticMines--;
-            m_sound.Play( static_cast< size_t >( eSound::magneticMinesDrop ) );
+            _PlaySound( static_cast< size_t >( eSound::magneticMinesDrop ) );
             if( m_magneticMines == 0 )
-                m_sound.Play( static_cast< size_t >( eSound::magneticMinesOff ) );
+                _PlaySound( static_cast< size_t >( eSound::magneticMinesOff ), { 0.75 } );
         }
     }
 }
@@ -384,18 +388,50 @@ bool Renderer::_MissileRocketCollision( Missile & _missile, Rocket & _other )
     return true;
 }
 
-// TODO better sound param depending if it's static or dynamic?
-CuteSound::Param Renderer::_SoundParam( const Vector & _relativePosition, const std::optional< double > & _volume ) const
+Renderer::SoundPosition Renderer::_PositionSound( const Vector & _position ) const
 {
-    const double maxDistance{ 2000 };
-    const auto volume{ 1.0 - std::min( _relativePosition.Distance() / maxDistance, 0.9 ) };
-    const auto pan{ _relativePosition.u / 1000 };
-    return { volume * ( _volume ? *_volume : 1 ), std::clamp( pan + 0.5, 0.0, 1.0 ), {} };
+    static double maxDistanceVolume{ 0 };
+    static double maxDistancePan{ 0 };
+    if( maxDistanceVolume == 0 ) {
+        const auto maxDistance{ std::sqrt( std::pow( static_cast< double >( m_windows.GetDimension().width ), 2.0 ) + std::pow( static_cast< double >( m_windows.GetDimension().height ), 2 ) ) * 0.5 };
+        maxDistanceVolume = maxDistance * 1.25;
+        maxDistancePan = maxDistance * 0.8;
+    }
+    return {
+        1.0 - std::min( _position.Distance() / maxDistanceVolume, 1.0 ),
+        std::clamp( ( _position.u / maxDistancePan ) + 0.5, 0.0, 1.0 )
+    };
 }
 
-CuteSound::Param Renderer::_SoundParam( const Rocket & _rocket, const std::optional< double > & _volume ) const
+Renderer::SoundPosition Renderer::_PositionSound( const Rocket & _rocket ) const
 {
-    return _SoundParam( _rocket.position - m_ship.position,  _volume );
+    return _PositionSound( _rocket.position - m_ship.position );
+}
+
+CuteSound::Instance & Renderer::_PlaySoundLooped( const size_t _sound, const CuteSound::Param & _param )
+{
+    return m_sound.Play( _sound, _param, true );
+}
+
+void Renderer::_PlaySound( const size_t _sound, const CuteSound::Param & _param )
+{
+    if( _param.volume && *_param.volume == 0 )
+        return;
+    m_sound.Play( _sound, _param, false );
+}
+
+void Renderer::_SetSoundParam( CuteSound::Instance & _instance, const CuteSound::Param & _param )
+{
+    if( _instance.Paused() ) {
+        if( _param.volume && *_param.volume > 0 )
+            _instance.Pause( false );
+    }
+    if( !_instance.Paused() ) {
+        if( _param.volume && *_param.volume > 0 )
+            _instance.SetParam( _param );
+        else
+            _instance.Pause();
+    }
 }
 
 void Renderer::_Goody( const Goody::eType _type )
@@ -417,22 +453,22 @@ void Renderer::_Goody( const Goody::eType _type )
             else if( m_laserPass == eLaserPass::height )    m_laserSpeed = eLaserSpeed::fast;
         }
         if( currentLaserSpeed != m_laserSpeed || currentLaserPass != m_laserPass )
-            m_sound.Play( static_cast< size_t >( eSound::laserPowerUp ) );
+            _PlaySound( static_cast< size_t >( eSound::laserPowerUp ), { 0.75 } );
         return;
     }
     if( _type == Goody::eType::homingMissiles ) {
         m_homingMissiles += 30; // 30x missiles pack
-        m_sound.Play( static_cast< size_t >( eSound::homingMissiles ) );
+        _PlaySound( static_cast< size_t >( eSound::homingMissiles ), { 0.75 } );
         return;
     }
     if( _type == Goody::eType::magneticMines ) {
         m_magneticMines += 10; // 10x mines pack
-        m_sound.Play( static_cast< size_t >( eSound::magneticMines ) );
+        _PlaySound( static_cast< size_t >( eSound::magneticMines ), { 0.75 } );
         return;
     }
     if( _type == Goody::eType::plasmaShield ) {
         m_plasmaShield += m_frameRate * 5; // 5 seconds plasma shield
-        m_sound.Play( static_cast< size_t >( eSound::plasmaShield ) );
+        _PlaySound( static_cast< size_t >( eSound::plasmaShield ), { 0.75 } );
         return;
     }
     if( _type == Goody::eType::shieldAdd ) {
@@ -442,7 +478,7 @@ void Renderer::_Goody( const Goody::eType _type )
         m_ship.shield.value += capacityBoost;
         if( m_ship.shield.value > m_ship.shield.capacity )
             m_ship.shield.value = m_ship.shield.capacity;
-        m_sound.Play( static_cast< size_t >( eSound::shieldRepair ) );
+        _PlaySound( static_cast< size_t >( eSound::shieldRepair ), { 0.75 } );
         return;
     }
     if( _type == Goody::eType::propellantAdd ) {
@@ -452,7 +488,7 @@ void Renderer::_Goody( const Goody::eType _type )
         m_ship.propellant.value += capacityBoost;
         if( m_ship.propellant.value > m_ship.propellant.capacity )
             m_ship.propellant.value = m_ship.propellant.capacity;
-        m_sound.Play( static_cast< size_t >( eSound::propellantRefuel ) );
+        _PlaySound( static_cast< size_t >( eSound::propellantRefuel ), { 0.75 } );
         return;
     }
 }
@@ -481,7 +517,7 @@ void Renderer::_Update()
     if( m_plasmaShield > 0 ) {
         m_plasmaShield--;
         if( m_plasmaShield == 0 )
-            m_sound.Play( static_cast< size_t >( eSound::plasmaShieldOff ) );
+            _PlaySound( static_cast< size_t >( eSound::plasmaShieldOff ), { 0.75 } );
     }
     m_plasmaShieldIncrement += 4;
     if( m_plasmaShieldIncrement > 100 )
@@ -495,18 +531,18 @@ void Renderer::_Update()
         for( auto & enemyOther : m_enemies )
             if( &enemy != &enemyOther )
                 if( _RocketCollision( enemy->rocket, enemyOther->rocket ) ) {
-                    m_sound.Play( static_cast< size_t >( eSound::shipCollision ), _SoundParam( enemy->rocket ) );
+                    _PlaySound( static_cast< size_t >( eSound::shipCollision ), _PositionSound( enemy->rocket ) );
                     _RocketImpact( enemy->rocket, enemyOther->rocket );
                 }
         // enemy-ship collision:
         if( _RocketCollision( enemy->rocket, m_ship ) ) {
-            m_sound.Play( static_cast< size_t >( eSound::shipCollision ), _SoundParam( enemy->rocket ) );
+            _PlaySound( static_cast< size_t >( eSound::shipCollision ), _PositionSound( enemy->rocket ) );
             _RocketImpact( enemy->rocket, m_ship );
             _RocketImpact( m_ship, enemy->rocket );
         }
         // enemy-plasma shield collision:
         if( m_plasmaShield > 0 && Maths::Collision( enemy->rocket.position, enemy->rocket.dynamic.boundingBoxRadius, m_ship.position, m_plasmaShieldRadius ) ) {
-            m_sound.Play( static_cast< size_t >( eSound::shipCollision ), _SoundParam( enemy->rocket ) );
+            _PlaySound( static_cast< size_t >( eSound::shipCollision ), _PositionSound( enemy->rocket ) );
             _RocketImpact( m_ship, enemy->rocket );
             m_score++;
         }
@@ -533,7 +569,7 @@ void Renderer::_Update()
         for( auto itEnemy{ m_enemies.begin() }, itEnemyEnd{ m_enemies.end() }; pCollision == nullptr && itEnemy != itEnemyEnd; ++itEnemy ) {
             if( _LaserRocketCollision( *laser, ( **itEnemy ).rocket ) ) {
                 pCollision = &( **itEnemy ).rocket;
-                m_sound.Play( static_cast< size_t >( eSound::laserCollision ), _SoundParam( *pCollision ) );
+                _PlaySound( static_cast< size_t >( eSound::laserCollision ), _PositionSound( *pCollision ) );
                 m_score += 5;
             }
         }
@@ -569,7 +605,7 @@ void Renderer::_Update()
             if( !collision )
                 continue;
             laser->lifeSpan = laser->maxLifeSpan;
-            m_sound.Play( static_cast< size_t >( eSound::attractorLaserCollision ), _SoundParam( attractor.position - m_ship.position ) );
+            _PlaySound( static_cast< size_t >( eSound::attractorLaserCollision ), _PositionSound( attractor.position - m_ship.position ) );
             _LaserImpact( *laser, *collision, eFadeColor::azure );
             attractor.shield -= laser->damage;
             m_score++;
@@ -618,7 +654,7 @@ void Renderer::_Update()
             }
         // explode and remove:
         if( collision ) {
-            m_sound.Play( static_cast< size_t >( eSound::missileExplosion ), _SoundParam( rocket ) );
+            _PlaySound( static_cast< size_t >( eSound::missileExplosion ), _PositionSound( rocket ) );
             _AddExplosion( rocket.position, rocket.momentum );
             it = m_missiles.erase( it );
             m_score++;
@@ -632,7 +668,7 @@ void Renderer::_Update()
         if( Maths::Collision( m_ship.position, m_ship.dynamic.boundingBoxRadius, attractor.position, attractor.mass * m_attractorMassSizeRatio ) ) {
             m_ship.shield.value -= attractor.mass;
             attractor.shield -= m_ship.damage;
-            m_sound.Play( static_cast< size_t >( eSound::attractorShipCollision ) );
+            _PlaySound( static_cast< size_t >( eSound::attractorShipCollision ) );
             const auto collisionPoint{ Maths::Collision( attractor.position, attractor.mass * m_attractorMassSizeRatio, attractor.position, m_ship.position ) };
             const auto counterMomentum{ Vector{ m_ship.position - attractor.position } * m_ship.momentum.Distance() * 0.01 };
             _AddExplosion( *collisionPoint, counterMomentum, eExplosion::medium, eFadeColor::azure );
@@ -656,13 +692,18 @@ void Renderer::_Update()
     for( auto it{ m_enemies.begin() }; it != m_enemies.end(); ) {
         auto & enemy{ **it };
 
-        const auto thrustVolume{ enemy.rocket.engine.thrust / enemy.rocket.engine.power };
-        const auto param{ _SoundParam( enemy.rocket, thrustVolume ) };
-        enemy.sound_shipMainEngine.SetParam( { *param.volume * 0.75, param.pan, thrustVolume } );
-        const auto rotatorVolume{ ( enemy.rocket.rotator.thrust.at( 0 ) + enemy.rocket.rotator.thrust.at( 1 ) ) / ( 2 * enemy.rocket.rotator.power ) };
-        const auto rotatorVolume2{ rotatorVolume > 0.25 ? ( rotatorVolume - 0.25 ) * 1.33 : 0 };
-        const auto rotatorParam{ _SoundParam( enemy.rocket, rotatorVolume2 ) };
-        enemy.sound_shipRotationEngine.SetParam( { *rotatorParam.volume * 0.75, rotatorParam.pan, rotatorVolume2 } );
+        const auto soundPosition{ _PositionSound( enemy.rocket ) };
+
+        const auto thrustRatio{ std::min( enemy.rocket.engine.thrust / enemy.rocket.engine.power, 1.0 ) };
+        const auto thrustVolume{ thrustRatio * 0.2 }; // [ 0.0, 0.2 ]
+        const auto thrustPitch{ std::max( thrustRatio, 0.5 ) }; // [ 0.5, 1.0 ]
+        _SetSoundParam( enemy.sound_shipMainEngine, { thrustVolume * soundPosition.volume, soundPosition.pan, thrustPitch } );
+
+        const auto rotatorRatio{ std::min( ( enemy.rocket.rotator.thrust.at( 0 ) + enemy.rocket.rotator.thrust.at( 1 ) ) / ( 2 * enemy.rocket.rotator.power ), 1.0 ) };
+        const auto rotatorVolumeThreshold{ 0.25 };
+        const auto rotatorVolume{ rotatorRatio < rotatorVolumeThreshold ? 0 : ( rotatorRatio - rotatorVolumeThreshold ) * 0.1 }; // [ 0.0, 0.1 ]
+        const auto rotatorPitch{ std::max( rotatorRatio, 0.5 ) }; // [ 0.5, 1.0 ]
+        _SetSoundParam( enemy.sound_shipRotationEngine, { rotatorVolume * soundPosition.volume, soundPosition.pan, rotatorPitch } );
 
         // better NOT aim directly the ship to avoid collisions:
         enemy.rocket.Acquire( m_ship, 0.5, Vector::From( m_ship.orientation + Maths::Pi, 100 ) );
@@ -672,7 +713,7 @@ void Renderer::_Update()
         // shield:
         if( enemy.rocket.shield.value <= 0 ) {
             AddGoody( enemy.rocket.position );
-            m_sound.Play( static_cast< size_t >( eSound::shipExplosion ), _SoundParam( enemy.rocket ) );
+            _PlaySound( static_cast< size_t >( eSound::shipExplosion ), _PositionSound( enemy.rocket ) );
 
             _AddExplosion( enemy.rocket.position, enemy.rocket.momentum, eExplosion::big );
             newEnemiesToGenerate++;
@@ -691,9 +732,9 @@ void Renderer::_Update()
                 { 0, 0.5, false, 0.01, 0.05, 0.8, 0 }, // engine
                 { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0.5, { 0, 0 } } },
                 true, enemy.rocket,
-                m_sound.Play( static_cast< size_t >( eSound::missileRun ), { 0, {}, 0 }, true )->get()
+                _PlaySoundLooped( static_cast< size_t >( eSound::missileRun ), { 0, {}, 0 } )
                 } );
-            m_sound.Play( static_cast< size_t >( eSound::missileShot ), _SoundParam( enemy.rocket ) );
+            _PlaySound( static_cast< size_t >( eSound::missileShot ), _PositionSound( enemy.rocket ) );
         }
         ++it;
     }
@@ -704,7 +745,7 @@ void Renderer::_Update()
     for( auto it{ m_mines.begin() }; it != m_mines.end(); ) {
         auto & mine{ *it };
         if( !mine->alive ) {
-            m_sound.Play( static_cast< size_t >( eSound::mineExplosion ), _SoundParam( mine->position - m_ship.position ) );
+            _PlaySound( static_cast< size_t >( eSound::mineExplosion ), _PositionSound( mine->position - m_ship.position ) );
             _AddExplosion( mine->position, {}, eExplosion::big, eFadeColor::orange );
             it = m_mines.erase( it );
             continue;
@@ -717,7 +758,7 @@ void Renderer::_Update()
         auto & attractor{ *it };
         if( attractor.shield < 0 ) {
             AddGoody( attractor.position );
-            m_sound.Play( static_cast< size_t >( eSound::attractorExplosion ), _SoundParam( attractor.position - m_ship.position ) );
+            _PlaySound( static_cast< size_t >( eSound::attractorExplosion ), _PositionSound( attractor.position - m_ship.position ) );
             const auto radius{ attractor.mass * m_attractorMassSizeRatio };
             for( int j{ 0 }; j < 2; j++ ) {
                 const int divisions{ 8 };
@@ -762,9 +803,14 @@ void Renderer::_Update()
         auto & missile{ **it };
         // running:
         if( missile.lifeSpan == 0 ) {
-            const auto thrustVolume{ missile.rocket.engine.thrust / missile.rocket.engine.power };
-            const auto param{ _SoundParam( missile.rocket, thrustVolume ) };
-            missile.sound_run.SetParam( { *param.volume * 0.5, param.pan, thrustVolume } );
+
+            const auto soundPosition{ _PositionSound( missile.rocket ) };
+
+            const auto thrustRatio{ std::min( missile.rocket.engine.thrust / missile.rocket.engine.power, 1.0 ) };
+            const auto thrustVolume{ thrustRatio * 0.4 }; // [ 0.0, 0.4 ]
+            const auto thrustPitch{ std::max( thrustRatio, 0.1 ) }; // [ 0.1, 1.0 ]
+            _SetSoundParam( missile.sound_run, { thrustVolume * soundPosition.volume, soundPosition.pan, thrustPitch } );
+
             // acquiring proper target:
             const auto pTarget{ missile.targetShip ? &m_ship : _ClosestEnemy( missile.rocket.position ) };
             if( pTarget != nullptr ) {
@@ -774,7 +820,7 @@ void Renderer::_Update()
             // stopping when out of propellant:
             if( missile.rocket.propellant.value <= missile.rocket.propellant.production_rate ) {
                 missile.lifeSpan = 1;
-                missile.sound_run.Stop();
+                missile.StopSound();
             }
         }
         // stopped:
@@ -782,7 +828,7 @@ void Renderer::_Update()
             missile.lifeSpan++;
             // explode and remove after one second of drift:
             if( missile.lifeSpan == m_frameRate ) {
-                m_sound.Play( static_cast< size_t >( eSound::missileExplosion ), _SoundParam( missile.rocket ) );
+                _PlaySound( static_cast< size_t >( eSound::missileExplosion ), _PositionSound( missile.rocket ) );
                 _AddExplosion( missile.rocket.position, missile.rocket.momentum );
                 it = m_missiles.erase( it );
                 continue;
@@ -825,7 +871,7 @@ void Renderer::_Update()
     if( m_ship.shield.value < ( m_ship.shield.capacity * 0.25 ) ) {
         if( !m_shieldAlert ) {
             m_shieldAlert = true;
-            m_sound.Play( static_cast< size_t >( eSound::lowShieldAlert ) );
+            _PlaySound( static_cast< size_t >( eSound::lowShieldAlert ), { 0.75 } );
         }
     }
     else
@@ -835,17 +881,22 @@ void Renderer::_Update()
     if( m_ship.propellant.value < ( m_ship.propellant.capacity * 0.25 ) ) {
         if( !m_fuelAlert ) {
             m_fuelAlert = true;
-            m_sound.Play( static_cast< size_t >( eSound::lowFuelAlert ) );
+            _PlaySound( static_cast< size_t >( eSound::lowFuelAlert ), { 0.75 } );
         }
     }
     else
         m_fuelAlert = false;
 
-    const auto thrustVolume{ m_ship.engine.thrust / m_ship.engine.power };
-    m_sound_shipMainEngine->get().SetParam( { thrustVolume * 0.75, {}, thrustVolume } );
-    const auto rotatorVolume{ ( m_ship.rotator.thrust.at( 0 ) + m_ship.rotator.thrust.at( 1 ) ) / ( 2 * m_ship.rotator.power ) };
-    const auto rotatorVolume2{ rotatorVolume > 0.25 ? ( rotatorVolume - 0.25 ) * 1.33 : 0 };
-    m_sound_shipRotationEngine->get().SetParam( { rotatorVolume2 * 0.75, {}, rotatorVolume2 } );
+    const auto thrustRatio{ std::min( m_ship.engine.thrust / m_ship.engine.power, 1.0 ) };
+    const auto thrustVolume{ thrustRatio * 0.2 }; // [ 0.0, 0.2 ]
+    const auto thrustPitch{ std::max( thrustRatio, 0.5 ) }; // [ 0.5, 1.0 ]
+    _SetSoundParam( *m_sound_shipMainEngine, { thrustVolume, {}, thrustPitch } );
+
+    const auto rotatorRatio{ std::min( ( m_ship.rotator.thrust.at( 0 ) + m_ship.rotator.thrust.at( 1 ) ) / ( 2 * m_ship.rotator.power ), 1.0 ) };
+    const auto rotatorVolumeThreshold{ 0.25 };
+    const auto rotatorVolume{ rotatorRatio < rotatorVolumeThreshold ? 0 : ( rotatorRatio - rotatorVolumeThreshold ) * 0.1 }; // [ 0.0, 0.1 ]
+    const auto rotatorPitch{ std::max( rotatorRatio, 0.5 ) }; // [ 0.5, 1.0 ]
+    _SetSoundParam( *m_sound_shipRotationEngine, { rotatorVolume, {}, rotatorPitch } );
 
     // add particules:
     for( auto & enemy : m_enemies )
@@ -903,7 +954,6 @@ void Renderer::_DrawCursor( const NanoVGRenderer::Frame & _frame )
     _frame.StrokeCircle( m_windows.CursorPosition().ToType< double >(), 15, { 0.25, 0.5 + std::sin( cursorFlash += 0.15 ) * 0.25, 1 }, 4 );
 }
 
-
 void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
 {
     const Vector screen{ static_cast< double >( m_windows.GetDimension().width ), static_cast< double >( m_windows.GetDimension().height ) };
@@ -912,7 +962,10 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
 
     // draw starfield, related to ship motion & solar wind:
     m_starField.Draw( _frame, m_ship.momentum * 2 );
-    m_sound_spaceWind->get().SetParam( { {}, {}, std::max( std::min( m_ship.momentum.Distance() / 20, 1.0 ), 0.3 ) } );
+    const auto spaceWindRatio{ std::min( m_ship.momentum.Distance() / 20, 1.0 ) };
+    const auto spaceWindVolume{ spaceWindRatio * 0.3 }; // [ 0.0, 0.3 ]
+    const auto spaceWindPitch{ std::max( spaceWindRatio, 0.3 ) }; // [ 0.3,1.0 ]
+    _SetSoundParam( *m_sound_spaceWind, { spaceWindVolume, {}, spaceWindPitch } );
 
     // prologues:
     if( _IsPrologue() ) {
@@ -976,7 +1029,7 @@ void Renderer::_Draw( const NanoVGRenderer::Frame & _frame )
             _frame.StrokeCircle( position, radius, Color_d{ 0.25, 0.5, 1 }, intensity * 5.5 + 0.5 );
         } );
         const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
-        _frame.GradientCircle( position, radius * 7, Color_d{ 0.01, 0.2, 0.2, intensity * 0.5 + 0.5 }, Color_d{ 0, 0.05, 0.1, 0 } );
+        _frame.GradientCircle( position, radius * 7, Color_d{ 0.01, 0.175, 0.2, intensity * 0.5 + 0.5 }, Color_d{ 0, 0.05, 0.1, 0 } );
     }
     for( const auto & attractor : attractors )
         attractor( _frame );

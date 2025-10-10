@@ -15,35 +15,40 @@ CuteSound::~CuteSound()
     ::cs_shutdown();
 }
 
-bool CuteSound::Init( const Win32::Windows & _windows, const bool _playbackThread )
+bool CuteSound::Init( const Win32::Windows & _windows )
 {
     if( ::cs_init( _windows.GetWindowHandle().As< HWND >(), 44100, 1024, nullptr ) != CUTE_SOUND_ERROR_NONE )
         return false;
-    if( _playbackThread )
-        m_playbackThread = std::make_unique< std::jthread >( [ this ]{
-            auto & timer{ Timer::GetInstance() };
-            auto last{ timer.Get() };
-            while( !m_stopPlaybackThread ) {
-                const auto current{ timer.Get() };
-                const auto lapse{ current - last };
-                last = current;
-                Update( static_cast< double >( lapse ) / double{ 1'000'000'000 } );
-                std::this_thread::sleep_for( std::chrono::microseconds{ 16666 } );
-            }
-        } );
-    // TODO sound seems to impact main thread performance
-    //::cs_spawn_mix_thread();
+    m_playbackThread = std::make_unique< std::jthread >( [ this ]{ _UpdateLoop(); } );
     return true;
 }
 
-void CuteSound::Update( const double _frameDurationSec ) const
+void CuteSound::_Queue( std::function< void() > && _fn, const bool _lock )
 {
-    ::cs_update( static_cast< float >( _frameDurationSec ) );
+    std::unique_ptr< std::lock_guard< std::mutex > > lock;
+    if( _lock )
+        lock.reset( new std::lock_guard{ m_mtx } );
+    m_queue.emplace_back( std::move( _fn ) );
+}
+
+void CuteSound::_UpdateLoop()
+{
+    //Win32::SetThreadRealtimePriority();
+    while( !m_stopPlaybackThread ) {
+        std::list< std::function< void() > > queue;
+        {
+            std::lock_guard lock{ m_mtx };
+            std::erase_if( m_instances, []( const auto & _pInstance ){ return _pInstance->UnqueuedTerminated(); } );
+            queue = std::move( m_queue );
+        }
+        for( auto && fn : queue )
+            fn();
+        ::cs_update( 0 );
+    }
 }
 
 bool CuteSound::Load( const std::unordered_map< size_t, std::string > & _sounds )
 {
-    m_sounds.clear();
     for( const auto & pair : _sounds ) {
         auto sound{ std::make_unique< Sound >() };
         if( !sound->Load( pair.second ) )
@@ -53,14 +58,11 @@ bool CuteSound::Load( const std::unordered_map< size_t, std::string > & _sounds 
     return true;
 }
 
-CuteSound::InstanceWeakPtr CuteSound::Play( const size_t _sound, const Param & _param, const bool _looped )
+CuteSound::Instance & CuteSound::Play( const size_t _sound, const Param & _param, const bool _looped )
 {
-    std::erase_if( m_instances, []( const auto & _instance ){ return !_instance->Active(); } );
-    const auto itSound{ m_sounds.find( _sound ) };
-    if( itSound == m_sounds.cend() )
-        return {};
-    auto & instance{ m_instances.emplace_back( std::make_unique< Instance >() ) };
-    instance->Play( *itSound->second, _param, _looped );
+    std::lock_guard lock{ m_mtx };
+    auto & instance{ m_instances.emplace_back( std::make_unique< Instance >( *this ) ) };
+    instance->Play( *m_sounds.find( _sound )->second, _param, _looped );
     return *instance;
 }
 
@@ -76,49 +78,66 @@ bool CuteSound::Sound::Load( const std::string & _filePath )
     return m_audioSource != nullptr;
 }
 
-CuteSound::Instance::Instance()
-    : m_instance{ new cs_playing_sound_t{} }
+CuteSound::Instance::Instance( CuteSound & _cuteSound )
+    : m_cuteSound{ _cuteSound }
 {}
 
-CuteSound::Instance::~Instance()
-{
-    auto * pInstance{ static_cast< ::cs_playing_sound_t * >( m_instance ) };
-    Stop();
-    delete pInstance;
-}
-
-void CuteSound::Instance::Play( const Sound & _sound, const Param & _param, const bool _looped )
+void CuteSound::Instance::UnqueuedPlay( const Sound & _sound, const Param _param, const bool _looped )
 {
     auto * pAudioSource{ static_cast< ::cs_audio_source_t * >( _sound.m_audioSource ) };
-    auto * pInstance{ static_cast< ::cs_playing_sound_t * >( m_instance ) };
-    *pInstance = ::cs_play_sound( pAudioSource, ::cs_sound_params_t{
+    m_instance = ::cs_play_sound( pAudioSource, ::cs_sound_params_t{
         false, _looped,
         _param.volume ? static_cast< float >( *_param.volume ) : float{ 1 },
         _param.pan ? static_cast< float >( *_param.pan ) : float{ 0.5 },
         _param.pitch ? static_cast< float >( *_param.pitch ) : float{ 1 },
         0
-    } );
+    } ).id;
+    m_played = true;
+}
+
+void CuteSound::Instance::UnqueuedPause( const bool _paused )
+{
+    ::cs_sound_set_is_paused( ::cs_playing_sound_t{ m_instance }, _paused );
+}
+
+bool CuteSound::Instance::UnqueuedTerminated() const
+{
+    return m_played && !::cs_sound_is_active( ::cs_playing_sound_t{ m_instance } );
+}
+
+void CuteSound::Instance::UnqueuedSetParam( const Param _param )
+{
+    auto instance{ ::cs_playing_sound_t{ m_instance } };
+    if( _param.volume )
+        ::cs_sound_set_volume( instance, static_cast< float >( *_param.volume ) );
+    if( _param.pan )
+        ::cs_sound_set_pan( instance, static_cast< float >( *_param.pan ) );
+    if( _param.pitch )
+        ::cs_sound_set_pitch( instance, static_cast< float >( *_param.pitch ) );
+}
+
+void CuteSound::Instance::UnqueuedStop()
+{
+    ::cs_sound_stop( ::cs_playing_sound_t{ m_instance } );
+}
+
+void CuteSound::Instance::Play( const Sound & _sound, const Param & _param, const bool _looped )
+{
+    m_cuteSound._Queue( [ this, &_sound, _param, _looped ]{ UnqueuedPlay( _sound, _param, _looped ); }, false );
+}
+
+void CuteSound::Instance::Pause( const bool _paused )
+{
+    m_paused = _paused;
+    m_cuteSound._Queue( [ this, _paused ]{ UnqueuedPause( _paused ); } );
 }
 
 void CuteSound::Instance::SetParam( const Param & _param )
 {
-    auto * pInstance{ static_cast< ::cs_playing_sound_t * >( m_instance ) };
-    if( _param.volume )
-        ::cs_sound_set_volume( *pInstance, static_cast< float >( *_param.volume ) );
-    if( _param.pan )
-        ::cs_sound_set_pan( *pInstance, static_cast< float >( *_param.pan ) );
-    if( _param.pitch )
-        ::cs_sound_set_pitch( *pInstance, static_cast< float >( *_param.pitch ) );
+    m_cuteSound._Queue( [ this, _param ]{ UnqueuedSetParam( _param ); } );
 }
 
 void CuteSound::Instance::Stop()
 {
-    auto * pInstance{ static_cast< ::cs_playing_sound_t * >( m_instance ) };
-    ::cs_sound_stop( *pInstance );
-}
-
-bool CuteSound::Instance::Active() const
-{
-    auto * pInstance{ static_cast< ::cs_playing_sound_t * >( m_instance ) };
-    return ::cs_sound_is_active( *pInstance );
+    m_cuteSound._Queue( [ this ]{ UnqueuedStop(); } );
 }

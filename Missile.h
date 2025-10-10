@@ -12,9 +12,18 @@ struct Missile
     CuteSound::Instance & sound_run;
     bool bypassCollision{ false };
     int lifeSpan{ 0 };
+    bool sound_runActive{ true };
+
+    void StopSound()
+    {
+        if( !sound_runActive )
+            return;
+        sound_run.Stop();
+        sound_runActive = false;
+    }
 
     ~Missile()
     {
-        sound_run.Stop();
+        StopSound();
     }
 };

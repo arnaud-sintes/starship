@@ -5,13 +5,12 @@
 #include "core/Macros.h"
 #include "version.h"
 
-
 #define _DISPLAY_FPS
 
 int main( int, char * )
 {
     const bool fullscreen{ false };
-    Win32::ShowConsole( true );
+    Win32::ShowConsole( false );
     const Dimension_ui defaultWindowedDimension{ 1500, 900 };
     Win32::Windows window{ L"Starship v" + std::wstring{ _ToWideString( __ToString( VERSION ) ) }, defaultWindowedDimension, fullscreen };
     const Dimension_ui & windowDimension{ window.GetDimension() };

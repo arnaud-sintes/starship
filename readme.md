@@ -1,4 +1,4 @@
-# Starship beta 0.0.6
+# Starship beta 0.0.7
 
 ## Goal
 

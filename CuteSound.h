@@ -12,8 +12,7 @@ public:
     ~CuteSound();
 
 public:
-    bool Init( const Win32::Windows & _windows, const bool _playbackThread = true );
-    void Update( const double _frameDurationSec ) const;
+    bool Init( const Win32::Windows & _windows );
     bool Load( const std::unordered_map< size_t, std::string > & _sounds );
 
     struct Param
@@ -24,15 +23,20 @@ public:
     };
     
     class Instance;
-    using InstanceWeakPtr = std::optional< std::reference_wrapper< Instance > >;
-    InstanceWeakPtr Play( const size_t _sound, const Param & _param = {}, const bool _looped = false );
+    Instance & Play( const size_t _sound, const Param & _param = {}, const bool _looped = false );
+
+private:
+    void _Queue( std::function< void() > && _fn, const bool _lock = true );
+    void _UpdateLoop();
 
 private:
     bool m_stopPlaybackThread{ false };
     std::unique_ptr< std::jthread > m_playbackThread;
     class Sound;
     std::unordered_map< size_t, std::unique_ptr< Sound > > m_sounds;
+    std::mutex m_mtx;
     std::list< std::unique_ptr< Instance > > m_instances;
+    std::list< std::function< void() > > m_queue;
 };
 
 
@@ -56,16 +60,31 @@ private:
 // ----------------
 class CuteSound::Instance
 {
-public:
-    Instance();
-    ~Instance();
+    friend CuteSound;
 
 public:
-    void Play( const Sound & _sound, const Param & _param = {}, const bool _looped = false );
-    void SetParam( const Param & _param );
-    void Stop();
-    bool Active() const;
+    Instance( CuteSound & _cuteSound );
+    ~Instance() = default;
 
 private:
-    void * m_instance{ nullptr };
+    void UnqueuedPlay( const Sound & _sound, const Param _param = {}, const bool _looped = false );
+    void UnqueuedPause( const bool _paused );
+    bool UnqueuedTerminated() const;
+    void UnqueuedSetParam( const Param _param );
+    void UnqueuedStop();
+
+private:
+    void Play( const Sound & _sound, const Param & _param = {}, const bool _looped = false );
+
+public:
+    void Pause( const bool _paused = true );
+    bool Paused() const { return m_paused; }
+    void SetParam( const Param & _param );
+    void Stop();
+
+private:
+    CuteSound & m_cuteSound;
+    unsigned long long m_instance{ 0 };
+    bool m_played{ false };
+    bool m_paused{ false };
 };
