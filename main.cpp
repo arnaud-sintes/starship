@@ -9,7 +9,7 @@
 
 int main( int, char * )
 {
-    const bool fullscreen{ true };
+    const bool fullscreen{ false };
     Win32::SetDpiAware();
 
     // the game is designed at a fixed logical HEIGHT: the gameplay scale is identical

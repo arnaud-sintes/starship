@@ -17,6 +17,9 @@
     <ClCompile Include="Goody.cpp">
       <Filter>game</Filter>
     </ClCompile>
+    <ClCompile Include="GravityMine.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
     <ClCompile Include="Hud.cpp">
       <Filter>game</Filter>
     </ClCompile>
@@ -33,6 +36,9 @@
       <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="StarField.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
+    <ClCompile Include="WindField.cpp">
       <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="World.cpp">
@@ -91,6 +97,9 @@
     <ClInclude Include="Goody.h">
       <Filter>game</Filter>
     </ClInclude>
+    <ClInclude Include="GravityMine.h">
+      <Filter>game</Filter>
+    </ClInclude>
     <ClInclude Include="Hud.h">
       <Filter>game</Filter>
     </ClInclude>
@@ -113,6 +122,9 @@
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="StarField.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="WindField.h">
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="World.h">
@@ -162,5 +174,6 @@
     <None Include="package\package.bat">
       <Filter>package</Filter>
     </None>
+    <None Include="CLAUDE.md" />
   </ItemGroup>
 </Project>

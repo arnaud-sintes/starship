@@ -51,16 +51,30 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
         if( _Visible( _world, mine.position, mine.dynamic.radius + 10 ) )
             mine.Draw( _frame, translation );
 
+    // draw gravity mines (halo included in the culling extent):
+    for( const auto & gravityMine : _world.GravityMines() )
+        if( _Visible( _world, gravityMine.position, GravityMine::pullRange * 0.6 ) )
+            gravityMine.Draw( _frame, translation );
+
     // draw enemies (no target designation once the ship is gone):
     const Rocket * pTarget{ _world.ShipDestroyed() ? nullptr : _world.ClosestEnemy( ship.position ) };
     for( const auto & enemy : _world.Enemies() ) {
         if( pTarget == &enemy.rocket ) {
-            _frame.Line( m_screenCenter, enemy.rocket.position + translation, { 0.1, 0.5, 1 }, 0.75 );
+            // faint designation line toward the closest enemy:
+            _frame.Line( m_screenCenter, enemy.rocket.position + translation, { 0.1, 0.5, 1, 0.4 }, 0.75 );
             const auto vector{ enemy.rocket.position - ship.position };
-            const auto distance{ static_cast< int >( vector.Distance() ) };
-            if( distance > 500 ) { // 500 is "close"
-                const auto position{ Vector::From( vector.Orientation(), ship.dynamic.boundingBoxRadius + 50 ) };
-                _frame.Text( position + m_screenCenter, "sourceCodePro", 13, std::to_string( distance / 10 ), { 0.5, 0.8, 1, 0.85 } );
+            const auto shipLengths{ static_cast< int >( vector.Distance() / ( ship.dynamic.boundingBoxRadius * 2 ) ) };
+            if( shipLengths >= 15 ) { // below that the target is close enough, no pointer needed
+                // chevron pointer orbiting the ship, with the distance in ship lengths:
+                constexpr Color_d accent{ 0.35, 0.65, 1 };
+                const auto angle{ vector.Orientation() };
+                const auto tip{ m_screenCenter + Vector::From( angle, ship.dynamic.boundingBoxRadius + 46 ) };
+                const auto wingA{ m_screenCenter + Vector::From( angle + 0.35, ship.dynamic.boundingBoxRadius + 32 ) };
+                const auto wingB{ m_screenCenter + Vector::From( angle - 0.35, ship.dynamic.boundingBoxRadius + 32 ) };
+                _frame.Line( wingA, tip, { accent.r, accent.g, accent.b, 0.9 }, 2 );
+                _frame.Line( wingB, tip, { accent.r, accent.g, accent.b, 0.9 }, 2 );
+                _frame.Text( m_screenCenter + Vector::From( angle, ship.dynamic.boundingBoxRadius + 66 ), "sourceCodePro", 13,
+                    std::to_string( shipLengths ), { 0.5, 0.8, 1, 0.85 }, NanoVGRenderer::Frame::eTextAlign::center );
             }
         }
         // nozzle and flames extend beyond the bounding box, keep a comfortable margin:
@@ -81,6 +95,17 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
     // draw attractors:
     _DrawAttractors( _world, _frame, translation );
 
+    // blast shockwave rings, expanding fast then fading out:
+    for( const auto & blast : _world.Blasts() ) {
+        if( !_Visible( _world, blast.position, blast.radius ) )
+            continue;
+        const auto age{ static_cast< double >( blast.age ) / World::Blast::maxAge };
+        const auto ringRadius{ blast.radius * ( 1 - ( 1 - age ) * ( 1 - age ) ) };
+        const auto fade{ std::pow( 1 - age, 1.5 ) };
+        _frame.StrokeCircle( blast.position + translation, ringRadius,
+            { blast.ringColor.r, blast.ringColor.g, blast.ringColor.b, fade * 0.55 }, 1.5 + fade * 2 );
+    }
+
     // plasma shield:
     const auto plasmaShieldSin{ std::sin( _world.PlasmaShieldRamp() * Maths::Pi ) };
     const auto plasmaShieldColor{ Color_d{ 0.5, 1, 0.75 } * plasmaShieldSin };
@@ -90,6 +115,16 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
     // draw ship:
     if( !_world.ShipDestroyed() )
         ship.Draw( _frame, translation );
+
+    // turret bonus, a mini-ship orbiting the main one:
+    if( !_world.ShipDestroyed() && _world.TurretActive() ) {
+        const auto position{ _world.TurretPosition() + translation };
+        const auto orientation{ _world.TurretOrientation() };
+        _frame.FillCircle( position, 6, { 0.05, 0.12, 0.2 } );
+        _frame.StrokeCircle( position, 6, { 0.5, 0.75, 1 }, 2 );
+        _frame.Line( position + Vector::From( orientation, 5 ), position + Vector::From( orientation, 13 ), { 1, 0.45, 0.55 }, 2.5 ); // barrel toward the target
+        _frame.FillCircle( position, 2, { 0.7, 0.9, 1 } );
+    }
 
     // plasma shield reflection:
     if( _world.PlasmaShieldActive() )

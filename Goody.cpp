@@ -29,6 +29,7 @@ void Goody::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translat
         { eType::plasmaShield, { "S", { 5, 8 }, TypeInfo::eColorScheme::green } },
         { eType::shieldAdd, { "S", { 5, 8 }, TypeInfo::eColorScheme::blue } },
         { eType::propellantAdd, { "P", { 5, 8 }, TypeInfo::eColorScheme::blue } },
+        { eType::turret, { "T", { 5, 8 }, TypeInfo::eColorScheme::green } },
     };
     const auto & info{ infos.find( type )->second };
 

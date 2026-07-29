@@ -7,7 +7,9 @@
 #include "Particule.h"
 #include "Goody.h"
 #include "Mine.h"
+#include "GravityMine.h"
 #include "AttractorField.h"
+#include "WindField.h"
 #include "AudioDirector.h"
 
 
@@ -42,6 +44,7 @@ public:
     const std::vector< Particule > & Particules() const { return m_particules; }
     const std::vector< Goody > & Goodies() const { return m_goodies; }
     const std::vector< Mine > & Mines() const { return m_mines; }
+    const std::vector< GravityMine > & GravityMines() const { return m_gravityMines; }
     const AttractorField & Attractors() const { return m_attractors; }
     const Rocket * ClosestEnemy( const Vector & _position ) const;
 
@@ -49,8 +52,26 @@ public:
     double PlasmaShieldRadius() const { return m_plasmaShieldRadius; }
     double PlasmaShieldRamp() const { return m_plasmaShieldRamp; }
 
+    bool TurretActive() const { return m_turretTicks > 0; }
+    const Vector & TurretPosition() const { return m_turretPosition; }
+    double TurretOrientation() const { return m_turretOrientation; }
+
     bool ShipDestroyed() const { return m_shipDestroyed; }
     int ShipDestroyedTicks() const { return m_shipDestroyedTicks; }
+
+    // an explosion with a range: damages, pushes and chain-triggers whatever stands
+    // in its impact zone, then lives on a few ticks as an expanding shockwave ring
+    struct Blast
+    {
+        Vector position;
+        double radius;
+        double damage;  // at the blast center, quadratic falloff to the edge
+        double impulse; // knockback momentum at the blast center, same falloff
+        Color_d ringColor;
+        int age{ 0 };
+        static constexpr int maxAge{ 14 }; // shockwave ring lifetime, in ticks
+    };
+    const std::vector< Blast > & Blasts() const { return m_blasts; }
 
     struct HudInfo
     {
@@ -60,6 +81,7 @@ public:
         int homingMissiles;
         int magneticMines;
         int plasmaShieldSeconds;
+        int turretSeconds;
         int score;
     };
     HudInfo GetHudInfo() const;
@@ -91,18 +113,24 @@ private:
     void _MaybeDropGoody( const Vector & _position );
     void _UpdateAttractions();
     void _UpdatePlasmaShield();
+    void _UpdateBlasts();
+    void _ApplyBlast( const Blast & _blast );
+    void _Detonate( const Vector & _position, const Vector & _direction, const eExplosion _explosion, const eFadeColor _color, const double _radius, const double _damage, const double _impulse );
+    void _ExplodeMissile( Missile & _missile );
     void _UpdateEnemyCollisions();
     void _UpdateLaserCollisions();
     void _UpdateMissileCollisions();
     void _UpdateShipAttractorCollisions();
     void _UpdateEnemies();
     void _UpdateMines();
+    void _UpdateGravityMines();
     void _UpdateAttractorsDeletion();
     void _UpdateGoodies();
+    void _UpdateTurret();
     void _UpdateLasers();
     void _UpdateMissiles();
     void _UpdateShip();
-    void _UpdateSolarWind();
+    void _UpdateWind();
     void _UpdateAlerts();
     void _UpdateEngineSounds();
     void _UpdateParticules();
@@ -127,6 +155,7 @@ private:
     std::vector< Particule > m_particules;
     std::vector< Goody > m_goodies;
     std::vector< Mine > m_mines;
+    std::vector< GravityMine > m_gravityMines;
     AttractorField m_attractors;
 
 private:
@@ -165,6 +194,13 @@ private:
     double m_plasmaShieldRamp{ 0 };
     double m_plasmaShieldRadius{ 0 };
 
+private: // turret bonus, a temporary mini-ship orbiting the main one:
+    int m_turretTicks{ 0 };
+    double m_turretOrbitAngle{ 0 };
+    double m_turretOrientation{ 0 };
+    int m_turretCadence{ 0 };
+    Vector m_turretPosition;
+
 private:
     AudioDirector::Loop m_sound_spaceWind;
     AudioDirector::Loop m_sound_shipMainEngine;
@@ -176,9 +212,10 @@ private:
     bool m_shipDestroyed{ false };
     int m_shipDestroyedTicks{ 0 };
 
-    Vector m_solarWind{ 0.05, 0.2 };
-    Vector m_solarWindCurrent, m_solarWindTarget;
-    int m_solarWindIndex{ 0 }, m_solarWindCount{ 0 };
+    WindField m_wind;
+
+    std::vector< Blast > m_pendingBlasts; // enqueued during a tick, applied the next one (chains ripple)
+    std::vector< Blast > m_blasts;        // applied, still ringing
 
     // reused each tick to avoid per-frame allocations:
     std::vector< Rocket * > m_attractedRockets;

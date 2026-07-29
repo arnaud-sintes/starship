@@ -23,6 +23,7 @@ When destroying an enemy, goodies may appears (50% chance):
 - **homing missiles pack** (*green* "**H**") that will add **20 missiles** reaching automatically the closest enemy
 - **magnetic mines pack** (*green* "**M**") that will add **10 magnetic** mines, attracted by the closest enemies
 - **plasma shield** (*green* "**S**") that will activate a **shield** during **5 seconds** (dynamic radius from *30* to *100* units)
+- **turret** (*green* "**T**") that will deploy a **mini-turret** orbiting your ship during **10 seconds** (durations stack), aiming at the closest enemy, gravity mine or incoming missile - with lead compensation - and firing at high rate
 - **shield addition** (*blue* "**S**") that will boost the shield up to 50% of its current capacity
 - **propellant addition** (*blue* "**P**") that will boost the propellant value up to 50% of its current capacity
 
@@ -33,6 +34,8 @@ When destroying an enemy, goodies may appears (50% chance):
 ## Notes
 
 - Games start with a *10 seconds* plasma shield activated, so you can safely run away
+- The closest enemy is designated by a faint line and, when 15+ ship lengths away, a **chevron** orbiting your ship with the distance in **ship lengths**
+- Scoring rewards *outcomes* over grinding: laser hit **2**, missile-on-missile trick **5**, goody pickup **5**, mine hit **5**, missile shot down **10**, gravity mine sniped **15**, attractor destroyed **25**, enemy destroyed **100** (and nothing for events you merely suffered)
 - All engines (left and right / upper and lower, and main engine) will consume propellant
 - Propellant tank of all rockets got a *capacity*, a natural *production rate* (refill when no thrust) and a *quality factor* that will reduce the overall *ship form factor* (therefore the ship *mass*) regarding its capacity
 - Shield of all rockets got a *capacity*, a natural *repair rate* and a *quality factor* that will reduce the *shield form factor* (therefore the ship *mass*) regarding its capacity
@@ -40,12 +43,15 @@ When destroying an enemy, goodies may appears (50% chance):
 - The cumulated *form factor* (so called "*mass*") influences the *drag force* power that will directly influence the *thrust motion*, the ship's *momentum* and the *attraction effects*
 - Rotation occurs using a proper rotation momentum, created thanks to the four lateral engines, as it's hard to manually manage, a change of mouse position will automatically deal with these engine to properly rotate the ship as expected (front of the ship pointing in the mouse cursor current position)
 - A slight *solar density* factor will slowly reduce the thrust motion
+- The **solar wind** blows in waves: a global drift plus local gusts varying across space, gently pushing every rocket, mine, goody and dust particle (listen to the wind ambience swelling and panning with the local flow)
 - *Strange attractors* with variable masses attracts all rockets at proximity, can be used as natural shield with some training
+- **Gravity mines** (dark red, spiked, don't confuse them with your green magnetic mines) roam the void around you: they pull everything nearby - ship, enemies, missiles, even your own mines and the dust - into themselves and detonate on contact with a heavy blast; shoot them from a distance (**+15 pts**) or lure your pursuers through their pull
 - A shield alert will occur when being under 25% of the shield capacity
 - A low propellant alert will occur when being under 25% of the propellant tank capacity
 - Collision engine takes properly in account *enemies* (including enemy/enemy collisions), *ship*, *plasma shield*, *laser beam* and *missiles* (including missile/missile collisions)
+- **Explosions have a blast range**: anything caught in the impact zone takes distance-falloff damage and is knocked back; missiles and mines caught in a blast detonate in turn, so tight formations and mine fields go up in **chain reactions** (the plasma shield blocks blast damage, not the shove - and yes, exploding an enemy point-blank hurts you too)
 - Enemy ships can launch a homing-missile every 5 seconds
-- There is always a constant number of enemies (currently 2), regenerated off-screen when destroyed, all with random capacities (shield will increase as your current laser fire power increases to remain fair)
+- There is always a constant number of enemies (currently 4), regenerated off-screen when destroyed, all with random capacities (shield will increase as your current laser fire power increases to remain fair)
 - When your shield is fully depleted, the next hit destroys the ship: after the explosion, click to retry (the score resets, enemies keep patrolling the wreck in the background...)
 
 ## Technical

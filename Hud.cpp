@@ -97,10 +97,11 @@ void Hud::Draw( const World & _world, const NanoVGRenderer::Frame & _frame )
         std::string text;
         bool active;
     };
-    const std::array< Pill, 3 > pills{ {
+    const std::array< Pill, 4 > pills{ {
         { std::format( "H x{}", info.homingMissiles ), info.homingMissiles != 0 },
         { std::format( "M x{}", info.magneticMines ), info.magneticMines != 0 },
         { std::format( "S {}s", info.plasmaShieldSeconds ), info.plasmaShieldSeconds != 0 },
+        { std::format( "T {}s", info.turretSeconds ), info.turretSeconds != 0 },
     } };
     constexpr double pillHeight{ 24 };
     constexpr double pillPaddingX{ 12 };

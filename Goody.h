@@ -15,6 +15,7 @@ struct Goody
         plasmaShield,   // temporary plasma shield
         shieldAdd,      // shield addition
         propellantAdd,  // propellant addition
+        turret,         // temporary orbiting mini-turret
     };
     eType type{ eType::laserUp };
 

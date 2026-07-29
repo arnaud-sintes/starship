@@ -168,6 +168,7 @@
     <ClCompile Include="AudioDirector.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Goody.cpp" />
+    <ClCompile Include="GravityMine.cpp" />
     <ClCompile Include="Hud.cpp" />
     <ClCompile Include="Laser.cpp" />
     <ClCompile Include="main.cpp" />
@@ -177,6 +178,7 @@
     <ClCompile Include="Rocket.cpp" />
     <ClCompile Include="SceneRenderer.cpp" />
     <ClCompile Include="StarField.cpp" />
+    <ClCompile Include="WindField.cpp" />
     <ClCompile Include="World.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -195,6 +197,7 @@
     <ClInclude Include="AudioDirector.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="Goody.h" />
+    <ClInclude Include="GravityMine.h" />
     <ClInclude Include="Hud.h" />
     <ClInclude Include="Laser.h" />
     <ClInclude Include="Mine.h" />
@@ -206,6 +209,7 @@
     <ClInclude Include="SceneRenderer.h" />
     <ClInclude Include="StarField.h" />
     <ClInclude Include="View.h" />
+    <ClInclude Include="WindField.h" />
     <ClInclude Include="World.h" />
     <ClInclude Include="version.h" />
   </ItemGroup>
@@ -218,6 +222,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="CLAUDE.md" />
     <None Include="package\package.bat" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
