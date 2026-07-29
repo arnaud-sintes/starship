@@ -64,8 +64,8 @@ Timer::TemperContext Timer::Temper( FpsContext & _fpsContext ) const
 
 // --------------
 
-Timer::FpsContext::FpsContext( const unsigned long long _targetFrameRate )
-    : m_targetFrameRate{ _targetFrameRate }
+Timer::FpsContext::FpsContext( const std::optional< unsigned long long > && _targetFrameRate )
+    : m_targetFrameRate{ std::move( _targetFrameRate ) }
     , m_updateTime{ GetInstance().Get() }
 {}
 
@@ -93,22 +93,26 @@ Timer::TemperContext::TemperContext( FpsContext & _fpsContext )
     : m_fpsContext{ _fpsContext }
     , m_instance{ GetInstance() }
     , m_loopStartTime{ m_instance.Get() }
-    , m_maxLoopDuration{ 1'000'000'000 / _fpsContext.m_targetFrameRate }
+    , m_maxLoopDuration{ _fpsContext.m_targetFrameRate ? ( 1'000'000'000 / *_fpsContext.m_targetFrameRate ) : std::optional< unsigned long long >{} }
 {}
 
 
 Timer::TemperContext::~TemperContext()
 {
+    if( !m_maxLoopDuration )
+        return;
     const auto loopElapsedTime( m_instance.Get() - m_loopStartTime );
-    if( loopElapsedTime < m_maxLoopDuration )
-        m_instance.Sleep( m_maxLoopDuration - loopElapsedTime );
+    if( loopElapsedTime < *m_maxLoopDuration )
+        m_instance.Sleep( *m_maxLoopDuration - loopElapsedTime );
 }
 
 void Timer::TemperContext::Update() const
 {
     m_fpsContext.m_frameCount++;
     const auto loopElapsedTime( m_instance.Get() - m_loopStartTime );
-    m_fpsContext.m_consumption += static_cast< double >( loopElapsedTime ) * 100 / m_maxLoopDuration;
-    if( loopElapsedTime > m_maxLoopDuration )
+    if( !m_maxLoopDuration )
+        return;
+    m_fpsContext.m_consumption += static_cast< double >( loopElapsedTime ) * 100 / *m_maxLoopDuration;
+    if( loopElapsedTime > *m_maxLoopDuration )
         m_fpsContext.m_state.frameDropped = true;
 }

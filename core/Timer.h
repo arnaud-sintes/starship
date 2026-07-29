@@ -37,7 +37,7 @@ class Timer::FpsContext
     friend TemperContext;
 
 public:
-    FpsContext( const unsigned long long _targetFrameRate );
+    FpsContext( const std::optional< unsigned long long > && _targetFrameRate = {} );
     ~FpsContext() = default;
 
 public:
@@ -50,7 +50,7 @@ public:
     const State & Update();
 
 private:
-    const unsigned long long m_targetFrameRate;
+    const std::optional< unsigned long long > m_targetFrameRate;
     unsigned long long m_updateTime;
     unsigned long long m_frameCount{ 0 };
     double m_consumption{ 0 };
@@ -72,5 +72,5 @@ private:
     FpsContext & m_fpsContext;
     const Timer & m_instance;
     const unsigned long long m_loopStartTime;
-    const unsigned long long m_maxLoopDuration;
+    const std::optional< unsigned long long > m_maxLoopDuration;
 };
