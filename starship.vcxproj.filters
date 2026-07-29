@@ -176,5 +176,6 @@
     </None>
     <None Include="CLAUDE.md" />
     <None Include="TODO.md" />
+    <None Include="readme.md" />
   </ItemGroup>
 </Project>
