@@ -7,9 +7,6 @@
 //      - add planets & rocks & mines with gravity/attraction
 //
 // - functional:
-//      - "best fit" regarding current resolution option
-//
-//      - deal with shield / potential explosion/removal (game-over)
 //      - add stages, with different ennemies (more variety) and specific choregraphies
 //      - add special stages (asteroid field, mine field, rescue broken ship etc.)
 //      - end of stage big boss
@@ -57,6 +54,20 @@ World::World( AudioDirector & _audio, const Dimension_ui & _screenDimension, con
 }
 
 
+World::~World()
+{
+    m_audio.StopLoop( m_sound_spaceWind );
+    m_audio.StopLoop( m_sound_shipMainEngine );
+    m_audio.StopLoop( m_sound_shipRotationEngine );
+    for( auto & enemy : m_enemies ) {
+        m_audio.StopLoop( enemy.sound_mainEngine );
+        m_audio.StopLoop( enemy.sound_rotationEngine );
+    }
+    for( auto & missile : m_missiles )
+        m_audio.StopLoop( missile.sound_run );
+}
+
+
 void World::_AddEnemy()
 {
     // enemy shield is correlated to current laser pass:
@@ -101,8 +112,9 @@ void World::Update( const PlayerInput & _input )
     // reset burst states:
     _ResetBursts();
 
-    // player commands:
-    _HandleControls( _input );
+    // player commands (none once the ship is gone):
+    if( !m_shipDestroyed )
+        _HandleControls( _input );
 
     // simulation, same ordering as the historical game loop:
     _UpdateAttractions();
@@ -128,7 +140,8 @@ void World::Update( const PlayerInput & _input )
         _AddEnginesParticules( enemy.rocket );
     for( const auto & missile : m_missiles )
         _AddEnginesParticules( missile.rocket );
-    _AddEnginesParticules( m_ship );
+    if( !m_shipDestroyed )
+        _AddEnginesParticules( m_ship );
     _UpdateParticules();
 }
 
@@ -324,9 +337,18 @@ bool World::_MissileRocketCollision( Missile & _missile, Rocket & _other )
 }
 
 
+void World::_AddScore( const int _points )
+{
+    // whatever keeps exploding in the background once the ship is gone is not the
+    // player's merit anymore:
+    if( !m_shipDestroyed )
+        m_score += _points;
+}
+
+
 void World::_CollectGoody( const Goody::eType _type )
 {
-    m_score++;
+    _AddScore( 1 );
 
     if( _type == Goody::eType::laserUp ) {
         const auto currentLaserSpeed{ m_laserSpeed };
@@ -402,7 +424,8 @@ double World::_AttractionQueryRange( const Rocket & _rocket ) const
 void World::_UpdateAttractions()
 {
     m_attractedRockets.clear();
-    m_attractedRockets.emplace_back( &m_ship );
+    if( !m_shipDestroyed )
+        m_attractedRockets.emplace_back( &m_ship );
     for( auto & enemy : m_enemies )
         m_attractedRockets.emplace_back( &enemy.rocket );
     for( auto & missile : m_missiles )
@@ -444,7 +467,7 @@ void World::_UpdateEnemyCollisions()
                     _RocketImpact( enemy.rocket, enemyOther.rocket );
                 }
         // enemy-ship collision:
-        if( _RocketCollision( enemy.rocket, m_ship ) ) {
+        if( !m_shipDestroyed && _RocketCollision( enemy.rocket, m_ship ) ) {
             m_audio.PlayAt( eSound::shipCollision, _RelativeToShip( enemy.rocket.position ) );
             _RocketImpact( enemy.rocket, m_ship );
             _RocketImpact( m_ship, enemy.rocket );
@@ -453,14 +476,14 @@ void World::_UpdateEnemyCollisions()
         if( m_plasmaShield > 0 && Maths::Collision( enemy.rocket.position, enemy.rocket.dynamic.boundingBoxRadius, m_ship.position, m_plasmaShieldRadius ) ) {
             m_audio.PlayAt( eSound::shipCollision, _RelativeToShip( enemy.rocket.position ) );
             _RocketImpact( m_ship, enemy.rocket );
-            m_score++;
+            _AddScore( 1 );
         }
         // enemy-mines collision:
         for( auto & mine : m_mines ) {
             if( mine.alive && Maths::Collision( enemy.rocket.position, enemy.rocket.dynamic.boundingBoxRadius, mine.position, mine.dynamic.radius ) ) {
                 mine.alive = false;
                 enemy.rocket.shield.value -= mine.damage;
-                m_score += 5;
+                _AddScore( 5 );
             }
         }
         // enemy-attractors collision:
@@ -486,7 +509,7 @@ void World::_UpdateLaserCollisions()
             if( _LaserRocketCollision( laser, enemy.rocket ) ) {
                 pCollision = &enemy.rocket;
                 m_audio.PlayAt( eSound::laserCollision, _RelativeToShip( pCollision->position ) );
-                m_score += 5;
+                _AddScore( 5 );
             }
         }
         // laser-missiles collisions:
@@ -500,7 +523,7 @@ void World::_UpdateLaserCollisions()
                 _AddExplosion( laser.position, missile.rocket.momentum );
                 missile.dead = true;
                 m_audio.StopLoop( missile.sound_run );
-                m_score += 10;
+                _AddScore( 10 );
             }
         }
         if( pCollision != nullptr )
@@ -528,7 +551,7 @@ void World::_UpdateLaserCollisions()
                 m_audio.PlayAt( eSound::attractorLaserCollision, _RelativeToShip( _attractor.position ) );
                 _LaserImpact( laser, *collision, eFadeColor::azure );
                 _attractor.shield -= laser.damage;
-                m_score++;
+                _AddScore( 1 );
             } );
     }
 }
@@ -552,7 +575,7 @@ void World::_UpdateMissileCollisions()
                 _AddExplosion( missileOther.rocket.position, missileOther.rocket.momentum );
                 missileOther.dead = true;
                 m_audio.StopLoop( missileOther.sound_run );
-                m_score++;
+                _AddScore( 1 );
             }
         }
         // missiles-enemies collisions:
@@ -562,7 +585,7 @@ void World::_UpdateMissileCollisions()
             collision = _MissileRocketCollision( missile, enemy.rocket );
         }
         // missiles-ship collision:
-        if( !collision )
+        if( !collision && !m_shipDestroyed )
             collision = _MissileRocketCollision( missile, m_ship );
         // missiles-plasma shield collision:
         if( !collision && !missile.fromShip && m_plasmaShield > 0 )
@@ -588,7 +611,7 @@ void World::_UpdateMissileCollisions()
             _AddExplosion( rocket.position, rocket.momentum );
             missile.dead = true;
             m_audio.StopLoop( missile.sound_run );
-            m_score++;
+            _AddScore( 1 );
         }
     }
     std::erase_if( m_missiles, []( const Missile & _missile ){ return _missile.dead; } );
@@ -597,6 +620,8 @@ void World::_UpdateMissileCollisions()
 
 void World::_UpdateShipAttractorCollisions()
 {
+    if( m_shipDestroyed )
+        return;
     m_attractors.ForEachInRange( m_ship.position, m_ship.dynamic.boundingBoxRadius,
         [ & ]( const int, Attractor & _attractor ){
             if( !Maths::Collision( m_ship.position, m_ship.dynamic.boundingBoxRadius, _attractor.position, _attractor.radius ) )
@@ -645,7 +670,7 @@ void World::_UpdateEnemies()
             enemy.dead = true;
             m_audio.StopLoop( enemy.sound_mainEngine );
             m_audio.StopLoop( enemy.sound_rotationEngine );
-            m_score += 50;
+            _AddScore( 50 );
             continue;
         }
 
@@ -710,12 +735,13 @@ void World::_UpdateAttractorsDeletion()
 void World::_UpdateGoodies()
 {
     // pickup:
-    std::erase_if( m_goodies, [ this ]( const Goody & _goody ){
-            if( !Maths::Collision( m_ship.position, m_ship.dynamic.boundingBoxRadius, _goody.position, _goody.dynamic.radius ) )
-                return false;
-            _CollectGoody( _goody.type );
-            return true;
-        } );
+    if( !m_shipDestroyed )
+        std::erase_if( m_goodies, [ this ]( const Goody & _goody ){
+                if( !Maths::Collision( m_ship.position, m_ship.dynamic.boundingBoxRadius, _goody.position, _goody.dynamic.radius ) )
+                    return false;
+                _CollectGoody( _goody.type );
+                return true;
+            } );
 
     // grow animation and attraction toward the ship:
     for( auto & goody : m_goodies ) {
@@ -777,12 +803,24 @@ void World::_UpdateMissiles()
 
 void World::_UpdateShip()
 {
+    if( m_shipDestroyed ) {
+        // drifting wreck: the camera glides to a stop while the debris burns out
+        m_ship.momentum *= 0.97;
+        if( m_shipDestroyedTicks < m_frameRate && m_shipDestroyedTicks % 6 == 0 ) {
+            const auto debrisPosition{ m_ship.position + Vector::From( Maths::Random( 0, Maths::Pi2 ), Maths::Random( 0, m_ship.dynamic.boundingBoxRadius * 1.5 ) ) };
+            _AddExplosion( debrisPosition, m_ship.momentum, eExplosion::medium, m_shipDestroyedTicks % 12 == 0 ? eFadeColor::orange : eFadeColor::azure );
+        }
+        m_shipDestroyedTicks++;
+        return;
+    }
     m_ship.Update();
 }
 
 
 void World::_UpdateSolarWind()
 {
+    if( m_shipDestroyed )
+        return;
     if( m_solarWindIndex == 0 ) {
         m_solarWindCurrent = m_solarWind;
         m_solarWindTarget = Vector::From( Maths::Random( 0, Maths::Pi2 ), Maths::Random( 0.1, 0.3 ) );
@@ -798,9 +836,14 @@ void World::_UpdateSolarWind()
 
 void World::_UpdateAlerts()
 {
-    // ship shield management:
-    if( m_ship.shield.value < 0 )
-        m_ship.shield.value = 0; // TODO the ship exploded (you lose)
+    if( m_shipDestroyed )
+        return;
+
+    // ship shield management: once the shield is fully depleted, the next hit is fatal
+    if( m_ship.shield.value < 0 ) {
+        _DestroyShip();
+        return;
+    }
     if( m_ship.shield.value < ( m_ship.shield.capacity * 0.25 ) ) {
         if( !m_shieldAlert ) {
             m_shieldAlert = true;
@@ -822,8 +865,36 @@ void World::_UpdateAlerts()
 }
 
 
+void World::_DestroyShip()
+{
+    m_shipDestroyed = true;
+    m_shipDestroyedTicks = 0;
+    m_ship.shield.value = 0;
+    m_plasmaShield = 0;
+    m_audio.Play( eSound::shipExplosion );
+    m_audio.StopLoop( m_sound_shipMainEngine );
+    m_audio.StopLoop( m_sound_shipRotationEngine );
+
+    // main blast plus two shockwave rings (same recipe as the attractor death):
+    _AddExplosion( m_ship.position, m_ship.momentum, eExplosion::big );
+    const auto radius{ m_ship.dynamic.boundingBoxRadius };
+    for( int j{ 0 }; j < 2; j++ ) {
+        const int divisions{ 8 };
+        for( int i{ 0 }; i < divisions; i++ ) {
+            const double angle{ Maths::Pi2 * i / divisions };
+            const double currentRadius{ radius * ( 2.0 / static_cast< double >( j + 1 ) ) };
+            const auto explosionPosition{ m_ship.position + Vector::From( angle, currentRadius ) };
+            _AddExplosion( explosionPosition, ( explosionPosition - m_ship.position ) * 0.05, eExplosion::medium, eFadeColor::orange );
+        }
+    }
+}
+
+
 void World::_UpdateEngineSounds()
 {
+    if( m_shipDestroyed )
+        return;
+
     const auto thrustRatio{ std::min( m_ship.engine.thrust / m_ship.engine.power, 1.0 ) };
     const auto thrustVolume{ thrustRatio * 0.2 }; // [ 0.0, 0.2 ]
     const auto thrustPitch{ std::max( thrustRatio, 0.5 ) }; // [ 0.5, 1.0 ]
@@ -839,9 +910,10 @@ void World::_UpdateEngineSounds()
 
 void World::UpdateAmbientSound()
 {
-    const auto spaceWindRatio{ std::min( m_ship.momentum.Distance() / 20, 1.0 ) };
-    const auto spaceWindVolume{ spaceWindRatio * 0.3 }; // [ 0.0, 0.3 ]
-    const auto spaceWindPitch{ std::max( spaceWindRatio, 0.3 ) }; // [ 0.3, 1.0 ]
+    // always faintly audible ambience, swelling with the ship speed:
+    const auto spaceWindRatio{ std::min( m_ship.momentum.Distance() / 12, 1.0 ) };
+    const auto spaceWindVolume{ 0.06 + spaceWindRatio * 0.38 }; // [ 0.06, 0.44 ]
+    const auto spaceWindPitch{ 0.3 + spaceWindRatio * 0.7 }; // [ 0.3, 1.0 ]
     m_audio.SetLoop( m_sound_spaceWind, { spaceWindVolume, {}, spaceWindPitch } );
 }
 

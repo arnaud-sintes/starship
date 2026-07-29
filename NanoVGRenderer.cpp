@@ -21,9 +21,9 @@ NanoVGRenderer::~NanoVGRenderer()
 }
 
 
-NanoVGRenderer::Frame NanoVGRenderer::CreateFrame( const Dimension_ui & _dimension ) const
+NanoVGRenderer::Frame NanoVGRenderer::CreateFrame( const View & _view ) const
 {
-    return { _dimension, m_context };
+    return { _view, m_context };
 }
 
 
@@ -35,11 +35,13 @@ bool NanoVGRenderer::CreateFont( const std::string & _name, const std::string & 
 
 // ----------------
 
-NanoVGRenderer::Frame::Frame(const Dimension_ui & _dimension, void * _context )
+NanoVGRenderer::Frame::Frame( const View & _view, void * _context )
     : m_context{ _context }
 {
+    // logical coordinates, scaled by the viewport: the device pixel ratio drives the
+    // tessellation quality so vector shapes stay crisp at any window size
     ::nvgBeginFrame( static_cast< NVGcontext * >( m_context ),
-        static_cast< float >( _dimension.width ), static_cast< float >( _dimension.height ), 1 );
+        static_cast< float >( _view.logical.width ), static_cast< float >( _view.logical.height ), static_cast< float >( _view.scale ) );
 }
 
 
@@ -174,6 +176,25 @@ void NanoVGRenderer::Frame::FillRectangle( const Position_d & _a, const Position
 }
 
 
+void NanoVGRenderer::Frame::GradientRectangle( const Position_d & _a, const Position_d & _b, const Color_d & _colorTop, const Color_d & _colorBottom, const double _borderRadius ) const
+{
+    auto context{ static_cast< NVGcontext * >( m_context ) };
+    ::nvgBeginPath( context );
+    const auto a{ _a.ToType< float >() };
+    const auto d{ ( Vector::From( _b ) - Vector::From( _a ) ).ToFloat() };
+    if( _borderRadius != 0 )
+        ::nvgRoundedRect( context, a.x, a.y, d.u, d.v, static_cast< float >( _borderRadius ) );
+    else
+        ::nvgRect( context, a.x, a.y, d.u, d.v );
+    const auto colorTop{ ( _colorTop * 255 ).ToType< unsigned char >() };
+    const auto colorBottom{ ( _colorBottom * 255 ).ToType< unsigned char >() };
+    const NVGpaint gradient{ ::nvgLinearGradient( context, a.x, a.y, a.x, a.y + d.v,
+        ::nvgRGBA( colorTop.r, colorTop.g, colorTop.b, colorTop.a ), ::nvgRGBA( colorBottom.r, colorBottom.g, colorBottom.b, colorBottom.a ) ) };
+    ::nvgFillPaint( context, gradient );
+    ::nvgFill( context );
+}
+
+
 void NanoVGRenderer::Frame::StrokeRectangle( const Position_d & _a, const Position_d & _b, const Color_d & _color, const double _strokeWidth, const double _borderRadius ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };
@@ -191,11 +212,12 @@ void NanoVGRenderer::Frame::StrokeRectangle( const Position_d & _a, const Positi
 }
 
 
-void NanoVGRenderer::Frame::Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color, const eTextAlign _textAlign ) const
+void NanoVGRenderer::Frame::Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color, const eTextAlign _textAlign, const double _letterSpacing ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };
     ::nvgFontSize( context, static_cast< float >( _size ) );
     ::nvgFontFace( context, _fontName.c_str() );
+    ::nvgTextLetterSpacing( context, static_cast< float >( _letterSpacing ) );
     static const std::unordered_map< eTextAlign, int > textAligns{
         { eTextAlign::topLeft, NVG_ALIGN_TOP | NVG_ALIGN_LEFT },
         { eTextAlign::topRight, NVG_ALIGN_TOP | NVG_ALIGN_RIGHT },

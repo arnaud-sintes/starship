@@ -1,4 +1,4 @@
-# Starship beta 0.0.7
+# Starship beta 0.0.8
 
 ## Goal
 
@@ -45,13 +45,22 @@ When destroying an enemy, goodies may appears (50% chance):
 - A low propellant alert will occur when being under 25% of the propellant tank capacity
 - Collision engine takes properly in account *enemies* (including enemy/enemy collisions), *ship*, *plasma shield*, *laser beam* and *missiles* (including missile/missile collisions)
 - Enemy ships can launch a homing-missile every 5 seconds
-- There are always 10 enemies, regenerated off-screen when destroyed, all with random capacities (shield will increase as your current laser fire power increases to remain fair)
-- Currently, you cannot die!
+- There is always a constant number of enemies (currently 2), regenerated off-screen when destroyed, all with random capacities (shield will increase as your current laser fire power increases to remain fair)
+- When your shield is fully depleted, the next hit destroys the ship: after the explosion, click to retry (the score resets, enemies keep patrolling the wreck in the background...)
 
 ## Technical
 
-Starship currently relies over the [NavoVG](https://github.com/memononen/nanovg) vector graphics library on top of *OpenGL* for *hardware accelerated* displays.
+Starship relies on the [NanoVG](https://github.com/memononen/nanovg) vector graphics library on top of *OpenGL* for *hardware accelerated* displays.
+Everything drawn is culled against the screen, and the strange-attractor field is indexed by a uniform spatial grid so both rendering and physics only visit what is nearby.
+
+Sound effects are played through [miniaudio](https://miniaud.io/)'s engine (WASAPI): positional volume/pan and continuous pitch modulation of the engine loops are mixed on the OS audio callback with proper resampling.
+
+The simulation runs at a **fixed 60Hz timestep, decoupled from rendering**: wall-clock time is accumulated and late frames trigger catch-up ticks, so the game always runs at real-time speed (under sustained overload, catch-up is capped and the game slows down rather than spiraling).
+
+The code is organized around a few focused classes: `World` (simulation only), `SceneRenderer`/`Hud` (drawing only), `Game` (input, prologue and composition), `AudioDirector`/`Audio` (game events to positional sounds, backend behind a facade).
 
 Resources (fonts and sound effects) are all packed in a unique *resource.dat* file using a custom packer.
 
-Window resolution is 1500x900, an fps counter is displayed, fixed rendering loop being made to always reach 60fps: a consumption percent indicator shows how must we currently consume regarding the targeted 16.7ms timespan, a frame drop alert being display when exceeded loop limit.
+The game is designed at a fixed **logical height of 900** (DPI aware): the gameplay scale is identical on every monitor while the logical width follows the screen aspect ratio, so the frame always fills the display edge to edge - no letterbox bars, no distortion. Windowed mode covers the whole primary monitor work area; being vector-drawn, everything stays crisp at any scale.
+
+Vsync is disabled and the render loop is paced to 60fps by a high-resolution timer: an fps counter is displayed with a consumption percent indicator showing how much of the targeted 16.7ms timespan is currently used, a frame drop alert being displayed when the loop limit is exceeded.

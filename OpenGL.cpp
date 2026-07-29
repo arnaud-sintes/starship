@@ -43,11 +43,11 @@ OpenGL::Context::~Context()
 }
 
 
-void OpenGL::Context::Viewport( const Dimension_ui & _dimension ) const
+void OpenGL::Context::Viewport( const View & _view ) const
 {
-    ::glViewport( 0, 0, _dimension.width, _dimension.height );
+    ::glViewport( 0, 0, _view.physical.width, _view.physical.height );
 }
-    
+
 
 void OpenGL::Context::Clear( const Color_d & _color ) const
 {

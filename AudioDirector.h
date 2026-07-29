@@ -48,7 +48,7 @@ class AudioDirector
 {
 public:
     // a failed device init or a missing resource leaves the game silently soundless
-    AudioDirector( const Win32::Windows & _windows, const Packer::Resources & _resources );
+    AudioDirector( const Dimension_ui & _screenDimension, const Packer::Resources & _resources );
 
 public:
     bool Initialized() const { return m_initialized; }
@@ -76,7 +76,7 @@ public:
     void StopLoop( Loop & _loop );
 
 private:
-    bool _Init( const Win32::Windows & _windows, const Packer::Resources & _resources );
+    bool _Init( const Packer::Resources & _resources );
     static unsigned long long _CooldownTicks( const eSound _sound );
     bool _CoolingDown( const eSound _sound );
 

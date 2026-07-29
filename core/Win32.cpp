@@ -1,5 +1,6 @@
 #include "Win32.h"
 
+#define NOMINMAX // keep std::min/max usable
 #include <windows.h>
 #undef GetModuleHandle
 
@@ -31,6 +32,38 @@ std::optional< std::string > Win32::GetTemporaryFolder()
 	if( dwRetVal >= MAX_PATH || dwRetVal == 0 )
 		return {};
     return std::string{ lpTempPathBuffer };
+}
+
+
+void Win32::SetDpiAware()
+{
+    // per-monitor v2 when available (Windows 10 1703+), system-aware otherwise:
+    using FnSetContext = ::BOOL( WINAPI * )( ::HANDLE );
+    const auto fnSetContext{ reinterpret_cast< FnSetContext >( ::GetProcAddress( ::GetModuleHandleW( L"user32" ), "SetProcessDpiAwarenessContext" ) ) };
+    if( fnSetContext != nullptr ) {
+        fnSetContext( reinterpret_cast< ::HANDLE >( -4 ) ); // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+        return;
+    }
+    ::SetProcessDPIAware();
+}
+
+
+Dimension_ui Win32::GetMaximizedClientDimension()
+{
+    ::RECT workArea{};
+    ::SystemParametersInfoW( SPI_GETWORKAREA, 0, &workArea, 0 );
+    ::RECT chrome{ 0, 0, 0, 0 }; // window decoration extent for the windowed style
+    ::AdjustWindowRect( &chrome, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX, FALSE );
+    return { static_cast< unsigned int >( ( workArea.right - workArea.left ) - ( chrome.right - chrome.left ) ),
+        static_cast< unsigned int >( ( workArea.bottom - workArea.top ) - ( chrome.bottom - chrome.top ) ) };
+}
+
+
+Position_i Win32::GetWorkAreaOrigin()
+{
+    ::RECT workArea{};
+    ::SystemParametersInfoW( SPI_GETWORKAREA, 0, &workArea, 0 );
+    return { workArea.left, workArea.top };
 }
 
 

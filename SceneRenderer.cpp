@@ -51,8 +51,8 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
         if( _Visible( _world, mine.position, mine.dynamic.radius + 10 ) )
             mine.Draw( _frame, translation );
 
-    // draw enemies:
-    const Rocket * pTarget{ _world.ClosestEnemy( ship.position ) };
+    // draw enemies (no target designation once the ship is gone):
+    const Rocket * pTarget{ _world.ShipDestroyed() ? nullptr : _world.ClosestEnemy( ship.position ) };
     for( const auto & enemy : _world.Enemies() ) {
         if( pTarget == &enemy.rocket ) {
             _frame.Line( m_screenCenter, enemy.rocket.position + translation, { 0.1, 0.5, 1 }, 0.75 );
@@ -60,7 +60,7 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
             const auto distance{ static_cast< int >( vector.Distance() ) };
             if( distance > 500 ) { // 500 is "close"
                 const auto position{ Vector::From( vector.Orientation(), ship.dynamic.boundingBoxRadius + 50 ) };
-                _frame.Text( position + m_screenCenter, "openSans", 14, std::to_string( distance / 10 ), { 0.5, 0.75, 1 } );
+                _frame.Text( position + m_screenCenter, "sourceCodePro", 13, std::to_string( distance / 10 ), { 0.5, 0.8, 1, 0.85 } );
             }
         }
         // nozzle and flames extend beyond the bounding box, keep a comfortable margin:
@@ -88,7 +88,8 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
         _frame.StrokeCircle( m_screenCenter, _world.PlasmaShieldRadius(), plasmaShieldColor, 2 * plasmaShieldSin );
 
     // draw ship:
-    ship.Draw( _frame, translation );
+    if( !_world.ShipDestroyed() )
+        ship.Draw( _frame, translation );
 
     // plasma shield reflection:
     if( _world.PlasmaShieldActive() )

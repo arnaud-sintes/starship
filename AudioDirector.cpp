@@ -1,15 +1,15 @@
 #include "AudioDirector.h"
 
 
-AudioDirector::AudioDirector( const Win32::Windows & _windows, const Packer::Resources & _resources )
-    : m_maxDistanceVolume{ Vector{ static_cast< double >( _windows.GetDimension().width ), static_cast< double >( _windows.GetDimension().height ) }.Distance() * 0.5 * 1.25 }
-    , m_maxDistancePan{ Vector{ static_cast< double >( _windows.GetDimension().width ), static_cast< double >( _windows.GetDimension().height ) }.Distance() * 0.5 * 0.8 }
+AudioDirector::AudioDirector( const Dimension_ui & _screenDimension, const Packer::Resources & _resources )
+    : m_maxDistanceVolume{ Vector{ static_cast< double >( _screenDimension.width ), static_cast< double >( _screenDimension.height ) }.Distance() * 0.5 * 1.25 }
+    , m_maxDistancePan{ Vector{ static_cast< double >( _screenDimension.width ), static_cast< double >( _screenDimension.height ) }.Distance() * 0.5 * 0.8 }
 {
-    m_initialized = _Init( _windows, _resources );
+    m_initialized = _Init( _resources );
 }
 
 
-bool AudioDirector::_Init( const Win32::Windows &, const Packer::Resources & _resources )
+bool AudioDirector::_Init( const Packer::Resources & _resources )
 {
     if( !m_audio.Init() )
         return false;

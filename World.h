@@ -28,6 +28,7 @@ class World
 {
 public:
     World( AudioDirector & _audio, const Dimension_ui & _screenDimension, const int _frameRate );
+    ~World(); // stops the looped sounds so a world can be thrown away and rebuilt (retry)
 
 public:
     void Update( const PlayerInput & _input );
@@ -47,6 +48,9 @@ public:
     bool PlasmaShieldActive() const { return m_plasmaShield > 0; }
     double PlasmaShieldRadius() const { return m_plasmaShieldRadius; }
     double PlasmaShieldRamp() const { return m_plasmaShieldRamp; }
+
+    bool ShipDestroyed() const { return m_shipDestroyed; }
+    int ShipDestroyedTicks() const { return m_shipDestroyedTicks; }
 
     struct HudInfo
     {
@@ -103,6 +107,8 @@ private:
     void _UpdateEngineSounds();
     void _UpdateParticules();
     void _SpawnMissile( const Rocket & _launcher, const bool _targetShip );
+    void _DestroyShip();
+    void _AddScore( const int _points );
 
     Vector _RelativeToShip( const Vector & _position ) const { return _position - m_ship.position; }
     double _AttractionQueryRange( const Rocket & _rocket ) const;
@@ -166,6 +172,9 @@ private:
 
     bool m_shieldAlert{ false };
     bool m_fuelAlert{ false };
+
+    bool m_shipDestroyed{ false };
+    int m_shipDestroyedTicks{ 0 };
 
     Vector m_solarWind{ 0.05, 0.2 };
     Vector m_solarWindCurrent, m_solarWindTarget;

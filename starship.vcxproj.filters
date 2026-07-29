@@ -121,6 +121,9 @@
     <ClInclude Include="Audio.h">
       <Filter>wrapper</Filter>
     </ClInclude>
+    <ClInclude Include="View.h">
+      <Filter>wrapper</Filter>
+    </ClInclude>
     <ClInclude Include="AudioDirector.h">
       <Filter>wrapper</Filter>
     </ClInclude>

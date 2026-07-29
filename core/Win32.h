@@ -18,6 +18,10 @@ public:
     static void SetProcessRealtimePriority();
     static void SetThreadRealtimePriority( const bool _realtime = true );
     static std::optional< std::string > GetTemporaryFolder();
+    static void SetDpiAware(); // call before creating any window, so every metric is in physical pixels
+    // client area filling the whole primary monitor work area, window chrome accounted for:
+    static Dimension_ui GetMaximizedClientDimension();
+    static Position_i GetWorkAreaOrigin();
 
 private:
     static Handle _GetModuleHandle();
