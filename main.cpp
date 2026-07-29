@@ -5,11 +5,11 @@
 #include "core/Macros.h"
 #include "version.h"
 
-#define _DISPLAY_FPS
+//#define _DISPLAY_FPS
 
 int main( int, char * )
 {
-    const bool fullscreen{ false };
+    const bool fullscreen{ true };
     Win32::SetDpiAware();
 
     // the game is designed at a fixed logical HEIGHT: the gameplay scale is identical

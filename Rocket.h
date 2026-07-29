@@ -63,6 +63,7 @@ struct Rocket
     Rotator rotator;
 
     unsigned long long id{ 0 }; // world-unique, used for safe cross-references (e.g. missile origin)
+    double consumptionFactor{ 1 }; // propellant consumption modifier (0 during overdrive)
 
     struct Dynamic // derived state, refreshed by Update()
     {

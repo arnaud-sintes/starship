@@ -161,13 +161,23 @@ void Game::_DrawCursor( const NanoVGRenderer::Frame & _frame )
 {
     const auto position{ m_view.ToLogical( m_windows.CursorPosition() ) };
     const double pulse{ std::sin( m_cursorFlash += 0.15 ) };
-    const Color_d color{ 0.35, 0.62 + pulse * 0.18, 1, 0.9 };
-    // thin reticle: ring, center dot and four ticks
-    _frame.StrokeCircle( position, 13, color, 1.5 );
-    _frame.FillCircle( position, 1.8, color );
-    constexpr double tickInner{ 16 }, tickOuter{ 22 };
-    _frame.Line( position + Vector{ 0, -tickInner }, position + Vector{ 0, -tickOuter }, color, 1.5 );
-    _frame.Line( position + Vector{ 0, tickInner }, position + Vector{ 0, tickOuter }, color, 1.5 );
-    _frame.Line( position + Vector{ -tickInner, 0 }, position + Vector{ -tickOuter, 0 }, color, 1.5 );
-    _frame.Line( position + Vector{ tickInner, 0 }, position + Vector{ tickOuter, 0 }, color, 1.5 );
+    const Color_d color{ 0.45, 0.72 + pulse * 0.15, 1 };
+    constexpr Color_d outline{ 0, 0.02, 0.08, 0.85 }; // dark under-stroke, keeps contrast over bright effects
+    constexpr double tickInner{ 16 }, tickOuter{ 23 };
+
+    // soft glow so the reticle pops over any backdrop:
+    _frame.GradientCircle( position, 34, { 0.25, 0.55, 1, 0.3 + pulse * 0.08 }, { 0.1, 0.25, 1, 0 } );
+
+    // reticle: ring, center dot and four ticks, dark-outlined then bright:
+    const auto reticle{ [ & ]( const Color_d & _color, const double _strokeWidth ){
+            _frame.StrokeCircle( position, 13, _color, _strokeWidth );
+            _frame.Line( position + Vector{ 0, -tickInner }, position + Vector{ 0, -tickOuter }, _color, _strokeWidth );
+            _frame.Line( position + Vector{ 0, tickInner }, position + Vector{ 0, tickOuter }, _color, _strokeWidth );
+            _frame.Line( position + Vector{ -tickInner, 0 }, position + Vector{ -tickOuter, 0 }, _color, _strokeWidth );
+            _frame.Line( position + Vector{ tickInner, 0 }, position + Vector{ tickOuter, 0 }, _color, _strokeWidth );
+        } };
+    reticle( outline, 4.5 );
+    reticle( color, 2.2 );
+    _frame.FillCircle( position, 3.4, outline );
+    _frame.FillCircle( position, 2.2, color );
 }

@@ -56,6 +56,35 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
         if( _Visible( _world, gravityMine.position, GravityMine::pullRange * 0.6 ) )
             gravityMine.Draw( _frame, translation );
 
+    // singularity: event horizon, accretion halo and counter-rotating swirl arcs,
+    // intensifying as the collapse approaches:
+    if( _world.SingularityActive() && _Visible( _world, _world.SingularityPosition(), 220 ) ) {
+        const auto position{ _world.SingularityPosition() + translation };
+        m_singularityAnim += 0.12;
+        const auto progress{ _world.SingularityProgress() };
+        const auto intensity{ 0.7 + progress * 0.5 };
+        _frame.GradientCircle( position, 160 * intensity,
+            { 0.45, 0.2, 0.8, 0.35 + progress * 0.35 }, { 0.1, 0, 0.2, 0 } );
+        for( int k{ 0 }; k < 3; k++ ) {
+            const auto arcRadius{ ( 28 + k * 16 ) * intensity };
+            const auto arcAngle{ m_singularityAnim * ( k % 2 == 0 ? -1.6 : 1.3 ) + k * 2 };
+            _frame.StrokeArc( position, arcRadius, arcAngle, arcAngle + 1.8, { 0.8, 0.55, 1, 0.7 - k * 0.15 }, 2 );
+        }
+        _frame.FillCircle( position, 11 * intensity, { 0.02, 0, 0.05 } );
+        _frame.StrokeCircle( position, 12 * intensity, { 0.8, 0.5, 1, 0.75 + std::sin( m_singularityAnim * 3 ) * 0.2 }, 2 );
+    }
+
+    // decoy beacon, pinging like a fake ship signature:
+    if( _world.DecoyActive() && _Visible( _world, _world.DecoyPosition(), 40 ) ) {
+        const auto position{ _world.DecoyPosition() + translation };
+        m_decoyPing += 0.03;
+        const auto ping{ m_decoyPing - std::floor( m_decoyPing ) };
+        constexpr Color_d beaconColor{ 1, 0.7, 0.3 };
+        _frame.FillCircle( position, 5, beaconColor );
+        _frame.StrokeCircle( position, 8, { beaconColor.r, beaconColor.g, beaconColor.b, 0.8 }, 1.5 );
+        _frame.StrokeCircle( position, 8 + ping * 26, { beaconColor.r, beaconColor.g, beaconColor.b, ( 1 - ping ) * 0.6 }, 2 );
+    }
+
     // draw enemies (no target designation once the ship is gone):
     const Rocket * pTarget{ _world.ShipDestroyed() ? nullptr : _world.ClosestEnemy( ship.position ) };
     for( const auto & enemy : _world.Enemies() ) {
@@ -92,18 +121,32 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
         if( _Visible( _world, missile.rocket.position, missile.rocket.dynamic.boundingBoxRadius + 60 ) )
             missile.rocket.Draw( _frame, translation );
 
+    // draw sniper slugs, hot tracer lines:
+    for( const auto & slug : _world.Slugs() )
+        if( _Visible( _world, slug.position, 30 ) )
+            _frame.Line( slug.position + translation - slug.momentum, slug.position + translation, { 1, 0.55, 0.35, 0.95 }, 2.5 );
+
     // draw attractors:
     _DrawAttractors( _world, _frame, translation );
 
-    // blast shockwave rings, expanding fast then fading out:
+    // blast shockwaves: an initial flash, a thick expanding leading ring and a
+    // fainter trailing echo:
     for( const auto & blast : _world.Blasts() ) {
         if( !_Visible( _world, blast.position, blast.radius ) )
             continue;
+        const auto position{ blast.position + translation };
         const auto age{ static_cast< double >( blast.age ) / World::Blast::maxAge };
-        const auto ringRadius{ blast.radius * ( 1 - ( 1 - age ) * ( 1 - age ) ) };
-        const auto fade{ std::pow( 1 - age, 1.5 ) };
-        _frame.StrokeCircle( blast.position + translation, ringRadius,
-            { blast.ringColor.r, blast.ringColor.g, blast.ringColor.b, fade * 0.55 }, 1.5 + fade * 2 );
+        const auto expansion{ 1 - ( 1 - age ) * ( 1 - age ) };
+        const auto ringRadius{ blast.radius * expansion };
+        const auto fade{ std::pow( 1 - age, 1.2 ) };
+        if( age < 0.35 ) // detonation flash filling the zone:
+            _frame.GradientCircle( position, ringRadius,
+                { blast.ringColor.r, blast.ringColor.g, blast.ringColor.b, ( 0.35 - age ) * 2.2 },
+                { blast.ringColor.r, blast.ringColor.g, blast.ringColor.b, 0 } );
+        _frame.StrokeCircle( position, ringRadius,
+            { blast.ringColor.r, blast.ringColor.g, blast.ringColor.b, fade * 0.9 }, 2.5 + fade * 4 );
+        _frame.StrokeCircle( position, ringRadius * 0.7,
+            { blast.ringColor.r, blast.ringColor.g, blast.ringColor.b, fade * 0.4 }, 1.5 + fade * 2 );
     }
 
     // plasma shield:

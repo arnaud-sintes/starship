@@ -76,6 +76,8 @@ void Rocket::Acquire( const Rocket & _target, const double _rotationAdjustmentRa
 void Rocket::ReceiveImpact( const Vector & _position, const Vector & _momentum, const double _impact )
 {
     thrustMotion += _momentum;
+    if( ( _position - position ).DistanceSquared() < 0.000001 )
+        return; // dead-center impact: pure push, no meaningful rotation axis (Orientation() would be NaN)
     const auto normalizedOrientation{ Vector::From( orientation, 1 ).Orientation() };
     const auto impactOrientation{ ( _position - position ).Orientation() };
     rotationMomentum += _impact * Maths::NormalizeAngle( normalizedOrientation - impactOrientation );
@@ -86,8 +88,8 @@ void Rocket::Update()
 {
     // propellant consumption:
     const double propellantConsumption{ engine.thrust + rotator.thrust.at( Rotator::left ) + rotator.thrust.at( Rotator::right ) };
-    const double consumptionFactor{ 0.05 };
-    Maths::Decrease( propellant.value, propellantConsumption * consumptionFactor );
+    const double baseConsumptionRate{ 0.05 };
+    Maths::Decrease( propellant.value, propellantConsumption * baseConsumptionRate * consumptionFactor );
     if( propellant.value == 0 ) {
         engine.burst = false;
         rotator.burst.at( Rotator::left ) = false;

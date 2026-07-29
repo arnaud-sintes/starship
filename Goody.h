@@ -16,6 +16,13 @@ struct Goody
         shieldAdd,      // shield addition
         propellantAdd,  // propellant addition
         turret,         // temporary orbiting mini-turret
+        repulsor,       // instant friendly shockwave
+        decoy,          // beacon luring enemy missiles
+        emp,            // temporary enemy engines/launchers shutdown
+        overdrive,      // temporary free propellant + engine boost
+        singularity,    // deployed micro black hole, pulls everything then collapses
+        blossom,        // temporary rotating radial laser storm
+        hellstorm,      // instant homing missiles spiral fan
     };
     eType type{ eType::laserUp };
 

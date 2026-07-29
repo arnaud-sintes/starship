@@ -50,3 +50,4 @@ Personal 2D space shooter: C++ (latest std), Win32 + OpenGL + NanoVG (vector gra
 - Commit ONLY when explicitly asked; never push. Message style: short, lowercase, descriptive (see history).
 - Bump `version.h` (and the readme title) when a release is cut; `package.bat` extracts the version for the zip name.
 - Keep `readme.md` (player-facing) in sync with gameplay/technical changes, and prune the `World.cpp` TODO list when items land.
+- Pending work lives in two places: the gameplay TODO list at the top of `World.cpp` and `TODO.md` at the repo root (currently: missing dedicated sounds).

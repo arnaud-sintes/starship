@@ -56,8 +56,12 @@ private:
     template< typename _Fn >
     void _ForEachInRect( const Vector & _min, const Vector & _max, _Fn && _fn )
     {
+        if( !( _min.u <= _max.u && _min.v <= _max.v ) )
+            return; // non-finite coordinates (NaN compares false) - never iterate on a poisoned query
         const auto cellMinX{ _Cell( _min.u ) }, cellMinY{ _Cell( _min.v ) };
         const auto cellMaxX{ _Cell( _max.u ) }, cellMaxY{ _Cell( _max.v ) };
+        if( cellMaxX - cellMinX > 64 || cellMaxY - cellMinY > 64 )
+            return; // absurd span, corrupted position: a legit query never exceeds a dozen cells
         for( auto cellY{ cellMinY }; cellY <= cellMaxY; cellY++ )
             for( auto cellX{ cellMinX }; cellX <= cellMaxX; cellX++ ) {
                 const auto itCell{ m_cells.find( _CellKey( cellX, cellY ) ) };

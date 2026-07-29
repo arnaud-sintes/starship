@@ -56,6 +56,13 @@ public:
     const Vector & TurretPosition() const { return m_turretPosition; }
     double TurretOrientation() const { return m_turretOrientation; }
 
+    bool DecoyActive() const { return m_decoyTicks > 0; }
+    const Vector & DecoyPosition() const { return m_decoyPosition; }
+
+    bool SingularityActive() const { return m_singularityTicks > 0; }
+    const Vector & SingularityPosition() const { return m_singularityPosition; }
+    double SingularityProgress() const { return m_singularityTotalTicks > 0 ? 1.0 - static_cast< double >( m_singularityTicks ) / m_singularityTotalTicks : 0; }
+
     bool ShipDestroyed() const { return m_shipDestroyed; }
     int ShipDestroyedTicks() const { return m_shipDestroyedTicks; }
 
@@ -68,10 +75,22 @@ public:
         double damage;  // at the blast center, quadratic falloff to the edge
         double impulse; // knockback momentum at the blast center, same falloff
         Color_d ringColor;
+        bool ignoreShip{ false }; // friendly blasts (repulsor) spare the ship
         int age{ 0 };
-        static constexpr int maxAge{ 14 }; // shockwave ring lifetime, in ticks
+        static constexpr int maxAge{ 22 }; // shockwave ring lifetime, in ticks
     };
     const std::vector< Blast > & Blasts() const { return m_blasts; }
+
+    // dumb-fire sniper projectile: fast, unguided, dodgeable
+    struct Slug
+    {
+        Vector position;
+        Vector momentum;
+        int lifeSpan{ 0 };
+        bool dead{ false };
+        static constexpr int maxLifeSpan{ 130 };
+    };
+    const std::vector< Slug > & Slugs() const { return m_slugs; }
 
     struct HudInfo
     {
@@ -82,6 +101,11 @@ public:
         int magneticMines;
         int plasmaShieldSeconds;
         int turretSeconds;
+        int decoySeconds;
+        int empSeconds;
+        int overdriveSeconds;
+        int blossomSeconds;
+        int singularitySeconds;
         int score;
     };
     HudInfo GetHudInfo() const;
@@ -95,7 +119,9 @@ private:
     };
 
 private:
-    void _AddEnemy();
+    void _AddEnemy( const Enemy::eType _type );
+    void _SteerEnemy( Enemy & _enemy );
+    void _EnemyAction( Enemy & _enemy );
     Rocket * _ClosestEnemy( const Vector & _position );
     void _HandleControls( const PlayerInput & _input );
     void _ResetBursts();
@@ -115,7 +141,7 @@ private:
     void _UpdatePlasmaShield();
     void _UpdateBlasts();
     void _ApplyBlast( const Blast & _blast );
-    void _Detonate( const Vector & _position, const Vector & _direction, const eExplosion _explosion, const eFadeColor _color, const double _radius, const double _damage, const double _impulse );
+    void _Detonate( const Vector & _position, const Vector & _direction, const eExplosion _explosion, const eFadeColor _color, const double _radius, const double _damage, const double _impulse, const bool _ignoreShip = false );
     void _ExplodeMissile( Missile & _missile );
     void _UpdateEnemyCollisions();
     void _UpdateLaserCollisions();
@@ -126,20 +152,27 @@ private:
     void _UpdateGravityMines();
     void _UpdateAttractorsDeletion();
     void _UpdateGoodies();
+    void _UpdateBonuses();
     void _UpdateTurret();
+    void _UpdateBlossom();
+    void _UpdateSingularity();
+    Vector _SingularityPull( const Vector & _position ) const;
     void _UpdateLasers();
     void _UpdateMissiles();
+    void _UpdateSlugs();
     void _UpdateShip();
     void _UpdateWind();
     void _UpdateAlerts();
     void _UpdateEngineSounds();
     void _UpdateParticules();
-    void _SpawnMissile( const Rocket & _launcher, const bool _targetShip );
+    void _SpawnMissile( const Rocket & _launcher, const bool _targetShip, const double _orientationOffset = 0, const double _spawnDistance = 0, const double _kick = 0 );
     void _DestroyShip();
     void _AddScore( const int _points );
 
     Vector _RelativeToShip( const Vector & _position ) const { return _position - m_ship.position; }
     double _AttractionQueryRange( const Rocket & _rocket ) const;
+    Vector _AttractorPull( const Vector & _position, const double _mass ); // pull of the attractor fields on a free object
+    bool _TouchesAttractor( const Vector & _position, const double _radius );
 
 private:
     AudioDirector & m_audio;
@@ -156,6 +189,7 @@ private:
     std::vector< Goody > m_goodies;
     std::vector< Mine > m_mines;
     std::vector< GravityMine > m_gravityMines;
+    std::vector< Slug > m_slugs;
     AttractorField m_attractors;
 
 private:
@@ -200,6 +234,19 @@ private: // turret bonus, a temporary mini-ship orbiting the main one:
     double m_turretOrientation{ 0 };
     int m_turretCadence{ 0 };
     Vector m_turretPosition;
+
+private: // other temporary bonuses:
+    int m_decoyTicks{ 0 };
+    Vector m_decoyPosition;
+    int m_decoyHp{ 0 };
+    int m_empTicks{ 0 };
+    int m_overdriveTicks{ 0 };
+    double m_shipBaseEnginePower{ 0 };
+    int m_blossomTicks{ 0 };
+    double m_blossomPhase{ 0 };
+    int m_singularityTicks{ 0 };
+    int m_singularityTotalTicks{ 0 };
+    Vector m_singularityPosition;
 
 private:
     AudioDirector::Loop m_sound_spaceWind;

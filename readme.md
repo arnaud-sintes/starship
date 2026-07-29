@@ -24,6 +24,13 @@ When destroying an enemy, goodies may appears (50% chance):
 - **magnetic mines pack** (*green* "**M**") that will add **10 magnetic** mines, attracted by the closest enemies
 - **plasma shield** (*green* "**S**") that will activate a **shield** during **5 seconds** (dynamic radius from *30* to *100* units)
 - **turret** (*green* "**T**") that will deploy a **mini-turret** orbiting your ship during **10 seconds** (durations stack), aiming at the closest enemy, gravity mine or incoming missile - with lead compensation - and firing at high rate
+- **repulsor** (*red* "**R**"), instant: a massive **friendly shockwave** erupts from your ship - zero damage to you, huge knockback, and it chain-triggers every missile and mine in range
+- **decoy** (*green* "**D**") that will drop a pinging **beacon** where you grabbed it: enemy missiles chase it instead of you during **8 seconds** (or until it takes 3 hits)
+- **EMP** (*green* "**E**") that will shut down **enemy engines and launchers** during **4 seconds** (durations stack): they drift ballistically, at the mercy of attractors, gravity mines... and you
+- **overdrive** (*blue* "**O**") that will grant **free propellant** and a **boosted main engine** during **8 seconds** (durations stack)
+- **singularity** (*violet* "**X**") that will deploy a **micro black hole** where you grabbed it: for **3 seconds** it drags everything - enemies, missiles, mines, goodies, dust - into an accelerating spiral (you resist it better, but don't linger), shreds whatever reaches its core, then **collapses** into a massive chain-triggering detonation
+- **death blossom** (*red* "**B**") that will erupt a rotating **360° laser storm** around your ship during **2 seconds** (durations stack)
+- **hellstorm** (*green* "**W**"), instant: launches a **spiral fan of 16 homing missiles**
 - **shield addition** (*blue* "**S**") that will boost the shield up to 50% of its current capacity
 - **propellant addition** (*blue* "**P**") that will boost the propellant value up to 50% of its current capacity
 
@@ -46,12 +53,15 @@ When destroying an enemy, goodies may appears (50% chance):
 - The **solar wind** blows in waves: a global drift plus local gusts varying across space, gently pushing every rocket, mine, goody and dust particle (listen to the wind ambience swelling and panning with the local flow)
 - *Strange attractors* with variable masses attracts all rockets at proximity, can be used as natural shield with some training
 - **Gravity mines** (dark red, spiked, don't confuse them with your green magnetic mines) roam the void around you: they pull everything nearby - ship, enemies, missiles, even your own mines and the dust - into themselves and detonate on contact with a heavy blast; shoot them from a distance (**+15 pts**) or lure your pursuers through their pull
+- The attractor fields drag free-floating objects too: mines (both kinds) and the decoy beacon slowly sink toward nearby attractors and detonate on contact
 - A shield alert will occur when being under 25% of the shield capacity
 - A low propellant alert will occur when being under 25% of the propellant tank capacity
 - Collision engine takes properly in account *enemies* (including enemy/enemy collisions), *ship*, *plasma shield*, *laser beam* and *missiles* (including missile/missile collisions)
 - **Explosions have a blast range**: anything caught in the impact zone takes distance-falloff damage and is knocked back; missiles and mines caught in a blast detonate in turn, so tight formations and mine fields go up in **chain reactions** (the plasma shield blocks blast damage, not the shove - and yes, exploding an enemy point-blank hurts you too)
-- Enemy ships can launch a homing-missile every 5 seconds
-- There is always a constant number of enemies (currently 4), regenerated off-screen when destroyed, all with random capacities (shield will increase as your current laser fire power increases to remain fair)
+- The enemy roster is constant (each death respawns the same type off-screen; most shields increase with your laser fire power to remain fair):
+  - **3 chasers** (*pink*) hunting you and launching a homing-missile every 5 seconds
+  - **1 sniper** (*pale red*) holding far away and firing fast **lead-compensated slugs** at your predicted position - punishes straight-line flying, helpless up close (**+150 pts**)
+  - **2 wasps** (*yellow*, small and fast) ramming you kamikaze-style: fragile, but their death blasts chain (**+40 pts** each)
 - When your shield is fully depleted, the next hit destroys the ship: after the explosion, click to retry (the score resets, enemies keep patrolling the wreck in the background...)
 
 ## Technical

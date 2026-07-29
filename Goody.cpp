@@ -19,6 +19,7 @@ void Goody::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translat
             red,
             green,
             blue,
+            violet,
         };
         eColorScheme colorScheme;
     };
@@ -30,6 +31,13 @@ void Goody::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translat
         { eType::shieldAdd, { "S", { 5, 8 }, TypeInfo::eColorScheme::blue } },
         { eType::propellantAdd, { "P", { 5, 8 }, TypeInfo::eColorScheme::blue } },
         { eType::turret, { "T", { 5, 8 }, TypeInfo::eColorScheme::green } },
+        { eType::repulsor, { "R", { 6, 8 }, TypeInfo::eColorScheme::red } },
+        { eType::decoy, { "D", { 6, 8 }, TypeInfo::eColorScheme::green } },
+        { eType::emp, { "E", { 5, 8 }, TypeInfo::eColorScheme::green } },
+        { eType::overdrive, { "O", { 7, 8 }, TypeInfo::eColorScheme::blue } },
+        { eType::singularity, { "X", { 6, 8 }, TypeInfo::eColorScheme::violet } },
+        { eType::blossom, { "B", { 6, 8 }, TypeInfo::eColorScheme::red } },
+        { eType::hellstorm, { "W", { 8, 8 }, TypeInfo::eColorScheme::green } },
     };
     const auto & info{ infos.find( type )->second };
 
@@ -39,6 +47,7 @@ void Goody::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translat
         case TypeInfo::eColorScheme::red: color = Color_d{ 1, 0.5, ( sinGrow + 1 ) * 0.5 }; break;
         case TypeInfo::eColorScheme::green: color = Color_d{ 0.25, 1, ( sinGrow + 1 ) * 0.5 }; break;
         case TypeInfo::eColorScheme::blue: color = Color_d{ 0.25, ( sinGrow + 1 ) * 0.5, 1 }; break;
+        case TypeInfo::eColorScheme::violet: color = Color_d{ 0.72, 0.3 + ( sinGrow + 1 ) * 0.2, 1 }; break;
     }
     _frame.StrokeCircle( position + _translation, dynamic.radius, color, 4 );
     _frame.Text( position + _translation - info.adjust, "openSansBold", 20, info.letter, colorWhite );

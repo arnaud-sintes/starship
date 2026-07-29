@@ -175,5 +175,6 @@
       <Filter>package</Filter>
     </None>
     <None Include="CLAUDE.md" />
+    <None Include="TODO.md" />
   </ItemGroup>
 </Project>

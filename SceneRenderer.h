@@ -26,6 +26,8 @@ private:
     const Vector m_screenCenter;
     StarField m_starField;
     double m_plasmaShieldReflectAnimation{ 0 };
+    double m_decoyPing{ 0 };
+    double m_singularityAnim{ 0 };
 
     struct VisibleAttractor
     {
