@@ -49,6 +49,9 @@ void Goody::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translat
         case TypeInfo::eColorScheme::blue: color = Color_d{ 0.25, ( sinGrow + 1 ) * 0.5, 1 }; break;
         case TypeInfo::eColorScheme::violet: color = Color_d{ 0.72, 0.3 + ( sinGrow + 1 ) * 0.2, 1 }; break;
     }
+    // colored glow so the pod calls for attention:
+    _frame.GradientCircle( position + _translation, dynamic.radius * 2.6,
+        { color.r, color.g, color.b, 0.3 + ( sinGrow + 1 ) * 0.06 }, { color.r, color.g, color.b, 0 } );
     _frame.StrokeCircle( position + _translation, dynamic.radius, color, 4 );
     _frame.Text( position + _translation - info.adjust, "openSansBold", 20, info.letter, colorWhite );
     _frame.Reflect( position + _translation, dynamic.radius, color, -0.4, dynamic.reflectAnimation );

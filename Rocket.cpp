@@ -176,6 +176,10 @@ void Rocket::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _transla
     // general stroke:
     const double strokeWidth{ 3 };
 
+    // soft aura in the hull color:
+    _frame.GradientCircle( translated, dynamic.boundingBoxRadius * 2.4,
+        { color.r, color.g, color.b, 0.18 }, { color.r, color.g, color.b, 0 } );
+
     // draw tank:
     _frame.StrokeCircle( translated, dynamic.tankRadius, color, strokeWidth );
 
@@ -201,6 +205,10 @@ void Rocket::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _transla
 
     // draw nozzle flame:
     if( engine.thrust != 0 ) { // only if there's some thrust
+        // steady exhaust glow scaling with the thrust:
+        const double glowRatio{ engine.thrust / engine.power };
+        _frame.GradientCircle( translated + Vector::From( orientation, dynamic.tankRadius + dynamic.nozzleRadius ),
+            dynamic.nozzleRadius * 2.5 * glowRatio + 6, { 1, 0.55, 0.15, 0.35 * glowRatio }, { 1, 0.3, 0, 0 } );
         if( engine.burster++ % ( engine.burst ? 2 : 4 ) == 0 ) { // flickers quickly when bursting, slowing when deccelerating
             const double nozzleBurstMargin{ -3 };
             const double burstMaxRadius{ dynamic.nozzleRadius + nozzleBurstMargin };

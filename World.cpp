@@ -16,9 +16,9 @@ namespace
     };
 
     // enemy behaviors:
-    constexpr double sniperBandInner{ 850 }, sniperBandOuter{ 1250 }; // standoff band: slugs come from near the screen edge
     constexpr int sniperFirePeriodTicks{ 110 };
-    constexpr double sniperMaxFireRange{ 1300 };
+    constexpr double sniperStationMargin{ 140 }; // it creeps until parked comfortably INSIDE the visible screen...
+    constexpr double sniperFireMargin{ 60 };     // ...and only fires while visible
     constexpr double slugSpeed{ 14 }, slugDamage{ 1.5 }, slugSpread{ 0.03 };
 
     constexpr int attractorsCount{ 1000 };
@@ -66,6 +66,7 @@ namespace
     constexpr double turretRange{ 900 };
     constexpr int turretFirePeriod{ 4 }; // ticks between shots (15/s)
     constexpr int turretDurationSeconds{ 10 };
+    constexpr double turretExpireBlastRadius{ 90 }, turretExpireBlastDamage{ 1 }, turretExpireBlastImpulse{ 10 };
 
     // enemy gravity mines population, maintained in a band around the ship:
     constexpr size_t gravityMineCount{ 32 };
@@ -150,7 +151,7 @@ void World::_AddEnemy( const Enemy::eType _type )
                         2, // damage
                         { 1 + laserPassShield * 0.75, 1 + laserPassShield * 0.75, 0.001, 0.2 }, // shield
                         { 8, 8, 0.05, 0.5 }, // propellant
-                        { 0, 0.12, false, 0.005, 0.01, 0.5, 0 }, // engine: barely moves
+                        { 0, 0.2, false, 0.005, 0.01, 0.5, 0 }, // engine: slow creep into view
                         { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0, { 0, 0 } } };
                 case Enemy::eType::chaser:
                 default:
@@ -1013,19 +1014,20 @@ void World::_SteerEnemy( Enemy & _enemy )
             rocket.ActivateThrust();
             break;
         case Enemy::eType::sniper: {
-            // holds a standoff band around the ship:
+            // static gun platform: creeps closer only until parked inside the player's
+            // screen, then BRAKES HARD (otherwise the accumulated motion would coast it
+            // straight across and out of view), holds position and tracks; it never
+            // flees, so closing in to kill it always works
             const auto delta{ rocket.position - m_ship.position };
-            const auto distance{ delta.Distance() };
-            if( distance < sniperBandInner ) { // too close: run away
-                rocket.PointTo( rocket.position + delta, 0.3 );
-                rocket.ActivateThrust();
-            }
-            else if( distance > sniperBandOuter ) { // left behind: come back
+            if( std::abs( delta.u ) > m_screenCenter.u - sniperStationMargin
+                || std::abs( delta.v ) > m_screenCenter.v - sniperStationMargin ) {
                 rocket.Acquire( m_ship, 0.3 );
                 rocket.ActivateThrust();
             }
-            else
-                rocket.PointTo( m_ship.position, 0.4 ); // hold position and track
+            else {
+                rocket.thrustMotion *= 0.9; // station-keeping thrusters
+                rocket.PointTo( m_ship.position, 0.4 );
+            }
             break;
         }
         case Enemy::eType::chaser:
@@ -1050,12 +1052,16 @@ void World::_EnemyAction( Enemy & _enemy )
             }
             break;
         case Enemy::eType::sniper:
-            // fires a fast dumb slug at the ship's PREDICTED position:
+            // fires a fast dumb slug at the ship's PREDICTED position, but only while
+            // actually visible on the player's screen:
             if( _enemy.shotRate++ > sniperFirePeriodTicks ) {
-                const auto distance{ ( m_ship.position - _enemy.rocket.position ).Distance() };
-                if( m_shipDestroyed || distance > sniperMaxFireRange )
-                    return;
+                const auto delta{ _enemy.rocket.position - m_ship.position };
+                if( m_shipDestroyed
+                    || std::abs( delta.u ) > m_screenCenter.u - sniperFireMargin
+                    || std::abs( delta.v ) > m_screenCenter.v - sniperFireMargin )
+                    return; // hold fire, the cadence keeps accumulating
                 _enemy.shotRate = 0;
+                const auto distance{ delta.Distance() };
                 const auto predicted{ m_ship.position + m_ship.momentum * ( distance / slugSpeed ) };
                 const auto aim{ ( predicted - _enemy.rocket.position ).Orientation() + Maths::Random( -slugSpread, slugSpread ) };
                 m_slugs.emplace_back( Slug{ _enemy.rocket.position + Vector::From( aim, _enemy.rocket.dynamic.boundingBoxRadius + 12 ),
@@ -1242,7 +1248,9 @@ void World::_UpdateTurret()
         return;
     m_turretTicks--;
     if( m_turretTicks == 0 ) {
+        // goes out with a bang - a small friendly farewell blast:
         m_audio.Play( eSound::homingMissilesOff, 0.75 );
+        _Detonate( m_turretPosition, {}, eExplosion::medium, eFadeColor::azure, turretExpireBlastRadius, turretExpireBlastDamage, turretExpireBlastImpulse, true );
         return;
     }
 
@@ -1395,11 +1403,11 @@ void World::_UpdateSingularity()
         m_ship.shield.value -= shredDamage;
 
     // accretion disk sparkle:
-    for( int i{ 0 }; i < 3; i++ ) {
+    for( int i{ 0 }; i < 5; i++ ) {
         const auto angle{ Maths::Random( 0, Maths::Pi2 ) };
-        const auto radius{ Maths::Random( 40, 160 ) };
+        const auto radius{ Maths::Random( 40, 180 ) };
         _AddParticule( m_singularityPosition + Vector::From( angle, radius ),
-            Vector::From( angle + Maths::PiHalf, 1.5 ), angle + Maths::Pi, 0.6, Maths::Random( 0.5, 1.5 ), eFadeColor::violet );
+            Vector::From( angle + Maths::PiHalf, 2.2 ), angle + Maths::Pi, 0.6, Maths::Random( 0.5, 1.5 ), eFadeColor::violet );
     }
 }
 

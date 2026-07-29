@@ -23,7 +23,7 @@ When destroying an enemy, goodies may appears (50% chance):
 - **homing missiles pack** (*green* "**H**") that will add **20 missiles** reaching automatically the closest enemy
 - **magnetic mines pack** (*green* "**M**") that will add **10 magnetic** mines, attracted by the closest enemies
 - **plasma shield** (*green* "**S**") that will activate a **shield** during **5 seconds** (dynamic radius from *30* to *100* units)
-- **turret** (*green* "**T**") that will deploy a **mini-turret** orbiting your ship during **10 seconds** (durations stack), aiming at the closest enemy, gravity mine or incoming missile - with lead compensation - and firing at high rate
+- **turret** (*green* "**T**") that will deploy a **mini-turret** orbiting your ship during **10 seconds** (durations stack), aiming at the closest enemy, gravity mine or incoming missile - with lead compensation - and firing at high rate; it expires in a small farewell blast
 - **repulsor** (*red* "**R**"), instant: a massive **friendly shockwave** erupts from your ship - zero damage to you, huge knockback, and it chain-triggers every missile and mine in range
 - **decoy** (*green* "**D**") that will drop a pinging **beacon** where you grabbed it: enemy missiles chase it instead of you during **8 seconds** (or until it takes 3 hits)
 - **EMP** (*green* "**E**") that will shut down **enemy engines and launchers** during **4 seconds** (durations stack): they drift ballistically, at the mercy of attractors, gravity mines... and you
@@ -41,6 +41,7 @@ When destroying an enemy, goodies may appears (50% chance):
 ## Notes
 
 - Games start with a *10 seconds* plasma shield activated, so you can safely run away
+- An **optional in-game tutorial** (asked at the prologue, YES/NO) pauses the action the first time each kind of object becomes visible - enemy types, gravity mines, attractors, incoming missiles, and **every goody type individually** - and explains it, a callout pointing at the concerned item (once per session, retries included; the panel moves to the bottom when the item would hide behind it)
 - The closest enemy is designated by a faint line and, when 15+ ship lengths away, a **chevron** orbiting your ship with the distance in **ship lengths**
 - Scoring rewards *outcomes* over grinding: laser hit **2**, missile-on-missile trick **5**, goody pickup **5**, mine hit **5**, missile shot down **10**, gravity mine sniped **15**, attractor destroyed **25**, enemy destroyed **100** (and nothing for events you merely suffered)
 - All engines (left and right / upper and lower, and main engine) will consume propellant
@@ -60,7 +61,7 @@ When destroying an enemy, goodies may appears (50% chance):
 - **Explosions have a blast range**: anything caught in the impact zone takes distance-falloff damage and is knocked back; missiles and mines caught in a blast detonate in turn, so tight formations and mine fields go up in **chain reactions** (the plasma shield blocks blast damage, not the shove - and yes, exploding an enemy point-blank hurts you too)
 - The enemy roster is constant (each death respawns the same type off-screen; most shields increase with your laser fire power to remain fair):
   - **3 chasers** (*pink*) hunting you and launching a homing-missile every 5 seconds
-  - **1 sniper** (*pale red*) holding far away and firing fast **lead-compensated slugs** at your predicted position - punishes straight-line flying, helpless up close (**+150 pts**)
+  - **1 sniper** (*pale red*) creeping to the edge of your screen, then holding position and firing fast **lead-compensated slugs** at your predicted position - it only shoots when visible, punishes straight-line flying, and never flees: close in to finish it (**+150 pts**)
   - **2 wasps** (*yellow*, small and fast) ramming you kamikaze-style: fragile, but their death blasts chain (**+40 pts** each)
 - When your shield is fully depleted, the next hit destroys the ship: after the explosion, click to retry (the score resets, enemies keep patrolling the wreck in the background...)
 

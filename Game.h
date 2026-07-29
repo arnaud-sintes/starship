@@ -22,7 +22,10 @@ public:
 
 private:
     void _Restart();
+    std::pair< Vector, Vector > _PrologueButtonRect( const int _index ) const; // 0 = yes, 1 = no
+    bool _DetectTutorial();
     void _DrawPrologue( const NanoVGRenderer::Frame & _frame );
+    void _DrawTutorial( const NanoVGRenderer::Frame & _frame );
     void _DrawGameOver( const NanoVGRenderer::Frame & _frame );
     void _DrawCursor( const NanoVGRenderer::Frame & _frame );
 
@@ -39,10 +42,43 @@ private:
     {
         stage11_prologue,
         stage11,
+        tutorial, // world frozen behind an explanation panel
         gameOver,
     };
     eStep m_step{ eStep::stage11_prologue };
     bool m_clickArmed{ false }; // require a button release before accepting the retry click
+
+    // in-game tutorial (opt-in at the prologue): the first time each object type comes
+    // close, the game pauses and explains it (topics survive retries):
+    enum class eTutorial : size_t
+    {
+        chaser,
+        wasp,
+        sniper,
+        gravityMine,
+        attractor,
+        missile,
+        // one per goody, MUST follow the Goody::eType order (mapped by offset):
+        goodyLaserUp,
+        goodyHomingMissiles,
+        goodyMagneticMines,
+        goodyPlasmaShield,
+        goodyShieldAdd,
+        goodyPropellantAdd,
+        goodyTurret,
+        goodyRepulsor,
+        goodyDecoy,
+        goodyEmp,
+        goodyOverdrive,
+        goodySingularity,
+        goodyBlossom,
+        goodyHellstorm,
+        count
+    };
+    bool m_tutorialEnabled{ true };
+    std::array< bool, static_cast< size_t >( eTutorial::count ) > m_tutorialSeen{};
+    eTutorial m_tutorialTopic{ eTutorial::chaser };
+    Vector m_tutorialTarget; // world position of the concerned item
 
     double m_cursorFlash{ 0 };
     double m_overlayAnim{ 0 };

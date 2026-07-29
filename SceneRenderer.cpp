@@ -56,33 +56,63 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
         if( _Visible( _world, gravityMine.position, GravityMine::pullRange * 0.6 ) )
             gravityMine.Draw( _frame, translation );
 
-    // singularity: event horizon, accretion halo and counter-rotating swirl arcs,
-    // intensifying as the collapse approaches:
-    if( _world.SingularityActive() && _Visible( _world, _world.SingularityPosition(), 220 ) ) {
+    // singularity: layered accretion disk, precessing polar jets, gravitational
+    // lensing ring and a pure-black event horizon, all intensifying toward collapse:
+    if( _world.SingularityActive() && _Visible( _world, _world.SingularityPosition(), 280 ) ) {
         const auto position{ _world.SingularityPosition() + translation };
         m_singularityAnim += 0.12;
         const auto progress{ _world.SingularityProgress() };
         const auto intensity{ 0.7 + progress * 0.5 };
-        _frame.GradientCircle( position, 160 * intensity,
-            { 0.45, 0.2, 0.8, 0.35 + progress * 0.35 }, { 0.1, 0, 0.2, 0 } );
-        for( int k{ 0 }; k < 3; k++ ) {
-            const auto arcRadius{ ( 28 + k * 16 ) * intensity };
-            const auto arcAngle{ m_singularityAnim * ( k % 2 == 0 ? -1.6 : 1.3 ) + k * 2 };
-            _frame.StrokeArc( position, arcRadius, arcAngle, arcAngle + 1.8, { 0.8, 0.55, 1, 0.7 - k * 0.15 }, 2 );
+        {
+            const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+            // deep halo:
+            _frame.GradientCircle( position, 180 * intensity,
+                { 0.3, 0.12, 0.6, 0.3 + progress * 0.3 }, { 0.08, 0, 0.18, 0 } );
+            // accretion disk: six layered arcs, faster and hotter inward:
+            for( int k{ 0 }; k < 6; k++ ) {
+                const auto layer{ k / 5.0 };
+                const auto arcRadius{ ( 20 + k * 9 ) * intensity };
+                const auto arcAngle{ m_singularityAnim * ( 2.4 - layer * 1.6 ) * ( k % 2 == 0 ? -1 : 1 ) + k * 1.3 };
+                const Color_d arcColor{ 1 - layer * 0.4, 0.6 - layer * 0.35, 1, 0.75 - layer * 0.4 };
+                _frame.StrokeArc( position, arcRadius, arcAngle, arcAngle + 1.4 + layer, arcColor, 2.8 - layer * 1.4 );
+            }
+            // polar jets, slowly precessing:
+            const auto jetAngle{ m_singularityAnim * 0.18 };
+            for( int side{ -1 }; side <= 1; side += 2 )
+                for( int segment{ 0 }; segment < 3; segment++ ) {
+                    const auto from{ position + Vector::From( jetAngle, side * ( 16.0 + segment * 24 ) * intensity ) };
+                    const auto to{ position + Vector::From( jetAngle, side * ( 16.0 + ( segment + 1 ) * 24 ) * intensity ) };
+                    _frame.Line( from, to, { 0.8, 0.6, 1, 0.55 - segment * 0.17 }, 4.0 - segment * 1.2 );
+                }
+            // gravitational lensing ring, shimmering:
+            _frame.StrokeCircle( position, 15 * intensity, { 0.9, 0.7, 1, 0.45 + 0.25 * std::sin( m_singularityAnim * 4 ) }, 1.3 );
         }
-        _frame.FillCircle( position, 11 * intensity, { 0.02, 0, 0.05 } );
-        _frame.StrokeCircle( position, 12 * intensity, { 0.8, 0.5, 1, 0.75 + std::sin( m_singularityAnim * 3 ) * 0.2 }, 2 );
+        // event horizon (normal blending: it must stay BLACK), rim flickering:
+        _frame.FillCircle( position, ( 11 + std::sin( m_singularityAnim * 5 ) * 0.8 ) * intensity, { 0.01, 0, 0.03 } );
+        _frame.StrokeCircle( position, 12 * intensity, { 0.85, 0.55, 1, 0.75 + std::sin( m_singularityAnim * 3 ) * 0.2 }, 2 );
+        // pre-collapse white flare:
+        if( progress > 0.75 ) {
+            const auto flare{ ( progress - 0.75 ) * 4 };
+            _frame.FillCircle( position, flare * 9, { 1, 0.95, 1, flare * 0.85 } );
+        }
     }
 
-    // decoy beacon, pinging like a fake ship signature:
-    if( _world.DecoyActive() && _Visible( _world, _world.DecoyPosition(), 40 ) ) {
+    // decoy beacon: shiny pulsing white-hot core, orbiting sparkles and double sonar pings:
+    if( _world.DecoyActive() && _Visible( _world, _world.DecoyPosition(), 60 ) ) {
         const auto position{ _world.DecoyPosition() + translation };
-        m_decoyPing += 0.03;
+        m_decoyPing += 0.035;
         const auto ping{ m_decoyPing - std::floor( m_decoyPing ) };
-        constexpr Color_d beaconColor{ 1, 0.7, 0.3 };
-        _frame.FillCircle( position, 5, beaconColor );
-        _frame.StrokeCircle( position, 8, { beaconColor.r, beaconColor.g, beaconColor.b, 0.8 }, 1.5 );
-        _frame.StrokeCircle( position, 8 + ping * 26, { beaconColor.r, beaconColor.g, beaconColor.b, ( 1 - ping ) * 0.6 }, 2 );
+        const auto ping2{ m_decoyPing + 0.5 - std::floor( m_decoyPing + 0.5 ) };
+        const auto pulse{ ( std::sin( m_decoyPing * Maths::Pi2 ) + 1 ) * 0.5 };
+        constexpr Color_d beaconColor{ 1, 0.72, 0.28 };
+        _frame.GradientCircle( position, 46 + pulse * 10,
+            { beaconColor.r, beaconColor.g, beaconColor.b, 0.4 + pulse * 0.2 }, { 1, 0.4, 0.1, 0 } );
+        _frame.FillCircle( position, 6.5 + pulse * 2, { 1, 0.95, 0.8 } );
+        _frame.StrokeCircle( position, 10 + pulse * 2, { beaconColor.r, beaconColor.g, beaconColor.b, 0.95 }, 2 );
+        for( int i{ 0 }; i < 4; i++ )
+            _frame.FillCircle( position + Vector::From( m_decoyPing * 4 + i * Maths::PiHalf, 16 ), 1.8, { 1, 0.9, 0.6, 0.85 } );
+        _frame.StrokeCircle( position, 12 + ping * 34, { beaconColor.r, beaconColor.g, beaconColor.b, ( 1 - ping ) * 0.7 }, 2.5 );
+        _frame.StrokeCircle( position, 12 + ping2 * 34, { beaconColor.r, beaconColor.g, beaconColor.b, ( 1 - ping2 ) * 0.45 }, 2 );
     }
 
     // draw enemies (no target designation once the ship is gone):
@@ -121,10 +151,15 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
         if( _Visible( _world, missile.rocket.position, missile.rocket.dynamic.boundingBoxRadius + 60 ) )
             missile.rocket.Draw( _frame, translation );
 
-    // draw sniper slugs, hot tracer lines:
+    // draw sniper slugs: long hot tracers with a white-hot head, unmissable:
     for( const auto & slug : _world.Slugs() )
-        if( _Visible( _world, slug.position, 30 ) )
-            _frame.Line( slug.position + translation - slug.momentum, slug.position + translation, { 1, 0.55, 0.35, 0.95 }, 2.5 );
+        if( _Visible( _world, slug.position, 50 ) ) {
+            const auto head{ slug.position + translation };
+            _frame.GradientCircle( head, 24, { 1, 0.55, 0.25, 0.45 }, { 1, 0.3, 0.1, 0 } );
+            _frame.Line( head - slug.momentum * 2.5, head, { 1, 0.45, 0.2, 0.9 }, 5 ); // hot trail
+            _frame.Line( head - slug.momentum, head, { 1, 0.9, 0.7 }, 2.5 ); // white-hot core
+            _frame.FillCircle( head, 3, { 1, 0.85, 0.6 } );
+        }
 
     // draw attractors:
     _DrawAttractors( _world, _frame, translation );
@@ -149,11 +184,14 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
             { blast.ringColor.r, blast.ringColor.g, blast.ringColor.b, fade * 0.4 }, 1.5 + fade * 2 );
     }
 
-    // plasma shield:
+    // plasma shield, with an energy glow:
     const auto plasmaShieldSin{ std::sin( _world.PlasmaShieldRamp() * Maths::Pi ) };
     const auto plasmaShieldColor{ Color_d{ 0.5, 1, 0.75 } * plasmaShieldSin };
-    if( _world.PlasmaShieldActive() )
+    if( _world.PlasmaShieldActive() ) {
+        _frame.GradientCircle( m_screenCenter, _world.PlasmaShieldRadius() * 1.5,
+            { 0.3, 1, 0.6, 0.16 * plasmaShieldSin }, { 0.1, 0.6, 0.3, 0 } );
         _frame.StrokeCircle( m_screenCenter, _world.PlasmaShieldRadius(), plasmaShieldColor, 2 * plasmaShieldSin );
+    }
 
     // draw ship:
     if( !_world.ShipDestroyed() )
@@ -163,6 +201,7 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
     if( !_world.ShipDestroyed() && _world.TurretActive() ) {
         const auto position{ _world.TurretPosition() + translation };
         const auto orientation{ _world.TurretOrientation() };
+        _frame.GradientCircle( position, 22, { 0.4, 0.7, 1, 0.35 }, { 0.2, 0.4, 1, 0 } ); // glow
         _frame.FillCircle( position, 6, { 0.05, 0.12, 0.2 } );
         _frame.StrokeCircle( position, 6, { 0.5, 0.75, 1 }, 2 );
         _frame.Line( position + Vector::From( orientation, 5 ), position + Vector::From( orientation, 13 ), { 1, 0.45, 0.55 }, 2.5 ); // barrel toward the target
