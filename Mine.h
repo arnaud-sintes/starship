@@ -6,7 +6,7 @@
 struct Mine
 {
     Vector position;
-    const double damage;
+    double damage{ 0 };
 
     struct Dynamic
     {
@@ -17,5 +17,6 @@ struct Mine
     double grow{ 0 };
     bool alive{ true };
 
-    void Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation );
+    void Update(); // grow animation drives the collision radius
+    void Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation ) const;
 };

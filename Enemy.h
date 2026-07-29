@@ -1,20 +1,15 @@
 #pragma once
 
 #include "Rocket.h"
-#include "CuteSound.h"
+#include "AudioDirector.h"
 
 
 // --------------
 struct Enemy
 {
     Rocket rocket;
-    int shotRate;
-    CuteSound::Instance & sound_shipMainEngine;
-    CuteSound::Instance & sound_shipRotationEngine;
-
-    ~Enemy()
-    {
-        sound_shipMainEngine.Stop();
-        sound_shipRotationEngine.Stop();
-    }
+    int shotRate{ 0 };
+    AudioDirector::Loop sound_mainEngine;
+    AudioDirector::Loop sound_rotationEngine;
+    bool dead{ false }; // marked during collision passes, compacted at end of update
 };

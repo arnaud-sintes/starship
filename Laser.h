@@ -7,10 +7,10 @@
 struct Laser
 {
     Vector position;
-    const Vector momentum;
-    const double damage;
+    Vector momentum;
+    double damage{ 0 };
     int lifeSpan{ 0 };
-    const int maxLifeSpan{ 20 };
+    static constexpr int maxLifeSpan{ 20 };
 
     struct Dynamic
     {
@@ -19,6 +19,7 @@ struct Laser
     };
     Dynamic dynamic;
 
+    void Refresh(); // recompute the collision segment, call after any position change
     void Update();
-    void Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation );
+    void Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation ) const;
 };

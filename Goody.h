@@ -16,7 +16,7 @@ struct Goody
         shieldAdd,      // shield addition
         propellantAdd,  // propellant addition
     };
-    eType type;
+    eType type{ eType::laserUp };
 
     struct Dynamic
     {
@@ -27,5 +27,6 @@ struct Goody
 
     double grow{ 0 };
 
-    void Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation );
+    void Update(); // grow animation drives the collision radius
+    void Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation ) const;
 };

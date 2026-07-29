@@ -9,5 +9,6 @@
     <LocalDebuggerWorkingDirectory>$(SolutionDir).runtime/$(Configuration)</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerCommandArguments>$(SolutionDir)res $(SolutionDir).runtime/$(Configuration)/resource.dat</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArgumentsHistory>C:\projects\personal\starship\res C:\projects\personal\starship\.runtime/Release/resource.dat|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
 </Project>

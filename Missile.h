@@ -1,29 +1,17 @@
 #pragma once
 
 #include "Rocket.h"
-#include "CuteSound.h"
+#include "AudioDirector.h"
 
 // --------------
 struct Missile
 {
     Rocket rocket;
-    bool targetShip;
-    const Rocket & origin;
-    CuteSound::Instance & sound_run;
+    bool targetShip{ false };
+    unsigned long long originId{ 0 }; // rocket id of the launcher (safe cross-reference)
+    bool fromShip{ false };
+    AudioDirector::Loop sound_run;
     bool bypassCollision{ false };
     int lifeSpan{ 0 };
-    bool sound_runActive{ true };
-
-    void StopSound()
-    {
-        if( !sound_runActive )
-            return;
-        sound_run.Stop();
-        sound_runActive = false;
-    }
-
-    ~Missile()
-    {
-        StopSound();
-    }
+    bool dead{ false }; // marked during collision passes, compacted at end of update
 };

@@ -20,8 +20,6 @@ public:
     static std::optional< std::string > GetTemporaryFolder();
 
 private:
-    using FnHook = std::function< void( const unsigned long _key, const bool _pressed ) >;
-    static void _InstallKeyboardHook( const bool _install, const Handle & _wnd, FnHook && _hook = nullptr );
     static Handle _GetModuleHandle();
     static void _ShowWindow( const Handle & _wnd, const bool _show = true );
     static void _ResizeWindow( const Handle & _wnd, const Dimension_ui & _dimension );
@@ -97,7 +95,7 @@ private:
     const Dimension_ui m_dimension;
     const Handle m_wnd;
     const Handle m_dc;
-    std::array< std::atomic< bool >, 255 > m_keyPressed;
+    std::array< bool, 255 > m_keyPressed{}; // filled by Dispatch, read from the same thread
     bool m_leftMouseButtonPressed{ false };
     bool m_rightMouseButtonPressed{ false };
 };

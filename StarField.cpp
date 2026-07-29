@@ -7,14 +7,18 @@ StarField::StarField( const Dimension_ui & _dimension )
     , m_maxDimension{ ( m_dimension.width > m_dimension.height ? m_dimension.width : m_dimension.height ) + 200 } // margin
     , m_rndPos{ 0, static_cast< unsigned int >( m_maxDimension ) }
 {
-    std::vector< Layer > layers{
+    const std::vector< Layer > layers{
         // d     speed   color        radius
         { 2000,  1,  2,  0.25, 0.5,   0.5,  0.75 },
         { 500,   3,  5,  0.25, 0.75,  0.75, 1    },
         { 150,   5,  8,  0.5,  0.75,  1,    1.5  },
         { 25,    8, 21,  0.5,  1,     1.5,  2    },
     };
-    for( auto & layer : layers )
+    size_t total{ 0 };
+    for( const auto & layer : layers )
+        total += layer.density;
+    m_field.reserve( total );
+    for( const auto & layer : layers )
         for( int d{ 0 }; d < layer.density; d++ ) {
             const double x{ static_cast< double >( m_rndPos( m_rnd ) ) };
             const double y{ static_cast< double >( m_rndPos( m_rnd ) ) };
@@ -32,8 +36,11 @@ StarField::StarField( const Dimension_ui & _dimension )
 void StarField::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _speed )
 {
     const double hzSpeedFactor{ 0.1 };
+    const double xOffset{ static_cast< double >( m_dimension.width >> 1 ) - static_cast< double >( m_maxDimension >> 1 ) };
+    const double yOffset{ static_cast< double >( m_dimension.height >> 1 ) - static_cast< double >( m_maxDimension >> 1 ) };
     for( auto & star : m_field ) {
-        _frame.FillCircle( { star.x - ( m_maxDimension >> 1 ) + ( m_dimension.width >> 1 ), star.y - ( m_maxDimension >> 1 ) + ( m_dimension.height >> 1 ) }, star.radius, { star.c, star.c, 1 } );
+        // sub-pixel stars don't need antialiasing, which dominates the tessellation cost:
+        _frame.FillCircle( { star.x + xOffset, star.y + yOffset }, star.radius, { star.c, star.c, 1 }, star.radius >= 1.5 );
         star.x += ( -star.speed * ( _speed.u * hzSpeedFactor ) );
         star.y += ( -star.speed * ( _speed.v * hzSpeedFactor ) );
         if( _speed.u < 0 && star.x >= m_maxDimension ) { star.x = 0; star.y = m_rndPos( m_rnd ); }

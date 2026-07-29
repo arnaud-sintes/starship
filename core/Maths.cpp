@@ -17,7 +17,7 @@ double Vector::DotProd( const Vector & _other ) const
 
 double Vector::CrossProd( const Vector & _other ) const
 {
-    return u * _other.v + v * _other.u;
+    return u * _other.v - v * _other.u;
 }
 
 
@@ -118,7 +118,8 @@ bool Maths::Collision( const Vector & _circleA, const double _radiusA, const Vec
 {
     const double u{ _circleA.u - _circleB.u };
     const double v{ _circleA.v - _circleB.v };
-    return std::sqrt( u * u + v * v ) <= _radiusA + _radiusB;
+    const double radius{ _radiusA + _radiusB };
+    return u * u + v * v <= radius * radius;
 }
 
 std::optional< Vector > Maths::Collision( const Vector & _circle, const double _radius, const Vector & _segmentA, const Vector & _segmentB )
@@ -157,16 +158,15 @@ double Maths::Random( const double _min, const double _max )
 {
     static std::random_device rndDev;
     static std::mt19937 rnd{ rndDev() };
-    constexpr unsigned int maxRandom{ 10000 };
-    static std::uniform_int_distribution< std::mt19937::result_type > rndDist{ 0, maxRandom };
-    return static_cast< double >( rndDist( rnd ) ) * ( _max - _min ) / maxRandom + _min;
+    std::uniform_real_distribution< double > rndDist{ _min, _max };
+    return rndDist( rnd );
 }
 
 
 void Maths::Increase( double & _value, const double _increaser, const double _max )
 {
-    if( _value < ( _max - _increaser ) )
-        _value += _increaser;
+    if( _value < _max )
+        _value = std::min( _value + _increaser, _max );
 }
 
 

@@ -7,9 +7,10 @@
 struct Particule
 {
     Vector position;
-    const Vector momentum;
-    double lifeSpan;
-    const double width;
-    const eFadeColor fadeColor = eFadeColor::orange;
-    Color_d GetColor() { return Color< double >::FadeColor( fadeColor, ( 3 - lifeSpan ) / 3 ); }
+    Vector momentum;
+    double lifeSpan{ 0 };
+    double width{ 0 };
+    eFadeColor fadeColor{ eFadeColor::orange };
+
+    Color_d GetColor() const { return Color< double >::FadeColor( fadeColor, ( 3 - lifeSpan ) / 3 ); }
 };

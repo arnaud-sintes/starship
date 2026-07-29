@@ -1,15 +1,19 @@
 #include "Goody.h"
 
 
-void Goody::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation )
+void Goody::Update()
 {
     grow += 0.1;
-    const auto sinGrow{ std::sin( grow ) };
-    dynamic.radius = 14 + sinGrow * 2;
+    dynamic.radius = 14 + std::sin( grow ) * 2;
+    dynamic.reflectAnimation += 0.3;
+}
 
+
+void Goody::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translation ) const
+{
     struct TypeInfo
     {
-        std::string letter;
+        const char * letter;
         Vector adjust;
         enum class eColorScheme {
             red,
@@ -18,7 +22,7 @@ void Goody::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translat
         };
         eColorScheme colorScheme;
     };
-    static std::unordered_map< eType, TypeInfo > infos{
+    static const std::unordered_map< eType, TypeInfo > infos{
         { eType::laserUp, { "L", { 5, 8 }, TypeInfo::eColorScheme::red } },
         { eType::homingMissiles, { "H", { 7, 8 }, TypeInfo::eColorScheme::green } },
         { eType::magneticMines, { "M", { 9, 8 }, TypeInfo::eColorScheme::green } },
@@ -28,6 +32,7 @@ void Goody::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translat
     };
     const auto & info{ infos.find( type )->second };
 
+    const auto sinGrow{ std::sin( grow ) };
     Color_d color;
     switch( info.colorScheme ) {
         case TypeInfo::eColorScheme::red: color = Color_d{ 1, 0.5, ( sinGrow + 1 ) * 0.5 }; break;
@@ -36,5 +41,5 @@ void Goody::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translat
     }
     _frame.StrokeCircle( position + _translation, dynamic.radius, color, 4 );
     _frame.Text( position + _translation - info.adjust, "openSansBold", 20, info.letter, colorWhite );
-    _frame.Reflect( position + _translation, dynamic.radius, color, -0.4, dynamic.reflectAnimation += 0.3 );
+    _frame.Reflect( position + _translation, dynamic.radius, color, -0.4, dynamic.reflectAnimation );
 }

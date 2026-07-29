@@ -8,8 +8,12 @@
 #include <sstream>
 #include <string>
 #include <array>
+#include <vector>
+#include <list>
+#include <optional>
 #include <random>
-#include <thread>
+#include <numbers>
+#include <format>
 #include <unordered_set>
 #include <unordered_map>
 #include <functional>

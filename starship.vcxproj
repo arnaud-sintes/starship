@@ -29,26 +29,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -161,16 +161,21 @@
   <ItemGroup>
     <ClCompile Include="external\glew\glew.c" />
     <ClCompile Include="external\nanovg\nanovg.c" />
+    <ClCompile Include="AttractorField.cpp" />
+    <ClCompile Include="Audio.cpp" />
+    <ClCompile Include="AudioDirector.cpp" />
+    <ClCompile Include="Game.cpp" />
     <ClCompile Include="Goody.cpp" />
+    <ClCompile Include="Hud.cpp" />
     <ClCompile Include="Laser.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Mine.cpp" />
     <ClCompile Include="NanoVGRenderer.cpp" />
     <ClCompile Include="OpenGL.cpp" />
-    <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="Rocket.cpp" />
-    <ClCompile Include="CuteSound.cpp" />
+    <ClCompile Include="SceneRenderer.cpp" />
     <ClCompile Include="StarField.cpp" />
+    <ClCompile Include="World.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Enemy.h" />
@@ -183,17 +188,22 @@
     <ClInclude Include="external\nanovg\nanovg_gl_utils.h" />
     <ClInclude Include="external\nanovg\stb_image.h" />
     <ClInclude Include="external\nanovg\stb_truetype.h" />
+    <ClInclude Include="AttractorField.h" />
+    <ClInclude Include="Audio.h" />
+    <ClInclude Include="AudioDirector.h" />
+    <ClInclude Include="Game.h" />
     <ClInclude Include="Goody.h" />
+    <ClInclude Include="Hud.h" />
     <ClInclude Include="Laser.h" />
     <ClInclude Include="Mine.h" />
     <ClInclude Include="Missile.h" />
     <ClInclude Include="NanoVGRenderer.h" />
     <ClInclude Include="OpenGL.h" />
     <ClInclude Include="Particule.h" />
-    <ClInclude Include="Renderer.h" />
     <ClInclude Include="Rocket.h" />
-    <ClInclude Include="CuteSound.h" />
+    <ClInclude Include="SceneRenderer.h" />
     <ClInclude Include="StarField.h" />
+    <ClInclude Include="World.h" />
     <ClInclude Include="version.h" />
   </ItemGroup>
   <ItemGroup>

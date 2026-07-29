@@ -103,16 +103,14 @@ struct Color
 
     static Color FadeColor( const eFadeColor _color, double _ratio )
     {
-        static const std::unordered_map< eFadeColor, std::function< Color( const double ) > > funcs
-        {
-            { eFadeColor::orange, []( const double _ratio ){ return FadeOrange( _ratio ); } },
-            { eFadeColor::rose, []( const double _ratio ){ return FadeRose( _ratio ); } },
-            { eFadeColor::radium, []( const double _ratio ){ return FadeRadium( _ratio ); } },
-            { eFadeColor::green, []( const double _ratio ){ return FadeGreen( _ratio ); } },
-            { eFadeColor::violet, []( const double _ratio ){ return FadeViolet( _ratio ); } },
-            { eFadeColor::azure, []( const double _ratio ){ return FadeAzure( _ratio ); } },
-        };
-        return funcs.find( _color )->second( _ratio );
+        switch( _color ) {
+            case eFadeColor::rose: return FadeRose( _ratio );
+            case eFadeColor::radium: return FadeRadium( _ratio );
+            case eFadeColor::green: return FadeGreen( _ratio );
+            case eFadeColor::violet: return FadeViolet( _ratio );
+            case eFadeColor::azure: return FadeAzure( _ratio );
+            case eFadeColor::orange: default: return FadeOrange( _ratio );
+        }
     }
 };
 
@@ -138,6 +136,7 @@ struct Vector
     double DotProd( const Vector & _other ) const;
     double CrossProd( const Vector & _other ) const;
     double Distance() const;
+    double DistanceSquared() const { return u * u + v * v; }
     Vector & Normalize();
     Vector Normalized() const;
     double Orientation() const;
@@ -162,7 +161,7 @@ struct Vector
 // --------------
 struct Maths
 {
-    inline static const double Pi{ 3.1415927 };
+    inline static const double Pi{ std::numbers::pi };
     inline static const double Pi2{ Pi * 2 };
     inline static const double PiHalf{ Pi / 2 };
     inline static const double PiQuarter{ Pi / 4 };

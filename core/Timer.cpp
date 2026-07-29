@@ -27,7 +27,7 @@ Timer::Timer()
 
 Timer::~Timer()
 {
-	::FreeLibrary( m_ntDll.As< ::HMODULE >() );
+	// the module handle comes from GetModuleHandle and is not owned: nothing to free
 }
 
 

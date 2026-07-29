@@ -1,6 +1,6 @@
 #include "NanoVGRenderer.h"
 #include "core/Timer.h"
-#include "Renderer.h"
+#include "Game.h"
 #include "core/Packer.h"
 #include "core/Macros.h"
 #include "version.h"
@@ -16,10 +16,9 @@ int main( int, char * )
     const Dimension_ui & windowDimension{ window.GetDimension() };
     window.ShowCursor( false );
     auto & timer{ Timer::GetInstance() }; // init nano precision
-    //Win32::SetProcessRealtimePriority();
-    //Win32::SetThreadRealtimePriority();
     OpenGL ogl{ window };
     NanoVGRenderer nanoVG{ ogl };
+    ogl.MakeCurrent().SetSwapInterval( 0 ); // frame pacing is owned by the Timer, don't let SwapBuffers block on vsync
     const auto resources{ Packer::UnPack( "./resource.dat" ) };
     if( !resources )
         return -1;
@@ -28,7 +27,7 @@ int main( int, char * )
     nanoVG.CreateFont( "sourceCodePro", resources->find( "SourceCodePro-Regular.ttf" )->second );
 
     const unsigned long long frameRate{ 60 }; // 60 fps target
-    Renderer renderer{ window, *resources, frameRate };
+    Game game{ window, *resources, static_cast< int >( frameRate ) };
 
     Timer::FpsContext fpsContext{ frameRate };
     while( window.Dispatch() ) {
@@ -39,17 +38,13 @@ int main( int, char * )
         const auto frame{ nanoVG.CreateFrame( windowDimension ) };
 
         // main loop:
-        renderer.Loop( frame );
-            
+        game.RunFrame( frame );
+
         // frame rate information:
         #ifdef _DISPLAY_FPS
         temper.Update();
         const auto & fpsState{ fpsContext.Update() };
-        std::stringstream ssFps;
-        ssFps << "FPS: " << std::setprecision( 3 ) << fpsState.avgFrameRate;
-        std::stringstream ssConsumption;            
-        ssConsumption << " (" << std::setprecision( 3 ) << fpsState.avgConsumption << "%)";
-        const std::string fps{ ssFps.str() + ssConsumption.str() + ( fpsState.frameDropped ? " [frame dropped]" : "" ) };
+        const std::string fps{ std::format( "FPS: {:.3} ({:.3}%){}", fpsState.avgFrameRate, fpsState.avgConsumption, fpsState.frameDropped ? " [frame dropped]" : "" ) };
         frame.Text( { 2, windowDimension.ToType< double >().height - 2 }, "sourceCodePro", 14, fps, { 1, 1, 1 }, NanoVGRenderer::Frame::eTextAlign::bottomLeft );
         #endif
     }
