@@ -37,6 +37,15 @@ bool AudioDirector::_Init( const Packer::Resources & _resources )
         "plasmaShieldOff.wav",
         "shieldRepair.wav",
         "propellantRefuel.wav",
+        "turret.wav",
+        "turretOff.wav",
+        "decoy.wav",
+        "emp.wav",
+        "overdrive.wav",
+        "singularity.wav",
+        "blossom.wav",
+        "hellstorm.wav",
+        "repulsor.wav",
         "attractorLaserCollision.wav",
         "attractorExplosion.wav",
         "attractorShipCollision.wav",
@@ -87,6 +96,21 @@ unsigned long long AudioDirector::_CooldownTicks( const eSound _sound )
 }
 
 
+double AudioDirector::_BaseGain( const eSound _sound )
+{
+    switch( _sound ) {
+        // explosions were mixed too hot - trim them 20% uniformly across all call sites:
+        case eSound::missileExplosion:
+        case eSound::mineExplosion:
+        case eSound::shipExplosion:
+        case eSound::attractorExplosion:
+            return 0.7;
+        default:
+            return 1.0;
+    }
+}
+
+
 bool AudioDirector::_CoolingDown( const eSound _sound )
 {
     auto & lastPlayed{ m_lastPlayed.at( static_cast< size_t >( _sound ) ) };
@@ -101,7 +125,7 @@ void AudioDirector::Play( const eSound _sound, const double _volume )
 {
     if( _volume <= 0 || _CoolingDown( _sound ) )
         return;
-    m_audio.Play( static_cast< size_t >( _sound ), { _volume, {}, {} } );
+    m_audio.Play( static_cast< size_t >( _sound ), { _volume * _BaseGain( _sound ), {}, {} } );
 }
 
 
@@ -110,7 +134,7 @@ void AudioDirector::PlayAt( const eSound _sound, const Vector & _listenerRelativ
     const auto position{ Locate( _listenerRelativePosition ) };
     if( position.volume <= 0 || _CoolingDown( _sound ) )
         return;
-    m_audio.Play( static_cast< size_t >( _sound ), { position.volume, position.pan, {} } );
+    m_audio.Play( static_cast< size_t >( _sound ), { position.volume * _BaseGain( _sound ), position.pan, {} } );
 }
 
 

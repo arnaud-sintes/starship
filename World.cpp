@@ -318,7 +318,7 @@ void World::_HandleControls( const PlayerInput & _input )
     if( m_homingMissiles > 0 && m_missileCadence++ > 25 && _input.fire ) {
         m_homingMissiles--;
         if( m_homingMissiles == 0 )
-            m_audio.Play( eSound::homingMissilesOff, 0.75 );
+            m_audio.Play( eSound::homingMissilesOff, 0.9 );
         m_missileCadence = 0;
         _SpawnMissile( m_ship, false );
         m_audio.Play( eSound::missileShot );
@@ -336,7 +336,7 @@ void World::_HandleControls( const PlayerInput & _input )
             m_magneticMines--;
             m_audio.Play( eSound::magneticMinesDrop );
             if( m_magneticMines == 0 )
-                m_audio.Play( eSound::magneticMinesOff, 0.75 );
+                m_audio.Play( eSound::magneticMinesOff, 0.9 );
         }
     }
 }
@@ -477,47 +477,48 @@ void World::_CollectGoody( const Goody::eType _type )
             else if( m_laserPass == eLaserPass::height )    m_laserSpeed = eLaserSpeed::fast;
         }
         if( currentLaserSpeed != m_laserSpeed || currentLaserPass != m_laserPass )
-            m_audio.Play( eSound::laserPowerUp, 0.75 );
+            m_audio.Play( eSound::laserPowerUp, 0.9 );
         return;
     }
     if( _type == Goody::eType::homingMissiles ) {
         m_homingMissiles += 30; // 30x missiles pack
-        m_audio.Play( eSound::homingMissiles, 0.75 );
+        m_audio.Play( eSound::homingMissiles, 0.9 );
         return;
     }
     if( _type == Goody::eType::magneticMines ) {
         m_magneticMines += 10; // 10x mines pack
-        m_audio.Play( eSound::magneticMines, 0.75 );
+        m_audio.Play( eSound::magneticMines, 0.9 );
         return;
     }
     if( _type == Goody::eType::plasmaShield ) {
         m_plasmaShield += m_frameRate * 5; // 5 seconds plasma shield
-        m_audio.Play( eSound::plasmaShield, 0.75 );
+        m_audio.Play( eSound::plasmaShield, 0.9 );
         return;
     }
     if( _type == Goody::eType::shieldAdd ) {
         if( m_ship.shield.value >= m_ship.shield.capacity )
             return;
         m_ship.shield.value = std::min( m_ship.shield.value + m_ship.shield.capacity * 0.5, m_ship.shield.capacity ); // 50% capacity boost
-        m_audio.Play( eSound::shieldRepair, 0.75 );
+        m_audio.Play( eSound::shieldRepair, 0.9 );
         return;
     }
     if( _type == Goody::eType::propellantAdd ) {
         if( m_ship.propellant.value >= m_ship.propellant.capacity )
             return;
         m_ship.propellant.value = std::min( m_ship.propellant.value + m_ship.propellant.capacity * 0.5, m_ship.propellant.capacity ); // 50% capacity boost
-        m_audio.Play( eSound::propellantRefuel, 0.75 );
+        m_audio.Play( eSound::propellantRefuel, 0.9 );
         return;
     }
     if( _type == Goody::eType::turret ) {
         if( m_turretTicks == 0 )
             m_turretOrbitAngle = m_ship.orientation; // deploy behind the ship
         m_turretTicks += m_frameRate * turretDurationSeconds; // durations stack
-        m_audio.Play( eSound::laserPowerUp, 0.75 );
+        m_audio.Play( eSound::turret, 0.9 );
         return;
     }
     if( _type == Goody::eType::repulsor ) {
         // instant: a friendly shockwave - zero damage, huge knockback, chain-triggering
+        m_audio.Play( eSound::repulsor, 0.9 );
         m_audio.Play( eSound::attractorExplosion );
         _Detonate( m_ship.position, {}, eExplosion::big, eFadeColor::green, repulsorBlastRadius, 0, repulsorBlastImpulse, true );
         return;
@@ -526,34 +527,34 @@ void World::_CollectGoody( const Goody::eType _type )
         m_decoyPosition = m_ship.position; // dropped where it was picked
         m_decoyTicks = m_frameRate * decoyDurationSeconds; // redeployed, not stacked
         m_decoyHp = decoyHitPoints;
-        m_audio.Play( eSound::magneticMinesDrop, 0.75 );
+        m_audio.Play( eSound::decoy, 0.9 );
         return;
     }
     if( _type == Goody::eType::emp ) {
         m_empTicks += m_frameRate * empDurationSeconds; // durations stack
-        m_audio.Play( eSound::plasmaShieldOff, 0.75 );
+        m_audio.Play( eSound::emp, 0.9 );
         return;
     }
     if( _type == Goody::eType::overdrive ) {
         m_overdriveTicks += m_frameRate * overdriveDurationSeconds; // durations stack
-        m_audio.Play( eSound::propellantRefuel, 0.75 );
+        m_audio.Play( eSound::overdrive, 0.9 );
         return;
     }
     if( _type == Goody::eType::singularity ) {
         m_singularityPosition = m_ship.position; // deployed where it was picked
         m_singularityTotalTicks = m_frameRate * singularityDurationSeconds;
         m_singularityTicks = m_singularityTotalTicks;
-        m_audio.Play( eSound::plasmaShield );
+        m_audio.Play( eSound::singularity );
         return;
     }
     if( _type == Goody::eType::blossom ) {
         m_blossomTicks += m_frameRate * blossomDurationSeconds; // durations stack
-        m_audio.Play( eSound::laserPowerUp );
+        m_audio.Play( eSound::blossom );
         return;
     }
     if( _type == Goody::eType::hellstorm ) {
         // instant: a spiral fan of homing missiles
-        m_audio.Play( eSound::homingMissiles );
+        m_audio.Play( eSound::hellstorm, 0.9 );
         m_audio.Play( eSound::missileShot );
         for( int i{ 0 }; i < hellstormMissiles; i++ )
             _SpawnMissile( m_ship, false, Maths::Pi2 * i / hellstormMissiles, 65, 4 );
@@ -741,7 +742,7 @@ void World::_UpdatePlasmaShield()
     if( m_plasmaShield > 0 ) {
         m_plasmaShield--;
         if( m_plasmaShield == 0 )
-            m_audio.Play( eSound::plasmaShieldOff, 0.75 );
+            m_audio.Play( eSound::plasmaShieldOff, 0.9 );
     }
     m_plasmaShieldIncrement += 4;
     if( m_plasmaShieldIncrement > 100 )
@@ -1223,7 +1224,7 @@ void World::_UpdateBonuses()
             m_ship.consumptionFactor = 1;
             m_ship.engine.power = m_shipBaseEnginePower;
             m_ship.engine.thrust = std::min( m_ship.engine.thrust, m_ship.engine.power );
-            m_audio.Play( eSound::homingMissilesOff, 0.75 );
+            m_audio.Play( eSound::homingMissilesOff, 0.9 );
         }
     }
 
@@ -1249,7 +1250,7 @@ void World::_UpdateTurret()
     m_turretTicks--;
     if( m_turretTicks == 0 ) {
         // goes out with a bang - a small friendly farewell blast:
-        m_audio.Play( eSound::homingMissilesOff, 0.75 );
+        m_audio.Play( eSound::turretOff, 0.9 );
         _Detonate( m_turretPosition, {}, eExplosion::medium, eFadeColor::azure, turretExpireBlastRadius, turretExpireBlastDamage, turretExpireBlastImpulse, true );
         return;
     }
@@ -1549,7 +1550,7 @@ void World::_UpdateAlerts()
     if( m_ship.shield.value < ( m_ship.shield.capacity * 0.25 ) ) {
         if( !m_shieldAlert ) {
             m_shieldAlert = true;
-            m_audio.Play( eSound::lowShieldAlert, 0.75 );
+            m_audio.Play( eSound::lowShieldAlert, 0.9 );
         }
     }
     else
@@ -1559,7 +1560,7 @@ void World::_UpdateAlerts()
     if( m_ship.propellant.value < ( m_ship.propellant.capacity * 0.25 ) ) {
         if( !m_fuelAlert ) {
             m_fuelAlert = true;
-            m_audio.Play( eSound::lowFuelAlert, 0.75 );
+            m_audio.Play( eSound::lowFuelAlert, 0.9 );
         }
     }
     else

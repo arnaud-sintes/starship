@@ -32,6 +32,15 @@ enum class eSound : size_t
     plasmaShieldOff,
     shieldRepair,
     propellantRefuel,
+    turret,
+    turretOff,
+    decoy,
+    emp,
+    overdrive,
+    singularity,
+    blossom,
+    hellstorm,
+    repulsor,
     attractorLaserCollision,
     attractorExplosion,
     attractorShipCollision,
@@ -78,6 +87,7 @@ public:
 private:
     bool _Init( const Packer::Resources & _resources );
     static unsigned long long _CooldownTicks( const eSound _sound );
+    static double _BaseGain( const eSound _sound ); // per-sound mix trim, applied to every play
     bool _CoolingDown( const eSound _sound );
 
 private:
