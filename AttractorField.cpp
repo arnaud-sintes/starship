@@ -21,9 +21,19 @@ void AttractorField::Generate( const int _count, const double _range, const doub
                     break;
                 }
         }
-        m_attractors.emplace_back( Attractor{ position, mass, 10.0 * mass, radius } );
+        m_attractors.emplace_back( Attractor{ position, mass, 10.0 * mass, radius } ).rank = Maths::Random( 0, 1 );
         m_cells[ _CellKey( _Cell( position.u ), _Cell( position.v ) ) ].emplace_back( i );
         m_maxMass = std::max( m_maxMass, mass );
+    }
+}
+
+
+void AttractorField::ApplyDensity( const Vector & _viewer, const double _safeDistance )
+{
+    for( auto & attractor : m_attractors ) {
+        const bool wantHidden{ attractor.rank >= m_density };
+        if( attractor.hidden != wantHidden && ( attractor.position - _viewer ).DistanceSquared() >= _safeDistance * _safeDistance )
+            attractor.hidden = wantHidden;
     }
 }
 

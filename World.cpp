@@ -2,26 +2,19 @@
 
 // *** TODO list:
 // - functional:
-//      - add stages, with different ennemies (more variety) and specific choregraphies
+//      - more stages (StageDirector.cpp), with different ennemies (more variety) and specific choregraphies
 //      - add special stages (asteroid field, mine field, rescue broken ship etc.)
 //      - end of stage big boss
 
 namespace
 {
-    // concurrent enemy roster, each death respawns the same type off-screen:
-    constexpr std::pair< Enemy::eType, int > enemyRoster[]{
-        { Enemy::eType::chaser, 3 },
-        { Enemy::eType::sniper, 1 },
-        { Enemy::eType::wasp, 2 },
-    };
-
     // enemy behaviors:
     constexpr int sniperFirePeriodTicks{ 110 };
     constexpr double sniperStationMargin{ 140 }; // it creeps until parked comfortably INSIDE the visible screen...
     constexpr double sniperFireMargin{ 60 };     // ...and only fires while visible
     constexpr double slugSpeed{ 14 }, slugDamage{ 1.5 }, slugSpread{ 0.03 };
 
-    constexpr int attractorsCount{ 1000 };
+    constexpr int attractorsCount{ 1600 }; // generated once; the missions reveal a growing share of them
     constexpr double attractorsRange{ 10000 };
     constexpr double attractorsSecurityDistance{ 200 };
 
@@ -58,6 +51,10 @@ namespace
     constexpr double blossomSpin{ 0.13 }; // per tick, one revolution every ~0.8s
     constexpr int hellstormMissiles{ 16 };
 
+    // goody drop weights:
+    constexpr double goodyWeightUnlocked{ 1 };  // the regulars
+    constexpr double goodyWeightFresh{ 0.6 };   // freshly unlocked, during their first mission
+
     constexpr size_t maxParticules{ 2500 }; // global cap, keeps sustained blast chains from melting the frame
 
     // turret bonus:
@@ -69,7 +66,6 @@ namespace
     constexpr double turretExpireBlastRadius{ 90 }, turretExpireBlastDamage{ 1 }, turretExpireBlastImpulse{ 10 };
 
     // enemy gravity mines population, maintained in a band around the ship:
-    constexpr size_t gravityMineCount{ 32 };
     constexpr double gravityMineSpawnMin{ 0.7 }, gravityMineSpawnMax{ 1.5 }; // in max screen dimensions
     constexpr double gravityMineDespawn{ 2.2 };
     constexpr double gravityMineSeparation{ 300 };
@@ -87,7 +83,7 @@ namespace
 }
 
 
-World::World( AudioDirector & _audio, const Dimension_ui & _screenDimension, const int _frameRate )
+World::World( AudioDirector & _audio, const Dimension_ui & _screenDimension, const int _frameRate, const WorldCheckpoint & _checkpoint )
     : m_audio{ _audio }
     , m_screenDimension{ _screenDimension }
     , m_screenCenter{ static_cast< double >( _screenDimension.width ) * 0.5, static_cast< double >( _screenDimension.height ) * 0.5 }
@@ -98,6 +94,13 @@ World::World( AudioDirector & _audio, const Dimension_ui & _screenDimension, con
         { 20, 20, 0.015, 0.75 }, // propellant
         { 0, 0.5, false, 0.005, 0.01, 0.75, 0 }, // engine
         { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0, { 0, 0 } } } // rotators
+    , m_stage{ _frameRate, _checkpoint.progress }
+    , m_checkpoint{ _checkpoint }
+    , m_score{ _checkpoint.score }
+    , m_laserSpeed{ static_cast< eLaserSpeed >( _checkpoint.laserSpeed ) }
+    , m_laserPass{ static_cast< eLaserPass >( _checkpoint.laserPass ) }
+    , m_homingMissiles{ _checkpoint.homingMissiles }
+    , m_magneticMines{ _checkpoint.magneticMines }
     , m_plasmaShield{ _frameRate * 10 } // 10 seconds immunity at startup
     , m_wind{ _frameRate }
 {
@@ -110,11 +113,12 @@ World::World( AudioDirector & _audio, const Dimension_ui & _screenDimension, con
     m_sound_shipMainEngine = m_audio.CreateLoop( eSound::shipMainEngine, { 0.0, {}, {} } );
     m_sound_shipRotationEngine = m_audio.CreateLoop( eSound::shipRotationEngine, { 0.0, {}, {} } );
 
-    for( const auto & [ type, count ] : enemyRoster )
-        for( int i{ 0 }; i < count; i++ )
-            _AddEnemy( type );
+    for( const auto type : m_stage.Missing( m_enemies ) )
+        _AddEnemy( type );
 
     m_attractors.Generate( attractorsCount, attractorsRange, attractorsSecurityDistance, 1, 2 );
+    m_attractors.SetDensity( m_stage.Mission().attractorDensity );
+    m_attractors.ApplyDensity( m_ship.position, 0 ); // nobody is watching yet
 }
 
 
@@ -232,6 +236,7 @@ void World::Update( const PlayerInput & _input )
     _UpdateMissileCollisions();
     _UpdateShipAttractorCollisions();
     _UpdateEnemies();
+    _UpdateMission();
     _UpdateMines();
     _UpdateGravityMines();
     _UpdateAttractorsDeletion();
@@ -568,15 +573,38 @@ void World::_MaybeDropGoody( const Vector & _position )
     // 50% chance of goody addition, only if far enough (avoid volontary collision bonuses...)
     if( ( _position - m_ship.position ).Distance() <= 100 || Maths::Random( 0, 1 ) >= 0.5 )
         return;
-    std::array< Goody::eType, 14 > types{ Goody::eType::homingMissiles, Goody::eType::magneticMines, Goody::eType::plasmaShield, Goody::eType::turret,
-        Goody::eType::repulsor, Goody::eType::decoy, Goody::eType::emp, Goody::eType::overdrive,
-        Goody::eType::singularity, Goody::eType::blossom, Goody::eType::hellstorm };
-    size_t typeCount{ 11 };
-    if( m_ship.shield.value < m_ship.shield.capacity ) types.at( typeCount++ ) = Goody::eType::shieldAdd;
-    if( m_ship.propellant.value < m_ship.propellant.capacity ) types.at( typeCount++ ) = Goody::eType::propellantAdd;
-    if( m_laserSpeed != eLaserSpeed::fast || m_laserPass != eLaserPass::height ) types.at( typeCount++ ) = Goody::eType::laserUp;
-    const auto typeRandom{ Maths::Random( 0, static_cast< double >( typeCount ) - 0.01 ) };
-    m_goodies.emplace_back( Goody{ _position, types.at( static_cast< size_t >( typeRandom ) ) } );
+
+    // the missions unlock the goodies progressively (Goody::FirstMission), the
+    // freshly unlocked ones being rarer for their first mission:
+    using eType = Goody::eType;
+    constexpr std::array< eType, 14 > all{ eType::laserUp, eType::homingMissiles, eType::magneticMines, eType::plasmaShield, eType::shieldAdd,
+        eType::propellantAdd, eType::turret, eType::repulsor, eType::decoy, eType::emp, eType::overdrive, eType::singularity, eType::blossom,
+        eType::hellstorm };
+    std::array< std::pair< eType, double >, 14 > candidates;
+    size_t candidateCount{ 0 };
+    double totalWeight{ 0 };
+    for( const auto type : all ) {
+        if( type == eType::shieldAdd && m_ship.shield.value >= m_ship.shield.capacity )
+            continue;
+        if( type == eType::propellantAdd && m_ship.propellant.value >= m_ship.propellant.capacity )
+            continue;
+        if( type == eType::laserUp && m_laserSpeed == eLaserSpeed::fast && m_laserPass == eLaserPass::height )
+            continue;
+        const auto first{ Goody::FirstMission( type ) };
+        if( !m_stage.Reached( first.stage, first.mission ) )
+            continue;
+        const auto weight{ m_stage.IsAt( first.stage, first.mission ) ? goodyWeightFresh : goodyWeightUnlocked };
+        candidates.at( candidateCount++ ) = { type, weight };
+        totalWeight += weight;
+    }
+    auto roll{ Maths::Random( 0, totalWeight ) };
+    for( size_t i{ 0 }; i < candidateCount; i++ ) {
+        roll -= candidates.at( i ).second;
+        if( roll <= 0 || i + 1 == candidateCount ) {
+            m_goodies.emplace_back( Goody{ _position, candidates.at( i ).first } );
+            return;
+        }
+    }
 }
 
 
@@ -943,7 +971,6 @@ void World::_UpdateShipAttractorCollisions()
 
 void World::_UpdateEnemies()
 {
-    std::vector< Enemy::eType > respawns;
     for( auto & enemy : m_enemies ) {
         const auto soundPosition{ m_audio.Locate( _RelativeToShip( enemy.rocket.position ) ) };
 
@@ -988,10 +1015,12 @@ void World::_UpdateEnemies()
                     _AddScore( 100 );
                     break;
             }
-            respawns.emplace_back( enemy.type );
             enemy.dead = true;
             m_audio.StopLoop( enemy.sound_mainEngine );
             m_audio.StopLoop( enemy.sound_rotationEngine );
+            if( !m_shipDestroyed )
+                m_stage.OnKill();
+            m_pendingSpawns.emplace_back( PendingSpawn{ enemy.type, static_cast< int >( m_stage.Mission().respawnSeconds * m_frameRate ) } );
             continue;
         }
 
@@ -1000,8 +1029,69 @@ void World::_UpdateEnemies()
             _EnemyAction( enemy );
     }
     std::erase_if( m_enemies, []( const Enemy & _enemy ){ return _enemy.dead; } );
-    for( const auto type : respawns )
-        _AddEnemy( type );
+    _RefillEnemies();
+}
+
+
+void World::_RefillEnemies()
+{
+    // the stage decides what is missing; a destroyed enemy is replaced after its
+    // delay, anything else missing (mission start...) shows up right away:
+    for( auto & pending : m_pendingSpawns )
+        pending.ticks--;
+    for( const auto type : m_stage.Missing( m_enemies ) ) {
+        const auto pending{ std::ranges::find_if( m_pendingSpawns, [ & ]( const PendingSpawn & _pending ){ return _pending.type == type; } ) };
+        if( pending == m_pendingSpawns.end() )
+            _AddEnemy( type );
+        else if( pending->ticks <= 0 ) {
+            _AddEnemy( type );
+            m_pendingSpawns.erase( pending );
+        }
+    }
+}
+
+
+void World::_UpdateMission()
+{
+    if( m_shipDestroyed ) // the wreck does not progress
+        return;
+    if( m_stage.Update() == StageDirector::eEvent::cleared )
+        _OnMissionCleared();
+
+    // the attractor field fills in with the missions, out of the player's sight:
+    m_attractors.SetDensity( m_stage.Mission().attractorDensity );
+    m_attractors.ApplyDensity( m_ship.position, static_cast< double >( std::max( m_screenDimension.width, m_screenDimension.height ) ) + m_attractors.MaxRadius() );
+}
+
+
+void World::_OnMissionCleared()
+{
+    // retry restarts the NEXT mission, with the gear as it stands now:
+    m_checkpoint = { m_stage.NextProgress(), m_score, static_cast< int >( m_laserSpeed ), static_cast< int >( m_laserPass ), m_homingMissiles, m_magneticMines };
+
+    // debriefing: repairs, and the surviving hostiles are wiped out harmlessly (no
+    // score, no goody) so the banner is a real breather:
+    m_ship.shield.value = m_ship.shield.capacity;
+    m_ship.propellant.value = m_ship.propellant.capacity;
+    m_audio.Play( eSound::laserPowerUp, 0.9 );
+    m_audio.Play( eSound::shieldRepair, 0.9 );
+    for( auto & enemy : m_enemies ) {
+        _AddExplosion( enemy.rocket.position, enemy.rocket.momentum, eExplosion::big );
+        m_audio.PlayAt( eSound::shipExplosion, _RelativeToShip( enemy.rocket.position ) );
+        m_audio.StopLoop( enemy.sound_mainEngine );
+        m_audio.StopLoop( enemy.sound_rotationEngine );
+        enemy.dead = true;
+    }
+    std::erase_if( m_enemies, []( const Enemy & _enemy ){ return _enemy.dead; } );
+    m_pendingSpawns.clear();
+    for( auto & missile : m_missiles )
+        if( !missile.fromShip && !missile.dead ) {
+            _AddExplosion( missile.rocket.position, missile.rocket.momentum, eExplosion::small );
+            m_audio.StopLoop( missile.sound_run );
+            missile.dead = true;
+        }
+    for( auto & slug : m_slugs )
+        slug.dead = true;
 }
 
 
@@ -1148,7 +1238,7 @@ void World::_UpdateGravityMines()
             const auto limit{ gravityMineDespawn * maxDimension };
             return ( _gravityMine.position - m_ship.position ).DistanceSquared() > limit * limit; // left far behind, silently recycled
         } );
-    if( m_gravityMines.size() < gravityMineCount ) { // at most one spawn attempt per tick
+    if( m_gravityMines.size() < m_stage.Mission().gravityMines ) { // at most one spawn attempt per tick
         const auto position{ m_ship.position + Vector::From( Maths::Random( 0, Maths::Pi2 ), Maths::Random( gravityMineSpawnMin, gravityMineSpawnMax ) * maxDimension ) };
         bool valid{ true };
         for( const auto & other : m_gravityMines )

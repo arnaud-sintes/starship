@@ -9,10 +9,11 @@ StarField::StarField( const Dimension_ui & _dimension )
 {
     const std::vector< Layer > layers{
         // d     speed   color        radius
-        { 2000,  1,  2,  0.25, 0.5,   0.5,  0.75 },
-        { 500,   3,  5,  0.25, 0.75,  0.75, 1    },
-        { 150,   5,  8,  0.5,  0.75,  1,    1.5  },
-        { 25,    8, 21,  0.5,  1,     1.5,  2    },
+        // the densest sky (density 1), the stages draw a share of it:
+        { 3200,  1,  2,  0.25, 0.5,   0.5,  0.75 },
+        { 800,   3,  5,  0.25, 0.75,  0.75, 1    },
+        { 240,   5,  8,  0.5,  0.75,  1,    1.5  },
+        { 40,    8, 21,  0.5,  1,     1.5,  2    },
     };
     size_t total{ 0 };
     for( const auto & layer : layers )
@@ -28,7 +29,8 @@ StarField::StarField( const Dimension_ui & _dimension )
             m_field.emplace_back( Star{ x, y,
                 static_cast< double >( speed( m_rnd ) ) / 100,
                 static_cast< double >( color( m_rnd ) ) / 100,
-                static_cast< double >( radius( m_rnd ) ) / 100 } );
+                static_cast< double >( radius( m_rnd ) ) / 100,
+                static_cast< double >( m_rndPos( m_rnd ) ) / static_cast< double >( m_maxDimension + 1 ) } );
         }
 }
 
@@ -38,9 +40,13 @@ void StarField::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _spee
     const double hzSpeedFactor{ 0.1 };
     const double xOffset{ static_cast< double >( m_dimension.width >> 1 ) - static_cast< double >( m_maxDimension >> 1 ) };
     const double yOffset{ static_cast< double >( m_dimension.height >> 1 ) - static_cast< double >( m_maxDimension >> 1 ) };
+    // the sky thickens or thins out progressively, star by star:
+    constexpr double densityStep{ 0.002 };
+    m_density += std::clamp( m_targetDensity - m_density, -densityStep, densityStep );
     for( auto & star : m_field ) {
         // sub-pixel stars don't need antialiasing, which dominates the tessellation cost:
-        _frame.FillCircle( { star.x + xOffset, star.y + yOffset }, star.radius, { star.c, star.c, 1 }, star.radius >= 1.5 );
+        if( star.rank < m_density )
+            _frame.FillCircle( { star.x + xOffset, star.y + yOffset }, star.radius, { star.c, star.c, 1 }, star.radius >= 1.5 );
         star.x += ( -star.speed * ( _speed.u * hzSpeedFactor ) );
         star.y += ( -star.speed * ( _speed.v * hzSpeedFactor ) );
         if( _speed.u < 0 && star.x >= m_maxDimension ) { star.x = 0; star.y = m_rndPos( m_rnd ); }

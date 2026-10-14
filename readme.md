@@ -2,7 +2,17 @@
 
 ## Goal
 
-None currently, just enjoy the game engine and destroy everything for maximum fun!
+The game is split in **stages**, each one a sequence of **missions** displayed as "*Stage 1-2*" (a banner announces each mission and its objective, the tracker at the top center follows your progress):
+
+- **Stage 1** - *Rexxus-3b, the mining guild blockade*: five missions alternating **kill quotas** (10, 20 then 30 hostiles) and **survival timers** (60 then 90 seconds); the novelties are introduced one at a time: chasers alone (1-1), the wasps join (1-2), the sniper (1-3), then the gravity mines (1-4)
+- **Stage 2** - *Stellis Secura, the attractors belt*: five tougher missions (kill 25 / survive 90 s / kill 40 / survive 120 s / kill 60) as you close in on the planet: the strange attractors belt gets denser than ever and the guild sends its whole fleet
+- the pressure ramps up from mission to mission: more concurrent enemies, more gravity mines, a denser field of strange attractors (it fills in out of your sight), and a shorter delay (2.5s down to 0.6s) before a destroyed enemy is replaced
+- entering a new stage pauses the game on a full-screen **scenario screen** (like the prologue, click to engage) describing what awaits you
+- clearing a mission wipes out the remaining hostiles and fully restores your shield and propellant
+- after the last mission, an **epilogue** screen (with your final score) ends the story, then the game goes on in **free play** (endless, no objective, the last mission's setup)
+- the starfield follows the story: a dense sky in deep space (stage 1), thinning out in the glare of the planet (stage 2)
+
+When your ship is destroyed, you retry the **current mission** with the gear (laser power, missiles, mines) and the score you had when it began.
 
 <iframe style='width:100%;height:480px' src="https://www.youtube.com/embed/zJTK6VkaCGc" allowfullscreen></iframe>
 
@@ -17,7 +27,15 @@ None currently, just enjoy the game engine and destroy everything for maximum fu
 
 ## Goodies
 
-When destroying an enemy, goodies may appears (50% chance):
+When destroying an enemy, goodies may appears (50% chance). They are ranked from the humblest to the fanciest and unlocked progressively by the missions (a freshly unlocked goody drops a bit less often during its first mission; free play unlocks them all):
+
+- *Stage 1-1*: laser power up, shield addition, propellant addition
+- *Stage 1-2*: homing missiles
+- *Stage 1-3*: plasma shield
+- *Stage 1-4*: magnetic mines, repulsor
+- *Stage 1-5*: turret, decoy
+- *Stage 2-1*: EMP, overdrive
+- *Stage 2-2 to 2-4*: hellstorm, then death blossom, then singularity (nothing new in 2-5: it is the mastery test)
 
 - **laser power up** (*red* "**L**") that will increase the fire power of the main laser weapon: it will increase first the laser **speed**, from *slow* to *medium* and from *medium* to *fast*, then will increase the laser **pass count** (while resetting the speed to *slow*), from *one pass* to *two passes*, then *four passes*, *six passes* and finally to a maximum of *height passes*
 - **homing missiles pack** (*green* "**H**") that will add **20 missiles** reaching automatically the closest enemy
@@ -59,11 +77,11 @@ When destroying an enemy, goodies may appears (50% chance):
 - A low propellant alert will occur when being under 25% of the propellant tank capacity
 - Collision engine takes properly in account *enemies* (including enemy/enemy collisions), *ship*, *plasma shield*, *laser beam* and *missiles* (including missile/missile collisions)
 - **Explosions have a blast range**: anything caught in the impact zone takes distance-falloff damage and is knocked back; missiles and mines caught in a blast detonate in turn, so tight formations and mine fields go up in **chain reactions** (the plasma shield blocks blast damage, not the shove - and yes, exploding an enemy point-blank hurts you too)
-- The enemy roster is constant (each death respawns the same type off-screen; most shields increase with your laser fire power to remain fair):
-  - **3 chasers** (*pink*) hunting you and launching a homing-missile every 5 seconds
-  - **1 sniper** (*pale red*) creeping to the edge of your screen, then holding position and firing fast **lead-compensated slugs** at your predicted position - it only shoots when visible, punishes straight-line flying, and never flees: close in to finish it (**+150 pts**)
-  - **2 wasps** (*yellow*, small and fast) ramming you kamikaze-style: fragile, but their death blasts chain (**+40 pts** each)
-- When your shield is fully depleted, the next hit destroys the ship: after the explosion, click to retry (the score resets, enemies keep patrolling the wreck in the background...)
+- Each mission defines its enemy roster (each death respawns the same type off-screen; most shields increase with your laser fire power to remain fair); the free play setup is the last mission's, which is the hardest so far (5 chasers, 4 wasps, 2 snipers, 48 gravity mines, the full attractors belt). The enemy types:
+  - **chasers** (*pink*) hunting you and launching a homing-missile every 5 seconds
+  - **snipers** (*pale red*) creeping to the edge of your screen, then holding position and firing fast **lead-compensated slugs** at your predicted position - it only shoots when visible, punishes straight-line flying, and never flees: close in to finish it (**+150 pts**)
+  - **wasps** (*yellow*, small and fast) ramming you kamikaze-style: fragile, but their death blasts chain (**+40 pts** each)
+- When your shield is fully depleted, the next hit destroys the ship: after the explosion, click to retry the current mission (enemies keep patrolling the wreck in the background...)
 
 ## Technical
 
@@ -74,7 +92,7 @@ Sound effects are played through [miniaudio](https://miniaud.io/)'s engine (WASA
 
 The simulation runs at a **fixed 60Hz timestep, decoupled from rendering**: wall-clock time is accumulated and late frames trigger catch-up ticks, so the game always runs at real-time speed (under sustained overload, catch-up is capped and the game slows down rather than spiraling).
 
-The code is organized around a few focused classes: `World` (simulation only), `SceneRenderer`/`Hud` (drawing only), `Game` (input, prologue and composition), `AudioDirector`/`Audio` (game events to positional sounds, backend behind a facade).
+The code is organized around a few focused classes: `World` (simulation only), `StageDirector` (stage/mission table and flow: objectives, rosters, goody tiers), `SceneRenderer`/`Hud` (drawing only), `Game` (input, prologue and composition), `AudioDirector`/`Audio` (game events to positional sounds, backend behind a facade).
 
 Resources (fonts and sound effects) are all packed in a unique *resource.dat* file using a custom packer.
 

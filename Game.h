@@ -24,7 +24,9 @@ private:
     void _Restart();
     std::pair< Vector, Vector > _PrologueButtonRect( const int _index ) const; // 0 = yes, 1 = no
     bool _DetectTutorial();
+    void _DrawStory( const NanoVGRenderer::Frame & _frame, const std::string & _tag, const std::string & _title, const std::vector< const char * > & _lines ); // chapter tag, big title, scenario lines
     void _DrawPrologue( const NanoVGRenderer::Frame & _frame );
+    void _DrawStageStory( const NanoVGRenderer::Frame & _frame );
     void _DrawTutorial( const NanoVGRenderer::Frame & _frame );
     void _DrawGameOver( const NanoVGRenderer::Frame & _frame );
     void _DrawCursor( const NanoVGRenderer::Frame & _frame );
@@ -42,6 +44,8 @@ private:
     {
         stage11_prologue,
         stage11,
+        stageStory, // full-screen scenario of a new stage, world frozen behind
+        epilogue,   // full-screen ending once every mission is cleared, then free play
         tutorial, // world frozen behind an explanation panel
         gameOver,
     };
@@ -80,6 +84,9 @@ private:
     eTutorial m_tutorialTopic{ eTutorial::chaser };
     Vector m_tutorialTarget; // world position of the concerned item
 
+    int m_storyStage{ 1 }; // highest stage whose scenario screen was shown (stage 1 has the prologue)
+    bool m_epilogueShown{ false };
+    bool m_debugKeyDown{ false }; // TEMPORARY F9 test shortcut
     double m_cursorFlash{ 0 };
     double m_overlayAnim{ 0 };
 };

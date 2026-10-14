@@ -35,6 +35,9 @@
     <ClCompile Include="SceneRenderer.cpp">
       <Filter>game</Filter>
     </ClCompile>
+    <ClCompile Include="StageDirector.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
     <ClCompile Include="StarField.cpp">
       <Filter>game</Filter>
     </ClCompile>
@@ -119,6 +122,9 @@
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="SceneRenderer.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="StageDirector.h">
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="StarField.h">

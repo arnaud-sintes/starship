@@ -11,6 +11,7 @@
 #include "AttractorField.h"
 #include "WindField.h"
 #include "AudioDirector.h"
+#include "StageDirector.h"
 
 
 // --------------
@@ -24,12 +25,26 @@ struct PlayerInput
 
 
 // --------------
+// What a retry restores: the mission to restart and the player's gear as it was when
+// that mission began (the defaults match the starting laser and the first mission)
+struct WorldCheckpoint
+{
+    int progress{ 0 };
+    int score{ 0 };
+    int laserSpeed{ 10 }; // eLaserSpeed ticks
+    int laserPass{ 1 };   // eLaserPass beams
+    int homingMissiles{ 0 };
+    int magneticMines{ 0 };
+};
+
+
+// --------------
 // The simulation: owns every entity and the game state, updates one fixed tick at a
 // time and emits audio events; knows nothing about windows, OpenGL or NanoVG frames.
 class World
 {
 public:
-    World( AudioDirector & _audio, const Dimension_ui & _screenDimension, const int _frameRate );
+    World( AudioDirector & _audio, const Dimension_ui & _screenDimension, const int _frameRate, const WorldCheckpoint & _checkpoint = {} );
     ~World(); // stops the looped sounds so a world can be thrown away and rebuilt (retry)
 
 public:
@@ -47,6 +62,9 @@ public:
     const std::vector< GravityMine > & GravityMines() const { return m_gravityMines; }
     const AttractorField & Attractors() const { return m_attractors; }
     const Rocket * ClosestEnemy( const Vector & _position ) const;
+    const StageDirector & Stage() const { return m_stage; }
+    const WorldCheckpoint & Checkpoint() const { return m_checkpoint; }
+    void DebugJumpToMission( const int _progress ) { m_stage.DebugJumpAlmostDone( _progress ); m_pendingSpawns.clear(); } // TEMPORARY
 
     bool PlasmaShieldActive() const { return m_plasmaShield > 0; }
     double PlasmaShieldRadius() const { return m_plasmaShieldRadius; }
@@ -148,6 +166,9 @@ private:
     void _UpdateMissileCollisions();
     void _UpdateShipAttractorCollisions();
     void _UpdateEnemies();
+    void _RefillEnemies();
+    void _UpdateMission();
+    void _OnMissionCleared();
     void _UpdateMines();
     void _UpdateGravityMines();
     void _UpdateAttractorsDeletion();
@@ -182,7 +203,15 @@ private:
 
     unsigned long long m_nextRocketId{ 1 };
     Rocket m_ship;
+    StageDirector m_stage;
+    WorldCheckpoint m_checkpoint;
     std::vector< Enemy > m_enemies;
+    struct PendingSpawn
+    {
+        Enemy::eType type;
+        int ticks; // countdown before the replacement shows up
+    };
+    std::vector< PendingSpawn > m_pendingSpawns;
     std::vector< Laser > m_lasers;
     std::vector< Missile > m_missiles;
     std::vector< Particule > m_particules;

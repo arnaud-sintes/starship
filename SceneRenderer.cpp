@@ -24,6 +24,7 @@ bool SceneRenderer::_Visible( const World & _world, const Vector & _worldPositio
 
 void SceneRenderer::DrawBackdrop( const World & _world, const NanoVGRenderer::Frame & _frame )
 {
+    m_starField.SetDensity( _world.Stage().StarDensity() );
     m_starField.Draw( _frame, _world.Ship().momentum * 2 );
 }
 

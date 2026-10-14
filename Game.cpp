@@ -21,7 +21,9 @@ Game::Game( const Win32::Windows & _windows, const View & _view, const Packer::R
 
 void Game::_Restart()
 {
-    m_world = std::make_unique< World >( m_audio, m_view.logical, m_frameRate );
+    // restarts the mission being played, with the gear it started with:
+    const WorldCheckpoint checkpoint{ m_world->Checkpoint() };
+    m_world = std::make_unique< World >( m_audio, m_view.logical, m_frameRate, checkpoint );
     m_step = eStep::stage11;
 }
 
@@ -61,17 +63,48 @@ void Game::Tick()
         return;
     }
 
+    if( m_step == eStep::stageStory || m_step == eStep::epilogue ) {
+        // a real pause: the world is frozen, click to engage the new stage (or free play)
+        m_audio.Update();
+        if( !m_windows.LeftMouseButtonPressed() )
+            m_clickArmed = true;
+        else if( m_clickArmed ) {
+            m_step = eStep::stage11;
+            m_clickArmed = false;
+        }
+        return;
+    }
+
     if( m_step == eStep::stage11 ) {
         const PlayerInput input{
             m_view.ToLogical( m_windows.CursorPosition() ),
             m_windows.LeftMouseButtonPressed(),
             m_windows.RightMouseButtonPressed(),
         };
+        // TEMPORARY test shortcut: F9 jumps to the end of mission 1-5 (one kill left)
+        const auto f9{ m_windows.KeyPressed( Win32::Windows::eKey::f9 ) };
+        if( f9 && !m_debugKeyDown )
+            m_world->DebugJumpToMission( 4 );
+        m_debugKeyDown = f9;
         m_world->Update( input );
         m_audio.Update();
         // let the explosion play out before the overlay:
         if( m_world->ShipDestroyed() && m_world->ShipDestroyedTicks() > m_frameRate * 2 ) {
             m_step = eStep::gameOver;
+            m_clickArmed = false;
+            return;
+        }
+        // all the missions are cleared: the epilogue, then free play
+        if( !m_world->ShipDestroyed() && !m_epilogueShown && m_world->Stage().Phase() == StageDirector::ePhase::freePlay ) {
+            m_epilogueShown = true;
+            m_step = eStep::epilogue;
+            m_clickArmed = false;
+            return;
+        }
+        // entering a new stage: pause on its scenario screen
+        if( !m_world->ShipDestroyed() && m_world->Stage().Phase() == StageDirector::ePhase::intro && m_world->Stage().StageNumber() > m_storyStage ) {
+            m_storyStage = m_world->Stage().StageNumber();
+            m_step = eStep::stageStory;
             m_clickArmed = false;
             return;
         }
@@ -98,6 +131,13 @@ void Game::Draw( const NanoVGRenderer::Frame & _frame )
     if( m_step == eStep::stage11_prologue ) {
         m_scene.DrawBackdrop( *m_world, _frame );
         _DrawPrologue( _frame );
+        _DrawCursor( _frame );
+        return;
+    }
+
+    if( m_step == eStep::stageStory || m_step == eStep::epilogue ) {
+        m_scene.DrawBackdrop( *m_world, _frame );
+        _DrawStageStory( _frame );
         _DrawCursor( _frame );
         return;
     }
@@ -143,7 +183,7 @@ bool Game::_DetectTutorial()
         if( gravityMine.alive && trigger( eTutorial::gravityMine, gravityMine.position ) )
             return true;
     for( const auto & attractor : m_world->Attractors().All() )
-        if( attractor.alive && trigger( eTutorial::attractor, attractor.position ) )
+        if( attractor.Present() && trigger( eTutorial::attractor, attractor.position ) )
             return true;
     for( const auto & goody : m_world->Goodies() ) // one lesson per goody type
         if( trigger( static_cast< eTutorial >( static_cast< size_t >( eTutorial::goodyLaserUp ) + static_cast< size_t >( goody.type ) ), goody.position ) )
@@ -256,19 +296,18 @@ void Game::_DrawTutorial( const NanoVGRenderer::Frame & _frame )
 }
 
 
-void Game::_DrawPrologue( const NanoVGRenderer::Frame & _frame )
+void Game::_DrawStory( const NanoVGRenderer::Frame & _frame, const std::string & _tag, const std::string & _title, const std::vector< const char * > & _lines )
 {
-    m_overlayAnim += 0.05;
     const auto & dimension{ m_view.logical };
     const Vector screenCenter{ static_cast< double >( dimension.width ) * 0.5, static_cast< double >( dimension.height ) * 0.5 };
-    // layout: title block in the upper third, story in the middle, tutorial choice at
-    // the bottom - visually balanced over the full screen
+    // layout: title block in the upper third, story in the middle, the choice or
+    // call to action at the bottom - visually balanced over the full screen
     const Vector titleCenter{ screenCenter - Vector{ 0, 240 } };
 
     // chapter tag + title with a subtle accent glow:
-    _frame.Text( titleCenter - Vector{ 0, 70 }, "openSansBold", 15, "M I S S I O N", { accentColor.r, accentColor.g, accentColor.b, 0.85 }, NanoVGRenderer::Frame::eTextAlign::center, 6 );
-    _frame.Text( titleCenter + Vector{ 0, 3 }, "openSansBold", 84, "STAGE 1-1", { accentColor.r, accentColor.g, accentColor.b, 0.3 }, NanoVGRenderer::Frame::eTextAlign::center, 8 );
-    _frame.Text( titleCenter, "openSansBold", 84, "STAGE 1-1", colorWhite, NanoVGRenderer::Frame::eTextAlign::center, 8 );
+    _frame.Text( titleCenter - Vector{ 0, 70 }, "openSansBold", 15, _tag, { accentColor.r, accentColor.g, accentColor.b, 0.85 }, NanoVGRenderer::Frame::eTextAlign::center, 6 );
+    _frame.Text( titleCenter + Vector{ 0, 3 }, "openSansBold", 84, _title, { accentColor.r, accentColor.g, accentColor.b, 0.3 }, NanoVGRenderer::Frame::eTextAlign::center, 8 );
+    _frame.Text( titleCenter, "openSansBold", 84, _title, colorWhite, NanoVGRenderer::Frame::eTextAlign::center, 8 );
 
     // divider:
     const double dividerY{ titleCenter.v + 70 };
@@ -276,19 +315,39 @@ void Game::_DrawPrologue( const NanoVGRenderer::Frame & _frame )
     _frame.FillCircle( { screenCenter.u, dividerY }, 2.5, { accentColor.r, accentColor.g, accentColor.b, 0.8 } );
 
     // story:
-    static const std::array< const char *, 7 > lines{
-        "By jumping out of hyperdrive to reach the Rexxus-3b system, you encounter hostile resistance from the",
-        "space mining guild who are illegally exploiting the strange attractors energy around the planet Stellis Secura.",
-        "",
-        "As a faithful member of the Universal Alliance for Peace, you cannot tolerate such a defiance to our glorious",
-        "open-despocracy and the uncontestable authority of our galactic emperator Muhammad Silmane XIV!",
-        "",
-        "Let's teach this gang of small-time smugglers a lesson to remember..." };
     Vector verticalText{ 0, dividerY - screenCenter.v + 50 };
-    for( const auto * text : lines ) {
+    for( const auto * text : _lines ) {
         _frame.Text( screenCenter + verticalText, "openSans", 22, text, { 0.72, 0.85, 1, 0.92 }, NanoVGRenderer::Frame::eTextAlign::center );
         verticalText.v += 34;
     }
+}
+
+
+void Game::_DrawStageStory( const NanoVGRenderer::Frame & _frame )
+{
+    m_overlayAnim += 0.05;
+    const auto & stage{ m_world->Stage() };
+    const Vector screenCenter{ static_cast< double >( m_view.logical.width ) * 0.5, static_cast< double >( m_view.logical.height ) * 0.5 };
+    const double pulse{ ( std::sin( m_overlayAnim * 2 ) + 1 ) * 0.5 };
+    if( m_step == eStep::epilogue ) {
+        _DrawStory( _frame, "E P I L O G U E", "BELT SECURED", StageDirector::Epilogue() );
+        const auto score{ std::format( "{:010}", m_world->GetHudInfo().score ) };
+        _frame.Text( { screenCenter.u, screenCenter.v + 140 }, "openSansBold", 15, "F I N A L   S C O R E", { 0.62, 0.72, 0.88, 0.9 }, NanoVGRenderer::Frame::eTextAlign::center, 2 );
+        _frame.Text( { screenCenter.u, screenCenter.v + 185 }, "sourceCodePro", 42, score, { 0.85, 0.92, 1 }, NanoVGRenderer::Frame::eTextAlign::center );
+        _frame.Text( screenCenter + Vector{ 0, 330 }, "openSansBold", 16, "CLICK TO KEEP PLAYING  -  FREE PLAY", { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
+        return;
+    }
+    _DrawStory( _frame, stage.StageTitle(), stage.Label(), stage.Story() );
+    _frame.Text( screenCenter + Vector{ 0, 330 }, "openSansBold", 16, "CLICK TO ENGAGE", { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
+}
+
+
+void Game::_DrawPrologue( const NanoVGRenderer::Frame & _frame )
+{
+    m_overlayAnim += 0.05;
+    const auto & dimension{ m_view.logical };
+    const Vector screenCenter{ static_cast< double >( dimension.width ) * 0.5, static_cast< double >( dimension.height ) * 0.5 };
+    _DrawStory( _frame, "M I S S I O N", m_world->Stage().Label(), m_world->Stage().Story() );
 
     // tutorial question with YES / NO buttons - answering engages the stage:
     _frame.Text( screenCenter + Vector{ 0, 250 }, "openSansBold", 16, "ENABLE THE IN-GAME TUTORIAL?", { 0.85, 0.92, 1, 0.9 }, NanoVGRenderer::Frame::eTextAlign::center, 3 );
@@ -349,7 +408,7 @@ void Game::_DrawGameOver( const NanoVGRenderer::Frame & _frame )
 
     // pulsing call to action:
     const double pulse{ ( std::sin( m_overlayAnim * 2 ) + 1 ) * 0.5 };
-    _frame.Text( { screenCenter.u, dividerY + 170 }, "openSansBold", 16, "CLICK TO RETRY", { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
+    _frame.Text( { screenCenter.u, dividerY + 170 }, "openSansBold", 16, std::format( "CLICK TO RETRY  -  {}", StageDirector::Label( m_world->Checkpoint().progress ) ), { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
 }
 
 

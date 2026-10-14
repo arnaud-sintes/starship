@@ -11,6 +11,10 @@ struct Attractor
     double shield{ 0 };
     double radius{ 0 }; // mass * AttractorField::massSizeRatio, cached
     bool alive{ true };
+    double rank{ 0 };     // [ 0, 1 ) fixed at generation: shown while below the field density
+    bool hidden{ false }; // not part of the world (yet): invisible and intangible
+
+    bool Present() const { return alive && !hidden; }
 };
 
 
@@ -33,6 +37,12 @@ public:
     double MaxRadius() const { return m_maxMass * massSizeRatio; }
 
     void Remove( const size_t _index ); // marks dead and unregisters from the grid
+
+    // density [ 0, 1 ]: the share of the generated attractors that exist (the same
+    // ones every time, so the field only fills in as the density grows); a change
+    // never pops in or out an attractor closer than _safeDistance to _viewer:
+    void SetDensity( const double _density ) { m_density = _density; }
+    void ApplyDensity( const Vector & _viewer, const double _safeDistance );
 
     // visits every live attractor that may interact within _range of _center, the
     // attractors' own extent included (grid-level filtering only, do the precise
@@ -69,7 +79,7 @@ private:
                     continue;
                 for( const auto index : itCell->second ) {
                     auto & attractor{ m_attractors.at( index ) };
-                    if( attractor.alive )
+                    if( attractor.Present() )
                         _fn( index, attractor );
                 }
             }
@@ -85,4 +95,5 @@ private:
     std::vector< Attractor > m_attractors;
     std::unordered_map< long long, std::vector< int > > m_cells;
     double m_maxMass{ 0 };
+    double m_density{ 1 };
 };

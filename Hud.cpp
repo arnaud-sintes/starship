@@ -58,9 +58,53 @@ void Hud::_Bar( const NanoVGRenderer::Frame & _frame, const Vector & _position, 
 }
 
 
+void Hud::_DrawMission( const StageDirector & _stage, const NanoVGRenderer::Frame & _frame ) const
+{
+    using ePhase = StageDirector::ePhase;
+    const Vector screenCenter{ static_cast< double >( m_screenDimension.width ) * 0.5, static_cast< double >( m_screenDimension.height ) * 0.5 };
+    const auto phase{ _stage.Phase() };
+
+    // objective tracker, top center:
+    if( phase == ePhase::active || phase == ePhase::freePlay ) {
+        constexpr double trackerWidth{ 240 }, trackerHeight{ 62 };
+        const Vector a{ screenCenter.u - trackerWidth * 0.5, margin };
+        const Vector b{ a.u + trackerWidth, a.v + trackerHeight };
+        _frame.GradientRectangle( a, b, panelTopColor, panelBottomColor, panelRadius );
+        _frame.StrokeRectangle( a, b, panelBorderColor, 1, panelRadius );
+        const auto title{ phase == ePhase::freePlay ? _stage.TrackerLabel() : std::format( "{}  -  {}", _stage.Label(), _stage.TrackerLabel() ) };
+        _frame.Text( { screenCenter.u, a.v + 15 }, "openSansBold", 12, title, labelColor, NanoVGRenderer::Frame::eTextAlign::center, 1.8 );
+        _frame.Text( { screenCenter.u, a.v + 34 }, "sourceCodePro", 22, _stage.TrackerValue(), valueColor, NanoVGRenderer::Frame::eTextAlign::center );
+        if( phase == ePhase::active )
+            _Bar( _frame, { a.u + panelPadding, b.v - 12 }, trackerWidth - panelPadding * 2, 5, _stage.ObjectiveRatio(), accentColor );
+    }
+
+    // banners:
+    if( phase != ePhase::intro && phase != ePhase::cleared )
+        return;
+    const auto ratio{ _stage.PhaseRatio() };
+    const auto fade{ std::clamp( std::min( { ratio / 0.12, ( 1 - ratio ) / 0.2, 1.0 } ), 0.0, 1.0 ) };
+    const Vector titleCenter{ screenCenter.u, screenCenter.v * 0.5 };
+    const auto drawBanner{ [ & ]( const char * _tag, const std::string & _title, const std::string & _subtitle, const Color_d & _color ){
+            _frame.Text( titleCenter - Vector{ 0, 70 }, "openSansBold", 15, _tag, { _color.r, _color.g, _color.b, 0.85 * fade }, NanoVGRenderer::Frame::eTextAlign::center, 6 );
+            _frame.Text( titleCenter + Vector{ 0, 3 }, "openSansBold", 84, _title, { _color.r, _color.g, _color.b, 0.3 * fade }, NanoVGRenderer::Frame::eTextAlign::center, 8 );
+            _frame.Text( titleCenter, "openSansBold", 84, _title, { 1, 1, 1, fade }, NanoVGRenderer::Frame::eTextAlign::center, 8 );
+            const double dividerY{ titleCenter.v + 70 };
+            _frame.Line( { screenCenter.u - 320, dividerY }, { screenCenter.u + 320, dividerY }, { _color.r, _color.g, _color.b, 0.35 * fade }, 1 );
+            _frame.FillCircle( { screenCenter.u, dividerY }, 2.5, { _color.r, _color.g, _color.b, 0.8 * fade } );
+            _frame.Text( { screenCenter.u, dividerY + 38 }, "openSansBold", 26, _subtitle, { 0.85, 0.92, 1, 0.95 * fade }, NanoVGRenderer::Frame::eTextAlign::center, 4 );
+        } };
+    if( phase == ePhase::intro )
+        drawBanner( _stage.StageTitle(), _stage.Label(), _stage.ObjectiveText(), accentColor );
+    else
+        drawBanner( "OBJECTIVE ACCOMPLISHED", _stage.LastOfStage() ? std::format( "STAGE {} CLEARED", _stage.StageNumber() ) : "MISSION COMPLETE",
+            "SHIELD AND PROPELLANT RESTORED", bonusColor );
+}
+
+
 void Hud::Draw( const World & _world, const NanoVGRenderer::Frame & _frame )
 {
     m_pulse += 0.16;
+    _DrawMission( _world.Stage(), _frame );
 
     const auto info{ _world.GetHudInfo() };
 
