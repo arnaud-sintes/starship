@@ -5,9 +5,9 @@
 The game is split in **stages**, each one a sequence of **missions** displayed as "*Stage 1-2*" (a banner announces each mission and its objective, the tracker at the top center follows your progress):
 
 - **Stage 1** - *Rexxus-3b, the mining guild blockade*: five missions then the **boss**, alternating **kill quotas** (10, 20 then 30 hostiles) and **survival timers** (60 then 90 seconds); the novelties are introduced one at a time: chasers alone (1-1), the wasps join (1-2), the sniper (1-3), then the gravity mines (1-4)
-- the **Foreman** (stage 1 boss), announced by a flashing red alert after 1-5: a huge guild mining barge circling you slowly, its head always facing you. Its **rear core** (the orb behind the stern) is armored most of the time; every few seconds it **vents**: it glows amber as a warning, then the barge freezes in place and the core opens up (cyan, flashing white when hit) for a few seconds, taking **4x laser damage**. Get behind it fast: while venting it stops its aimed fire and lashes out through its rear with slug fans. Missiles and blasts hurt its hull less than lasers, and its hit points follow your laser fire power. It plows through strange attractors, shattering them at the cost of some hull. Three phases (marked on its health bar): aimed slug fans and homing missile pairs, then released wasps and gravity mines laid in its wake, then an enraged **slug spiral** and a gravity well dragging you in. It leaves a **laser power-up** behind
+- the **Foreman** (stage 1 boss), announced by a flashing red alert after 1-5: a huge guild mining barge circling you slowly, its head always facing you. It is drawn as a real piece of heavy machinery in fake 3D: a three-tier armored hull carrying cargo containers, a bridge tower, a swinging crane, two hazard-striped engines and a giant fluted drill turning at its head (containers burn away as it takes damage). Its **rear core** (the orb behind the stern) is armored most of the time; every few seconds it **vents**: it glows amber as a warning, then the barge freezes in place and the core's armor petals sweep open (cyan, flashing white when hit) for a few seconds, taking **4x laser damage**. Get behind it fast: while venting it stops its aimed fire and lashes out through its rear with slug fans. Missiles and blasts hurt its hull less than lasers, and its hit points follow your laser fire power. It plows through strange attractors, shattering them at the cost of some hull. Three phases (marked on its health bar): aimed slug fans and homing missile pairs, then released wasps and gravity mines laid in its wake, then an enraged **slug spiral** and a gravity well dragging you in. It leaves a **laser power-up** behind
 - **Stage 2** - *Stellis Secura, the attractors belt*: five tougher missions (kill 25 / survive 90 s / kill 40 / survive 120 s / kill 60) as you close in on the planet: the strange attractors belt gets denser than ever and the guild sends its whole fleet
-- the **Warden** (stage 2 boss), announced by the same flashing alert after 2-5: a sentinel of the belt, an armillary of turning rings around a dark eye, **untouchable behind its barrier** while its three **pylons** stand. Each pylon is a gravity well that drags you in, fires aimed slugs and feeds the core by a tether: shoot them down one by one (their remaining hull is the ring around them). Every fallen pylon speeds the others up and unleashes more: gravity mines closing the arena, wasps, rings of slugs. Once all three are down the barrier drops, the eye burns open and drags you toward it: finish it for a **laser power-up** and a big score. Like the Foreman, it plows through strange attractors, and its hit points follow your laser fire power
+- the **Warden** (stage 2 boss), announced by the same flashing alert after 2-5: a sentinel of the belt, an armillary of turning rings around a dark eye, **untouchable behind its barrier** while its three **pylons** stand (crystals orbiting on a tilted, wobbling plane, passing in front of and behind the core: you hit them and feel their pull exactly where you see them). Each pylon is a gravity well that drags you in, fires aimed slugs and feeds the core by a tether: shoot them down one by one (their remaining hull is the ring around them). Every fallen pylon speeds the others up and unleashes more: gravity mines closing the arena, wasps, rings of slugs. Once all three are down the barrier drops, the eye burns open and drags you toward it: finish it for a **laser power-up** and a big score. Like the Foreman, it plows through strange attractors, and its hit points follow your laser fire power
 - the pressure ramps up from mission to mission: more concurrent enemies, more gravity mines, a denser field of strange attractors (it fills in out of your sight), and a shorter delay (2.5s down to 0.6s) before a destroyed enemy is replaced
 - entering a new stage pauses the game on a full-screen **scenario screen** (like the prologue, click to engage) describing what awaits you
 - clearing a mission wipes out the remaining hostiles and fully restores your shield and propellant
@@ -78,7 +78,7 @@ When destroying an enemy, goodies may appears (50% chance). They are ranked from
 - A slight *solar density* factor will slowly reduce the thrust motion
 - The **solar wind** blows in waves: a global drift plus local gusts varying across space, gently pushing every rocket, mine, goody and dust particle (listen to the wind ambience swelling and panning with the local flow)
 - *Strange attractors* with variable masses attracts all rockets at proximity, can be used as natural shield with some training
-- **Gravity mines** (dark red, spiked, don't confuse them with your green magnetic mines) roam the void around you: they pull everything nearby - ship, enemies, missiles, even your own mines and the dust - into themselves and detonate on contact with a heavy blast; shoot them from a distance (**+15 pts**) or lure your pursuers through their pull
+- **Gravity mines** (dark red, spiked and tumbling in 3D, don't confuse them with your green magnetic mines) roam the void around you: they pull everything nearby - ship, enemies, missiles, even your own mines and the dust - into themselves and detonate on contact with a heavy blast; shoot them from a distance (**+15 pts**) or lure your pursuers through their pull
 - The attractor fields drag free-floating objects too: mines (both kinds) and the decoy beacon slowly sink toward nearby attractors and detonate on contact
 - A shield alert will occur when being under 25% of the shield capacity
 - A low propellant alert will occur when being under 25% of the propellant tank capacity
@@ -90,6 +90,17 @@ When destroying an enemy, goodies may appears (50% chance). They are ranked from
   - **wasps** (*yellow*, small and fast) ramming you kamikaze-style: fragile, but their death blasts chain (**+40 pts** each)
 - When your shield is fully depleted, the next hit destroys the ship: after the explosion, click to retry the current mission, or to start over when it was your last ship (enemies keep patrolling the wreck in the background...)
 
+## Test options
+
+Handy to try things out (they are not part of the story):
+
+- **F9** skips the mission banners, brings a mission to its last kill (or last seconds) and a boss just above its next phase
+- **F10** toggles invincibility (an "INVINCIBLE" label is shown)
+- command line options start the game straight in a test setup, with an invincible ship:
+    - `starship.exe --mines`: an empty sandbox with a layout of both mine types (yours in a row above the ship, the gravity mines below)
+    - `starship.exe --foreman`: the Foreman (stage 1 boss), next to the ship
+    - `starship.exe --warden`: the Warden (stage 2 boss), next to the ship
+
 ## Technical
 
 Starship relies on the [NanoVG](https://github.com/memononen/nanovg) vector graphics library on top of *OpenGL* for *hardware accelerated* displays.
@@ -99,10 +110,16 @@ Sound effects are played through [miniaudio](https://miniaud.io/)'s engine (WASA
 
 The simulation runs at a **fixed 60Hz timestep, decoupled from rendering**: wall-clock time is accumulated and late frames trigger catch-up ticks, so the game always runs at real-time speed (under sustained overload, catch-up is capped and the game slows down rather than spiraling).
 
-The code is organized around a few focused classes: `World` (simulation only), `StageDirector` (stage/mission table and flow: objectives, rosters, goody tiers), `ShipUpgrades` (skill points and ship system levels), `SceneRenderer`/`Hud` (drawing only), `Game` (input, prologue and composition), `AudioDirector`/`Audio` (game events to positional sounds, backend behind a facade).
+The code is organized around a few focused classes: `World` (simulation only), `StageDirector` (stage/mission table and flow: objectives, rosters, goody tiers), `ShipUpgrades` (skill points and ship system levels), `SceneRenderer`/`Hud` (drawing only), `Mesh3D`/`SpikedBall` (fake-3D drawing helpers), `Game` (input, prologue and composition), `AudioDirector`/`Audio` (game events to positional sounds, backend behind a facade).
+
+The mines, the Foreman and the Warden are drawn in **fake 3D** on top of the 2D vector renderer: their parts are 3D points or solids (boxes, beams, cones and cylinders, lathed drills...), rotated then projected, only the faces turned toward the viewer are drawn (lit from the upper left, painter's order, far to near). The Foreman uses an *oblique projection* in which the ground plane is exactly the game's, so its rear core is drawn where it is hit; the Warden's pylons are projected the same way they are hit and pull. Everything stays 2D for the simulation: hit boxes are circles.
 
 Resources (fonts and sound effects) are all packed in a unique *resource.dat* file using a custom packer.
 
 The game is designed at a fixed **logical height of 900** (DPI aware): the gameplay scale is identical on every monitor while the logical width follows the screen aspect ratio, so the frame always fills the display edge to edge - no letterbox bars, no distortion. Windowed mode covers the whole primary monitor work area; being vector-drawn, everything stays crisp at any scale.
 
 Vsync is disabled and the render loop is paced to 60fps by a high-resolution timer: an fps counter is displayed with a consumption percent indicator showing how much of the targeted 16.7ms timespan is currently used, a frame drop alert being displayed when the loop limit is exceeded.
+
+## Thanks
+
+Many thanks to **Jérémy BESSAC** for the **ship upgrade** system (skill points earned by the missions, spent on the four ship systems), contributed as the first pull request of the project.

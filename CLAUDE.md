@@ -20,6 +20,8 @@ Personal 2D space shooter: C++ (latest std), Win32 + OpenGL + NanoVG (vector gra
 - `Game` — composition root: input decoding, prologue / stage / game-over state machine, click-to-retry (rebuilds `World` through `unique_ptr`).
 - `World` — the simulation only: entities in `std::vector` (mark-dead + `erase_if` compaction), collisions, score, plasma shield, alerts, audio *events*. Knows nothing about rendering or Win32.
 - `SceneRenderer` / `Hud` — drawing only, take `const World &`; everything is culled against the ship-centered screen rect before touching NanoVG.
+- `Mesh3D` (`Mesh3D` solids + `Scene3D`) / `SpikedBall` — fake-3D drawing helpers (draw only): convex solids rotated and projected obliquely (ground plane = the game's, heights shift up the screen), back faces culled, painter's order, fixed light; used by the mines and the bosses. Hit boxes stay 2D, and what is hit must be where it is projected.
+- `ShipUpgrades` — skill points earned per mission and the ship system levels, applied to the ship (`World::Upgrade`, upgrade screen in `Game`).
 - `AttractorField` — static strange-attractor field over a uniform spatial grid (physics + visibility queries visit only nearby cells).
 - `AudioDirector` — game events -> sounds: positional volume/pan, per-sound cooldown ticks (prevents same-sample spam), looped sounds via `Loop` handles.
 - `Audio` — thin facade over miniaudio's `ma_engine` (the ONLY backend-aware file); slot+generation handles, stale handles no-op.
@@ -40,6 +42,8 @@ Personal 2D space shooter: C++ (latest std), Win32 + OpenGL + NanoVG (vector gra
 
 ## Testing / verification
 
+- Test options (marked TEMPORARY in the code, shipped as they are): `F9` skips banners / brings the objective or boss phase close (`World::DebugSkip`), `F10` toggles invincibility, and the command line options `--mines` (mines layout sandbox), `--foreman` and `--warden` (straight into the boss, invincible) parsed in `main.cpp` into `Game::Options`.
+- To look at a drawing change in game, launch the exe with one of these, then capture the screen ONLY once the game window is the foreground one (otherwise the capture shows whatever else is on the desktop).
 - No unit tests; verify by building both configs + launching briefly.
 - The developer is usually AT the machine: launched windows steal focus — keep test runs short (a few seconds), and prefer asking them to play for gameplay-feel changes.
 - Screenshot automation gotcha: the desktop is 2560x1440 @ 125%; PowerShell capture/click tooling is DPI-unaware (virtual 2048x1152 coords, captures may be physical crops) while the game is DPI-aware — account for the 1.25 factor before concluding anything is misaligned.
