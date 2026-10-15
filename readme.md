@@ -16,7 +16,7 @@ The game is split in **stages**, each one a sequence of **missions** displayed a
 
 You have **5 ships** (shown under the score). When one is destroyed, you retry the **current mission** with the gear (laser power, missiles, mines) and the score you had when it began, minus a ship. Lose the fifth and it is **game over**: click to start a new game from the very beginning. Free play, once the story is complete, has no such limit.
 
-<iframe style='width:100%;height:480px' src="https://www.youtube.com/embed/zJTK6VkaCGc" allowfullscreen></iframe>
+<iframe style='width:100%;height:480px' src="https://www.youtube.com/embed/_N0ygKAERLQ" allowfullscreen></iframe>
 
 ## Controls
 
