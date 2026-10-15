@@ -28,6 +28,16 @@ void Game::_Restart()
 }
 
 
+void Game::_NewGame()
+{
+    m_world = std::make_unique< World >( m_audio, m_view.logical, m_frameRate );
+    m_step = eStep::stage11_prologue;
+    m_storyStage = 1;
+    m_epilogueShown = false;
+    m_clickArmed = false;
+}
+
+
 void Game::Tick()
 {
     if( m_step == eStep::stage11_prologue ) {
@@ -81,10 +91,10 @@ void Game::Tick()
             m_windows.LeftMouseButtonPressed(),
             m_windows.RightMouseButtonPressed(),
         };
-        // TEMPORARY test shortcut: F9 jumps to the end of mission 1-5 (one kill left)
+        // TEMPORARY test shortcut: F9 skips to just before the next phase (see World::DebugSkip)
         const auto f9{ m_windows.KeyPressed( Win32::Windows::eKey::f9 ) };
         if( f9 && !m_debugKeyDown )
-            m_world->DebugJumpToMission( 4 );
+            m_world->DebugSkip();
         m_debugKeyDown = f9;
         m_world->Update( input );
         m_audio.Update();
@@ -121,8 +131,12 @@ void Game::Tick()
     m_audio.Update();
     if( !m_windows.LeftMouseButtonPressed() )
         m_clickArmed = true;
-    else if( m_clickArmed )
-        _Restart();
+    else if( m_clickArmed ) {
+        if( m_world->OutOfLives() )
+            _NewGame();
+        else
+            _Restart();
+    }
 }
 
 
@@ -174,6 +188,8 @@ bool Game::_DetectTutorial()
             return true;
         } };
     for( const auto & enemy : m_world->Enemies() ) {
+        if( enemy.IsBoss() ) // the alert already says it all
+            continue;
         const auto topic{ enemy.type == Enemy::eType::wasp ? eTutorial::wasp
             : ( enemy.type == Enemy::eType::sniper ? eTutorial::sniper : eTutorial::chaser ) };
         if( trigger( topic, enemy.rocket.position ) )
@@ -384,9 +400,11 @@ void Game::_DrawGameOver( const NanoVGRenderer::Frame & _frame )
     _frame.FillRectangle( {}, screen, { 0, 0.01, 0.03, 0.6 } );
 
     // title with a red glow:
+    const bool outOfLives{ m_world->OutOfLives() };
+    const char * title{ outOfLives ? "GAME OVER" : "SHIP DESTROYED" };
     const Vector titleCenter{ screenCenter - Vector{ 0, 80 } };
-    _frame.Text( titleCenter + Vector{ 0, 3 }, "openSansBold", 84, "SHIP DESTROYED", { dangerColor.r, dangerColor.g, dangerColor.b, 0.35 }, NanoVGRenderer::Frame::eTextAlign::center, 8 );
-    _frame.Text( titleCenter, "openSansBold", 84, "SHIP DESTROYED", colorWhite, NanoVGRenderer::Frame::eTextAlign::center, 8 );
+    _frame.Text( titleCenter + Vector{ 0, 3 }, "openSansBold", 84, title, { dangerColor.r, dangerColor.g, dangerColor.b, 0.35 }, NanoVGRenderer::Frame::eTextAlign::center, 8 );
+    _frame.Text( titleCenter, "openSansBold", 84, title, colorWhite, NanoVGRenderer::Frame::eTextAlign::center, 8 );
 
     // divider:
     const double dividerY{ titleCenter.v + 70 };
@@ -408,7 +426,14 @@ void Game::_DrawGameOver( const NanoVGRenderer::Frame & _frame )
 
     // pulsing call to action:
     const double pulse{ ( std::sin( m_overlayAnim * 2 ) + 1 ) * 0.5 };
-    _frame.Text( { screenCenter.u, dividerY + 170 }, "openSansBold", 16, std::format( "CLICK TO RETRY  -  {}", StageDirector::Label( m_world->Checkpoint().progress ) ), { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
+    if( outOfLives ) {
+        _frame.Text( { screenCenter.u, dividerY + 160 }, "openSansBold", 14, "NO SHIPS LEFT  -  THE MISSION IS LOST", { dangerColor.r, dangerColor.g, dangerColor.b, 0.9 }, NanoVGRenderer::Frame::eTextAlign::center, 3 );
+        _frame.Text( { screenCenter.u, dividerY + 195 }, "openSansBold", 16, "CLICK TO START A NEW GAME", { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
+        return;
+    }
+    if( m_world->Stage().Phase() != StageDirector::ePhase::freePlay )
+        _frame.Text( { screenCenter.u, dividerY + 160 }, "openSansBold", 14, std::format( "{} SHIP{} LEFT", m_world->Lives(), m_world->Lives() > 1 ? "S" : "" ), { 0.62, 0.72, 0.88, 0.9 }, NanoVGRenderer::Frame::eTextAlign::center, 3 );
+    _frame.Text( { screenCenter.u, dividerY + 195 }, "openSansBold", 16, std::format( "CLICK TO RETRY  -  {}", StageDirector::Label( m_world->Checkpoint().progress ) ), { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
 }
 
 

@@ -29,6 +29,8 @@ namespace
                 { eObjective::kill,    20, { { eType::chaser, 3 }, { eType::wasp, 2 }, { eType::sniper, 1 } },    0, 2.0, 0.31 },
                 { eObjective::survive, 90, { { eType::chaser, 3 }, { eType::wasp, 2 }, { eType::sniper, 1 } },   12, 1.5, 0.47 },
                 { eObjective::kill,    30, { { eType::chaser, 3 }, { eType::wasp, 2 }, { eType::sniper, 2 } },   32, 1.0, 0.625 },
+                // the stage boss, announced by a flashing alert (it is not numbered):
+                { eObjective::boss,     0, { { eType::foreman, 1 } },                                              8, 1.0, 0.625 },
             }, 1.0 }, // deep space: a dense sky
             { "STELLIS SECURA  -  THE ATTRACTORS BELT", {
                 "The blockade is broken, and the planet Stellis Secura now shines ahead of you.",
@@ -44,6 +46,8 @@ namespace
                 { eObjective::kill,    40, { { eType::chaser, 4 }, { eType::wasp, 3 }, { eType::sniper, 2 } },   32, 1.0, 0.86 },
                 { eObjective::survive, 120, { { eType::chaser, 4 }, { eType::wasp, 4 }, { eType::sniper, 2 } },  40, 0.8, 0.93 },
                 { eObjective::kill,    60, { { eType::chaser, 5 }, { eType::wasp, 4 }, { eType::sniper, 2 } },   48, 0.6, 1.0 },
+                // the belt's sentinel, announced by the same flashing alert:
+                { eObjective::boss,     0, { { eType::warden, 1 } },                                              10, 1.0, 1.0 },
             }, 0.375 }, // the planet's glare drowns the stars
         };
         return stages;
@@ -103,12 +107,14 @@ StageDirector::eEvent StageDirector::Update()
                 m_phase = ePhase::active;
                 m_phaseTicks = 0;
                 m_kills = 0;
+                m_bossDefeated = false;
             }
             break;
         case ePhase::active: {
             m_phaseTicks++;
             const auto & mission{ Mission() };
-            const bool done{ mission.objective == eObjective::kill ? m_kills >= mission.target : m_phaseTicks >= m_frameRate * mission.target };
+            const bool done{ mission.objective == eObjective::kill ? m_kills >= mission.target
+                : ( mission.objective == eObjective::boss ? m_bossDefeated : m_phaseTicks >= m_frameRate * mission.target ) };
             if( done ) {
                 m_phase = ePhase::cleared;
                 m_phaseTicks = 0;
@@ -122,6 +128,7 @@ StageDirector::eEvent StageDirector::Update()
                 m_phase = m_progress >= TotalMissions() ? ePhase::freePlay : ePhase::intro;
                 m_phaseTicks = 0;
                 m_kills = 0;
+                m_bossDefeated = false;
             }
             break;
         case ePhase::freePlay:
@@ -137,7 +144,21 @@ void StageDirector::DebugJumpAlmostDone( const int _progress )
     m_phase = ePhase::active;
     const auto & mission{ Mission() };
     m_kills = mission.objective == eObjective::kill ? mission.target - 1 : 0;
-    m_phaseTicks = mission.objective == eObjective::kill ? 0 : std::max( ( mission.target - 5 ) * m_frameRate, 0 );
+    m_bossDefeated = false;
+    m_phaseTicks = mission.objective == eObjective::survive ? std::max( ( mission.target - 5 ) * m_frameRate, 0 ) : 0;
+}
+
+
+void StageDirector::DebugSkipBanner()
+{
+    if( m_phase == ePhase::intro || m_phase == ePhase::cleared )
+        m_phaseTicks = m_frameRate * 100; // the next Update() moves on
+}
+
+
+void StageDirector::OnBossDefeated()
+{
+    m_bossDefeated = true;
 }
 
 
@@ -151,7 +172,7 @@ void StageDirector::OnKill()
 std::vector< Enemy::eType > StageDirector::Missing( const std::vector< Enemy > & _alive ) const
 {
     std::vector< Enemy::eType > missing;
-    if( m_phase != ePhase::active && m_phase != ePhase::freePlay )
+    if( ( m_phase != ePhase::active && m_phase != ePhase::freePlay ) || m_bossDefeated )
         return missing;
     for( const auto & [ type, count ] : Mission().roster ) {
         const auto alive{ std::count_if( _alive.begin(), _alive.end(),
@@ -202,6 +223,8 @@ std::string StageDirector::Label( const int _progress )
     if( _progress >= TotalMissions() )
         return "FREE PLAY";
     const auto location{ Locate( _progress ) };
+    if( location.stage->missions.at( static_cast< size_t >( location.missionNumber - 1 ) ).objective == eObjective::boss )
+        return std::format( "STAGE {} BOSS", location.stageNumber );
     return std::format( "STAGE {}-{}", location.stageNumber, location.missionNumber );
 }
 
@@ -225,6 +248,8 @@ bool StageDirector::IsAt( const int _stage, const int _mission ) const
 std::string StageDirector::ObjectiveText() const
 {
     const auto & mission{ Mission() };
+    if( mission.objective == eObjective::boss )
+        return mission.roster.front().type == eType::warden ? "DESTROY THE WARDEN  -  BREAK ITS PYLONS, THEN THE CORE" : "DESTROY THE FOREMAN  -  STRIKE ITS REAR CORE";
     return mission.objective == eObjective::kill
         ? std::format( "ELIMINATE {} HOSTILES", mission.target )
         : std::format( "SURVIVE {} SECONDS", mission.target );
@@ -235,7 +260,7 @@ std::string StageDirector::TrackerLabel() const
 {
     if( m_phase == ePhase::freePlay )
         return "FREE PLAY";
-    return Mission().objective == eObjective::kill ? "ELIMINATE" : "SURVIVE";
+    return Mission().objective == eObjective::kill ? "ELIMINATE" : ( Mission().objective == eObjective::boss ? "BOSS" : "SURVIVE" );
 }
 
 
@@ -244,6 +269,8 @@ std::string StageDirector::TrackerValue() const
     if( m_phase == ePhase::freePlay )
         return std::format( "{} KILLS", m_kills );
     const auto & mission{ Mission() };
+    if( mission.objective == eObjective::boss )
+        return "";
     if( mission.objective == eObjective::kill )
         return std::format( "{} / {}", std::min( m_kills, mission.target ), mission.target );
     const auto remainingTicks{ std::max( mission.target * m_frameRate - m_phaseTicks, 0 ) };
@@ -258,6 +285,8 @@ double StageDirector::ObjectiveRatio() const
     if( m_phase != ePhase::active )
         return 0;
     const auto & mission{ Mission() };
+    if( mission.objective == eObjective::boss )
+        return 0;
     return std::clamp( mission.objective == eObjective::kill
         ? static_cast< double >( m_kills ) / mission.target
         : static_cast< double >( m_phaseTicks ) / ( mission.target * m_frameRate ), 0.0, 1.0 );

@@ -35,6 +35,7 @@ struct WorldCheckpoint
     int laserPass{ 1 };   // eLaserPass beams
     int homingMissiles{ 0 };
     int magneticMines{ 0 };
+    int lives{ 5 };       // ships left, this one included (free play is not counted)
 };
 
 
@@ -64,7 +65,16 @@ public:
     const Rocket * ClosestEnemy( const Vector & _position ) const;
     const StageDirector & Stage() const { return m_stage; }
     const WorldCheckpoint & Checkpoint() const { return m_checkpoint; }
-    void DebugJumpToMission( const int _progress ) { m_stage.DebugJumpAlmostDone( _progress ); m_pendingSpawns.clear(); } // TEMPORARY
+    int Lives() const { return m_lives; }
+    bool OutOfLives() const { return m_lives <= 0 && m_stage.Phase() != StageDirector::ePhase::freePlay; } // game over for good
+    const Enemy * Boss() const // the boss, if on the field
+    {
+        for( const auto & enemy : m_enemies )
+            if( enemy.IsBoss() )
+                return &enemy;
+        return nullptr;
+    }
+    void DebugSkip(); // TEMPORARY: skips to just before the next phase (banner / mission end / boss phase)
 
     bool PlasmaShieldActive() const { return m_plasmaShield > 0; }
     double PlasmaShieldRadius() const { return m_plasmaShieldRadius; }
@@ -167,6 +177,14 @@ private:
     void _UpdateShipAttractorCollisions();
     void _UpdateEnemies();
     void _RefillEnemies();
+    void _UpdateForemanDamage( Enemy & _enemy );
+    void _UpdateWardenDamage( Enemy & _enemy );
+    void _SteerWarden( Enemy & _enemy );
+    void _WardenAction( Enemy & _enemy );
+    bool _LaserPylonCollision( Laser & _laser, Enemy & _enemy );
+    void _SteerForeman( Enemy & _enemy );
+    void _ForemanAction( Enemy & _enemy );
+    bool _LaserCoreCollision( Laser & _laser, Enemy & _enemy );
     void _UpdateMission();
     void _OnMissionCleared();
     void _UpdateMines();
@@ -212,6 +230,8 @@ private:
         int ticks; // countdown before the replacement shows up
     };
     std::vector< PendingSpawn > m_pendingSpawns;
+    int m_bossWasps{ 0 };   // wasps the boss asked for during the enemies pass
+    Vector m_bossSpawn;     // and where
     std::vector< Laser > m_lasers;
     std::vector< Missile > m_missiles;
     std::vector< Particule > m_particules;
@@ -223,6 +243,7 @@ private:
 
 private:
     int m_score{ 0 };
+    int m_lives{ 5 };
 
     enum class eLaserSpeed : int
     {

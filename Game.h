@@ -29,6 +29,7 @@ private:
     void _DrawStageStory( const NanoVGRenderer::Frame & _frame );
     void _DrawTutorial( const NanoVGRenderer::Frame & _frame );
     void _DrawGameOver( const NanoVGRenderer::Frame & _frame );
+    void _NewGame(); // out of lives: back to the very beginning
     void _DrawCursor( const NanoVGRenderer::Frame & _frame );
 
 private:

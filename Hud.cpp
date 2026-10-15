@@ -58,14 +58,36 @@ void Hud::_Bar( const NanoVGRenderer::Frame & _frame, const Vector & _position, 
 }
 
 
-void Hud::_DrawMission( const StageDirector & _stage, const NanoVGRenderer::Frame & _frame ) const
+void Hud::_DrawMission( const World & _world, const NanoVGRenderer::Frame & _frame ) const
 {
     using ePhase = StageDirector::ePhase;
+    const auto & _stage{ _world.Stage() };
     const Vector screenCenter{ static_cast< double >( m_screenDimension.width ) * 0.5, static_cast< double >( m_screenDimension.height ) * 0.5 };
     const auto phase{ _stage.Phase() };
 
+    // boss health bar, top center: the phases are marked, the rear core is the hint
+    if( phase == ePhase::active && _stage.IsBoss() ) {
+        if( const auto * pBoss{ _world.Boss() } ) {
+            constexpr double barPanelWidth{ 560 }, barPanelHeight{ 66 };
+            const Vector a{ screenCenter.u - barPanelWidth * 0.5, margin };
+            const Vector b{ a.u + barPanelWidth, a.v + barPanelHeight };
+            _frame.GradientRectangle( a, b, panelTopColor, panelBottomColor, panelRadius );
+            _frame.StrokeRectangle( a, b, { warningColor.r, warningColor.g, warningColor.b, 0.5 }, 1, panelRadius );
+            _frame.Text( { screenCenter.u, a.v + 16 }, "openSansBold", 13, ( pBoss->type == Enemy::eType::warden ? "THE WARDEN" : "THE FOREMAN" ), warningColor, NanoVGRenderer::Frame::eTextAlign::center, 3 );
+            const auto ratio{ pBoss->BossRatio() };
+            const bool warden{ pBoss->type == Enemy::eType::warden };
+            const Vector barA{ a.u + panelPadding, a.v + 32 };
+            const double barW{ barPanelWidth - panelPadding * 2 };
+            _Bar( _frame, barA, barW, 12, ratio, warden ? Color_d{ 0.65, 0.45 + 0.2 * ratio, 1 } : Color_d{ 1, 0.5 + 0.2 * ratio, 0.2 } );
+            if( !warden || pBoss->PylonsAlive() > 0 ) // the phase thresholds (one per pylon for the warden)
+            for( const auto mark : { 1.0 / 3, 2.0 / 3 } )
+                _frame.Line( { barA.u + barW * mark, barA.v - 2 }, { barA.u + barW * mark, barA.v + 14 }, { 1, 1, 1, 0.55 }, 1.5 );
+            _frame.Text( { screenCenter.u, a.v + 55 }, "openSansBold", 11, ( warden ? ( pBoss->PylonsAlive() > 0 ? std::format( "SHIELDED CORE  -  DESTROY THE PYLONS ({} / 3)", Enemy::pylonCount - pBoss->PylonsAlive() ) : std::string{ "CORE EXPOSED  -  FINISH IT!" } ) : pBoss->boss.vent == 2 ? "CORE EXPOSED  -  STRIKE IT FROM BEHIND!" : ( pBoss->boss.vent == 1 ? "THE CORE IS VENTING..." : "REAR CORE ARMORED  -  WAIT FOR THE VENT" ) ), labelColor, NanoVGRenderer::Frame::eTextAlign::center, 1.6 );
+        }
+    }
+
     // objective tracker, top center:
-    if( phase == ePhase::active || phase == ePhase::freePlay ) {
+    else if( phase == ePhase::active || phase == ePhase::freePlay ) {
         constexpr double trackerWidth{ 240 }, trackerHeight{ 62 };
         const Vector a{ screenCenter.u - trackerWidth * 0.5, margin };
         const Vector b{ a.u + trackerWidth, a.v + trackerHeight };
@@ -82,7 +104,14 @@ void Hud::_DrawMission( const StageDirector & _stage, const NanoVGRenderer::Fram
     if( phase != ePhase::intro && phase != ePhase::cleared )
         return;
     const auto ratio{ _stage.PhaseRatio() };
-    const auto fade{ std::clamp( std::min( { ratio / 0.12, ( 1 - ratio ) / 0.2, 1.0 } ), 0.0, 1.0 ) };
+    auto fade{ std::clamp( std::min( { ratio / 0.12, ( 1 - ratio ) / 0.2, 1.0 } ), 0.0, 1.0 ) };
+    const bool bossAlert{ phase == ePhase::intro && _stage.IsBoss() };
+    if( bossAlert ) {
+        // flashing red alert: pulsing text and a blinking vignette
+        const auto flash{ std::abs( std::sin( m_pulse * 1.3 ) ) };
+        _frame.FillRectangle( {}, { static_cast< double >( m_screenDimension.width ), static_cast< double >( m_screenDimension.height ) }, { 1, 0.08, 0.12, 0.16 * flash * fade } );
+        fade *= 0.35 + 0.65 * flash;
+    }
     const Vector titleCenter{ screenCenter.u, screenCenter.v * 0.5 };
     const auto drawBanner{ [ & ]( const char * _tag, const std::string & _title, const std::string & _subtitle, const Color_d & _color ){
             _frame.Text( titleCenter - Vector{ 0, 70 }, "openSansBold", 15, _tag, { _color.r, _color.g, _color.b, 0.85 * fade }, NanoVGRenderer::Frame::eTextAlign::center, 6 );
@@ -93,7 +122,9 @@ void Hud::_DrawMission( const StageDirector & _stage, const NanoVGRenderer::Fram
             _frame.FillCircle( { screenCenter.u, dividerY }, 2.5, { _color.r, _color.g, _color.b, 0.8 * fade } );
             _frame.Text( { screenCenter.u, dividerY + 38 }, "openSansBold", 26, _subtitle, { 0.85, 0.92, 1, 0.95 * fade }, NanoVGRenderer::Frame::eTextAlign::center, 4 );
         } };
-    if( phase == ePhase::intro )
+    if( bossAlert )
+        drawBanner( "UNIDENTIFIED SIGNATURE", "WARNING", _stage.ObjectiveText(), criticalColor );
+    else if( phase == ePhase::intro )
         drawBanner( _stage.StageTitle(), _stage.Label(), _stage.ObjectiveText(), accentColor );
     else
         drawBanner( "OBJECTIVE ACCOMPLISHED", _stage.LastOfStage() ? std::format( "STAGE {} CLEARED", _stage.StageNumber() ) : "MISSION COMPLETE",
@@ -104,7 +135,7 @@ void Hud::_DrawMission( const StageDirector & _stage, const NanoVGRenderer::Fram
 void Hud::Draw( const World & _world, const NanoVGRenderer::Frame & _frame )
 {
     m_pulse += 0.16;
-    _DrawMission( _world.Stage(), _frame );
+    _DrawMission( _world, _frame );
 
     const auto info{ _world.GetHudInfo() };
 
@@ -176,4 +207,24 @@ void Hud::Draw( const World & _world, const NanoVGRenderer::Frame & _frame )
     const auto significant{ score.find_first_not_of( '0' ) };
     if( significant != std::string::npos )
         _frame.Text( { scoreCorner.u, scoreCorner.v + 16 }, "sourceCodePro", 26, score.substr( significant ), valueColor, NanoVGRenderer::Frame::eTextAlign::topRight );
+
+    // remaining ships, as small hulls (the lost ones stay as dim outlines); free play has none:
+    if( _world.Stage().Phase() != StageDirector::ePhase::freePlay ) {
+        constexpr int maxLives{ 5 };
+        constexpr double shipWidth{ 16 }, shipHeight{ 18 }, shipSpacing{ 8 };
+        const double y{ scoreCorner.v + 54 };
+        const bool lastShip{ _world.Lives() == 1 };
+        for( int i{ 0 }; i < maxLives; i++ ) {
+            const double right{ scoreCorner.u - i * ( shipWidth + shipSpacing ) };
+            const std::vector< Position_d > hull{ { right - shipWidth * 0.5, y }, { right, y + shipHeight }, { right - shipWidth * 0.5, y + shipHeight * 0.72 }, { right - shipWidth, y + shipHeight } };
+            const bool alive{ i < _world.Lives() };
+            if( alive ) {
+                const Color_d color{ lastShip ? Color_d{ criticalColor.r, criticalColor.g, criticalColor.b, 0.45 + ( std::sin( m_pulse ) + 1 ) * 0.275 } : shieldColor };
+                _frame.FillPolygon( hull, { color.r, color.g, color.b, color.a * 0.6 } );
+                _frame.StrokePolygon( hull, color, 1.5 );
+            }
+            else
+                _frame.StrokePolygon( hull, { 1, 1, 1, 0.15 }, 1 );
+        }
+    }
 }

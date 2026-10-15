@@ -12,6 +12,7 @@ struct MissionDef
     {
         kill,    // destroy `target` hostiles
         survive, // stay alive `target` seconds
+        boss,    // destroy the boss (the roster holds it)
     };
     eObjective objective;
     int target;
@@ -68,7 +69,9 @@ public:
 public:
     eEvent Update(); // one tick
     void OnKill();
+    void OnBossDefeated();
     void DebugJumpAlmostDone( const int _progress ); // TEMPORARY test helper: mission _progress, active, one kill (or 5 seconds) from clearing
+    void DebugSkipBanner(); // TEMPORARY test helper: ends the current briefing / debriefing banner
 
     // enemy types to (re)spawn so that the field matches the current mission roster:
     std::vector< Enemy::eType > Missing( const std::vector< Enemy > & _alive ) const;
@@ -84,6 +87,8 @@ public:
     int StageNumber() const;
     int MissionNumber() const;
     bool LastOfStage() const;
+    bool IsBoss() const { return Mission().objective == MissionDef::eObjective::boss; }
+    int PhaseTicks() const { return m_phaseTicks; }
     // goody unlock schedule (see Goody::FirstMission); free play unlocks everything:
     bool Reached( const int _stage, const int _mission ) const;
     bool IsAt( const int _stage, const int _mission ) const;
@@ -102,4 +107,5 @@ private:
     ePhase m_phase;
     int m_phaseTicks{ 0 };
     int m_kills{ 0 };
+    bool m_bossDefeated{ false };
 };

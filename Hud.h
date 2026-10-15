@@ -14,7 +14,7 @@ public:
     void Draw( const World & _world, const NanoVGRenderer::Frame & _frame );
 
 private:
-    void _DrawMission( const StageDirector & _stage, const NanoVGRenderer::Frame & _frame ) const; // objective tracker + briefing/debriefing banners
+    void _DrawMission( const World & _world, const NanoVGRenderer::Frame & _frame ) const; // objective tracker + briefing/debriefing banners
     void _Bar( const NanoVGRenderer::Frame & _frame, const Vector & _position, const double _width, const double _height, const double _rate, const Color_d & _color ) const;
     Color_d _StateColor( const double _rate, const Color_d & _healthy ) const;
 

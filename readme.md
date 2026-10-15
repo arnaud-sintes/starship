@@ -1,18 +1,20 @@
-# Starship beta 0.0.10
+# Starship beta 0.0.11
 
 ## Goal
 
 The game is split in **stages**, each one a sequence of **missions** displayed as "*Stage 1-2*" (a banner announces each mission and its objective, the tracker at the top center follows your progress):
 
-- **Stage 1** - *Rexxus-3b, the mining guild blockade*: five missions alternating **kill quotas** (10, 20 then 30 hostiles) and **survival timers** (60 then 90 seconds); the novelties are introduced one at a time: chasers alone (1-1), the wasps join (1-2), the sniper (1-3), then the gravity mines (1-4)
+- **Stage 1** - *Rexxus-3b, the mining guild blockade*: five missions then the **boss**, alternating **kill quotas** (10, 20 then 30 hostiles) and **survival timers** (60 then 90 seconds); the novelties are introduced one at a time: chasers alone (1-1), the wasps join (1-2), the sniper (1-3), then the gravity mines (1-4)
+- the **Foreman** (stage 1 boss), announced by a flashing red alert after 1-5: a huge guild mining barge circling you slowly, its head always facing you. Its **rear core** (the orb behind the stern) is armored most of the time; every few seconds it **vents**: it glows amber as a warning, then the barge freezes in place and the core opens up (cyan, flashing white when hit) for a few seconds, taking **4x laser damage**. Get behind it fast: while venting it stops its aimed fire and lashes out through its rear with slug fans. Missiles and blasts hurt its hull less than lasers, and its hit points follow your laser fire power. It plows through strange attractors, shattering them at the cost of some hull. Three phases (marked on its health bar): aimed slug fans and homing missile pairs, then released wasps and gravity mines laid in its wake, then an enraged **slug spiral** and a gravity well dragging you in. It leaves a **laser power-up** behind
 - **Stage 2** - *Stellis Secura, the attractors belt*: five tougher missions (kill 25 / survive 90 s / kill 40 / survive 120 s / kill 60) as you close in on the planet: the strange attractors belt gets denser than ever and the guild sends its whole fleet
+- the **Warden** (stage 2 boss), announced by the same flashing alert after 2-5: a sentinel of the belt, an armillary of turning rings around a dark eye, **untouchable behind its barrier** while its three **pylons** stand. Each pylon is a gravity well that drags you in, fires aimed slugs and feeds the core by a tether: shoot them down one by one (their remaining hull is the ring around them). Every fallen pylon speeds the others up and unleashes more: gravity mines closing the arena, wasps, rings of slugs. Once all three are down the barrier drops, the eye burns open and drags you toward it: finish it for a **laser power-up** and a big score. Like the Foreman, it plows through strange attractors, and its hit points follow your laser fire power
 - the pressure ramps up from mission to mission: more concurrent enemies, more gravity mines, a denser field of strange attractors (it fills in out of your sight), and a shorter delay (2.5s down to 0.6s) before a destroyed enemy is replaced
 - entering a new stage pauses the game on a full-screen **scenario screen** (like the prologue, click to engage) describing what awaits you
 - clearing a mission wipes out the remaining hostiles and fully restores your shield and propellant
 - after the last mission, an **epilogue** screen (with your final score) ends the story, then the game goes on in **free play** (endless, no objective, the last mission's setup)
 - the starfield follows the story: a dense sky in deep space (stage 1), thinning out in the glare of the planet (stage 2)
 
-When your ship is destroyed, you retry the **current mission** with the gear (laser power, missiles, mines) and the score you had when it began.
+You have **5 ships** (shown under the score). When one is destroyed, you retry the **current mission** with the gear (laser power, missiles, mines) and the score you had when it began, minus a ship. Lose the fifth and it is **game over**: click to start a new game from the very beginning. Free play, once the story is complete, has no such limit.
 
 <iframe style='width:100%;height:480px' src="https://www.youtube.com/embed/zJTK6VkaCGc" allowfullscreen></iframe>
 
@@ -81,7 +83,7 @@ When destroying an enemy, goodies may appears (50% chance). They are ranked from
   - **chasers** (*pink*) hunting you and launching a homing-missile every 5 seconds
   - **snipers** (*pale red*) creeping to the edge of your screen, then holding position and firing fast **lead-compensated slugs** at your predicted position - it only shoots when visible, punishes straight-line flying, and never flees: close in to finish it (**+150 pts**)
   - **wasps** (*yellow*, small and fast) ramming you kamikaze-style: fragile, but their death blasts chain (**+40 pts** each)
-- When your shield is fully depleted, the next hit destroys the ship: after the explosion, click to retry the current mission (enemies keep patrolling the wreck in the background...)
+- When your shield is fully depleted, the next hit destroys the ship: after the explosion, click to retry the current mission, or to start over when it was your last ship (enemies keep patrolling the wreck in the background...)
 
 ## Technical
 

@@ -29,6 +29,262 @@ void SceneRenderer::DrawBackdrop( const World & _world, const NanoVGRenderer::Fr
 }
 
 
+void SceneRenderer::_DrawWarden( const Enemy & _enemy, const NanoVGRenderer::Frame & _frame, const Vector & _translation )
+{
+    // the sentinel of the belt: an armillary of rotating rings around a dark eye, shielded
+    // by a barrier as long as its three pylons (gravity wells, tethered to the core) stand.
+    // Once they fall, the barrier drops and the eye burns open.
+    const auto & rocket{ _enemy.rocket };
+    const auto & boss{ _enemy.boss };
+    const auto center{ rocket.position + _translation };
+    const auto R{ rocket.dynamic.bodyRadius };
+    const auto alive{ _enemy.PylonsAlive() };
+    const bool exposed{ alive == 0 };
+    const auto health{ exposed ? std::clamp( rocket.shield.value / boss.maxShield, 0.0, 1.0 ) : 1.0 };
+    m_wardenAnim += 0.02 + ( Enemy::pylonCount - alive ) * 0.008;
+    const auto anim{ m_wardenAnim };
+    const Color_d ice{ 0.55, 0.8, 1 };
+    const Color_d violet{ 0.72, 0.48, 1 };
+    const Color_d accent{ exposed ? Color_d{ 1, 0.35 + 0.35 * health, 0.55 + 0.3 * health } : violet };
+    const bool hit{ boss.coreFlash > 0 };
+
+    {
+        const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+        _frame.GradientCircle( center, R * 3, { accent.r, accent.g, accent.b, 0.18 }, { accent.r, accent.g, accent.b, 0 } );
+    }
+
+    // the pylons: contracting rings show the pull of their wells, tethers feed the core
+    for( int i{ 0 }; i < Enemy::pylonCount; i++ ) {
+        const auto position{ _enemy.PylonPosition( i ) + _translation };
+        if( !_enemy.PylonAlive( i ) )
+            continue;
+        for( int ring{ 0 }; ring < 3; ring++ ) {
+            const auto phase{ std::fmod( anim * 0.6 + ring / 3.0, 1.0 ) };
+            _frame.StrokeCircle( position, 190 * ( 1 - phase ) + 30, { violet.r, violet.g, violet.b, 0.22 * phase }, 2 );
+        }
+        {
+            const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+            _frame.Line( center, position, { violet.r, violet.g, violet.b, 0.35 }, 7 );
+        }
+        _frame.Line( center, position, { ice.r, ice.g, ice.b, 0.7 }, 2 );
+        for( int bead{ 0 }; bead < 3; bead++ ) { // energy flowing to the core
+            const auto t{ std::fmod( anim * 0.7 + bead / 3.0 + i * 0.3, 1.0 ) };
+            _frame.FillCircle( position + ( center - position ) * t, 3.5, { 1, 1, 1, 0.9 } );
+        }
+    }
+
+    // the body: fins, a dark disc, counter-rotating arcs
+    for( int i{ 0 }; i < 8; i++ ) {
+        const auto angle{ anim * 0.5 + Maths::Pi2 * i / 8 };
+        const std::vector< Position_d > fin{ center + Vector::From( angle - 0.14, R * 0.95 ), center + Vector::From( angle, R * 1.4 ), center + Vector::From( angle + 0.14, R * 0.95 ) };
+        _frame.FillPolygon( fin, { 0.14, 0.1, 0.22 } );
+        _frame.StrokePolygon( fin, { violet.r, violet.g, violet.b, 0.8 }, 2.5 );
+    }
+    _frame.FillCircle( center, R, { 0.07, 0.05, 0.12 } );
+    _frame.StrokeCircle( center, R, violet, 7 );
+    _frame.StrokeCircle( center, R * 0.7, { ice.r, ice.g, ice.b, 0.3 }, 2 );
+    for( int i{ 0 }; i < 3; i++ ) {
+        const auto angle{ -anim * 1.2 + Maths::Pi2 * i / 3 };
+        _frame.StrokeArc( center, R * 1.12, angle, angle + 1.1, { ice.r, ice.g, ice.b, 0.85 }, 4 );
+    }
+    for( int i{ 0 }; i < 4; i++ ) {
+        const auto angle{ anim * 1.8 + Maths::Pi2 * i / 4 };
+        _frame.StrokeArc( center, R * 0.82, angle, angle + 0.7, { violet.r, violet.g, violet.b, 0.9 }, 3 );
+    }
+
+    // the eye: dim and shuttered under the barrier, burning once exposed
+    const auto pulse{ ( std::sin( anim * ( exposed ? 9 : 3 ) ) + 1 ) * 0.5 };
+    const Color_d eye{ hit && exposed ? Color_d{ 1, 1, 1 } : ( exposed ? accent : ice ) };
+    {
+        const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+        _frame.GradientCircle( center, R * ( exposed ? 1.8 + pulse * 0.5 : 0.9 ), { eye.r, eye.g, eye.b, exposed ? 0.55 : 0.25 }, { eye.r, eye.g, eye.b, 0 } );
+    }
+    _frame.FillCircle( center, R * ( exposed ? 0.42 + pulse * 0.1 : 0.28 ), eye );
+    _frame.FillCircle( center, R * 0.12, { 0.05, 0.03, 0.08 } );
+    if( exposed )
+        for( int i{ 0 }; i < 10; i++ ) { // crown of flames
+            const auto angle{ anim * 2 + Maths::Pi2 * i / 10 };
+            _frame.Line( center + Vector::From( angle, R * 0.5 ), center + Vector::From( angle, R * ( 0.75 + 0.2 * std::sin( anim * 11 + i ) ) ), { accent.r, accent.g, accent.b, 0.9 }, 3 );
+        }
+
+    // the barrier, up while a pylon stands; flashing white when shot
+    if( !exposed ) {
+        std::vector< Position_d > shape;
+        for( int i{ 0 }; i < 6; i++ )
+            shape.emplace_back( center + Vector::From( -anim * 0.25 + Maths::Pi2 * i / 6, R * 1.65 ) );
+        _frame.FillPolygon( shape, { violet.r, violet.g, violet.b, hit ? 0.28 : 0.07 } );
+        _frame.StrokePolygon( shape, hit ? Color_d{ 1, 1, 1, 0.95 } : Color_d{ violet.r, violet.g, violet.b, 0.45 }, hit ? 5 : 2 );
+    }
+
+    // the pylons themselves: crystal obelisks, wearing a ring of remaining hull
+    for( int i{ 0 }; i < Enemy::pylonCount; i++ ) {
+        const auto position{ _enemy.PylonPosition( i ) + _translation };
+        const auto angle{ boss.pylonAngle + Maths::Pi2 * i / Enemy::pylonCount };
+        const auto index{ static_cast< size_t >( i ) };
+        if( !_enemy.PylonAlive( i ) ) { // a smoldering stump
+            const auto flicker{ 0.5 + 0.5 * std::sin( anim * 8 + i * 2 ) };
+            _frame.FillCircle( position, 9, { 0.12, 0.08, 0.15 } );
+            _frame.FillCircle( position, 4, { 1, 0.4, 0.2, 0.4 + 0.4 * flicker } );
+            continue;
+        }
+        const auto ratio{ std::clamp( boss.pylonShield.at( index ) / boss.pylonMax, 0.0, 1.0 ) };
+        const bool flash{ boss.pylonFlash.at( index ) > 0 };
+        const Color_d body{ flash ? Color_d{ 1, 1, 1 } : ice };
+        const std::vector< Position_d > crystal{ position + Vector::From( angle, 44 ), position + Vector::From( angle + Maths::Pi * 0.5, 20 ),
+            position + Vector::From( angle + Maths::Pi, 44 ), position + Vector::From( angle - Maths::Pi * 0.5, 20 ) };
+        _frame.FillPolygon( crystal, { 0.1, 0.1, 0.2 } );
+        _frame.StrokePolygon( crystal, body, 4 );
+        const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+        _frame.GradientCircle( position, 36 + 6 * std::sin( anim * 5 + i ), { body.r, body.g, body.b, flash ? 0.8 : 0.4 }, { body.r, body.g, body.b, 0 } );
+        _frame.StrokeArc( position, 42, -Maths::Pi * 0.5, -Maths::Pi * 0.5 + Maths::Pi2 * ratio, { 1, 0.75 + 0.2 * ratio, 1, 0.8 }, 3 );
+    }
+}
+
+
+void SceneRenderer::_DrawForeman( const Enemy & _enemy, const NanoVGRenderer::Frame & _frame, const Vector & _translation )
+{
+    // a guild mining barge, seen from above: an armored wedge hull with a drilling drum
+    // amidships, two engine nacelles, a head drill-cannon, and a pylon holding the
+    // glowing rear core (the weak spot). Damage shows: cracks, embers, a hotter hull.
+    const auto & rocket{ _enemy.rocket };
+    const auto & boss{ _enemy.boss };
+    const auto center{ rocket.position + _translation };
+    const auto R{ rocket.dynamic.bodyRadius };
+    const auto health{ std::clamp( rocket.shield.value / boss.maxShield, 0.0, 1.0 ) };
+    const auto head{ rocket.orientation + Maths::Pi }; // the head faces the opposite way of the stern
+    m_foremanAnim += 0.03 + ( 1 - health ) * 0.03;
+    const auto anim{ m_foremanAnim };
+
+    // hull space: f along the barge (+ toward the head), s across it, in body radii
+    const auto at{ [ & ]( const double _f, const double _s ) -> Vector {
+            return center + Vector::From( head, _f * R ) + Vector::From( head + Maths::Pi * 0.5, _s * R );
+        } };
+    const auto poly{ [ & ]( std::initializer_list< std::pair< double, double > > _points ) {
+            std::vector< Position_d > points;
+            for( const auto & [ f, s ] : _points )
+                points.emplace_back( at( f, s ) );
+            return points;
+        } };
+
+    // guild amber, turning angry red as the hull fails:
+    const Color_d amber{ 1, 0.3 + health * 0.4, 0.15 + health * 0.1 };
+    const Color_d dark{ 0.09, 0.055, 0.045 };
+    const Color_d plate{ 0.2, 0.12, 0.09 };
+    const Color_d lit{ 1, 0.85, 0.55 };
+    {
+        const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+        _frame.GradientCircle( center, R * 2.4, { amber.r, amber.g, amber.b, 0.16 }, { amber.r, amber.g, amber.b, 0 } );
+    }
+
+    // engine nacelles on each flank, hazard-striped, with a glowing exhaust:
+    for( const auto side : { -1.0, 1.0 } ) {
+        const auto nacelle{ poly( { { 0.55, side * 0.62 }, { 0.35, side * 1.0 }, { -0.85, side * 1.0 }, { -1.05, side * 0.78 }, { -0.8, side * 0.55 }, { 0.3, side * 0.55 } } ) };
+        _frame.FillPolygon( nacelle, plate );
+        _frame.StrokePolygon( nacelle, amber, 3 );
+        for( int i{ 0 }; i < 5; i++ ) { // hazard stripes
+            const auto f{ 0.2 - i * 0.22 };
+            _frame.Line( at( f, side * 0.62 ), at( f - 0.12, side * 0.96 ), { amber.r, amber.g, amber.b, 0.75 }, 5 );
+        }
+        const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+        _frame.GradientCircle( at( -1.05, side * 0.78 ), R * ( 0.32 + 0.05 * std::sin( anim * 9 + side ) ), { 1, 0.6, 0.25, 0.55 }, { 1, 0.3, 0.1, 0 } );
+    }
+
+    // main wedge hull:
+    const auto hullShape{ poly( { { 1.2, 0 }, { 0.85, 0.42 }, { 0.35, 0.58 }, { -0.7, 0.6 }, { -1.0, 0.3 }, { -1.0, -0.3 }, { -0.7, -0.6 }, { 0.35, -0.58 }, { 0.85, -0.42 } } ) };
+    _frame.FillPolygon( hullShape, dark );
+    _frame.StrokePolygon( hullShape, amber, 6 );
+    _frame.StrokePolygon( poly( { { 0.95, 0 }, { 0.7, 0.3 }, { 0.3, 0.42 }, { -0.6, 0.44 }, { -0.8, 0.22 }, { -0.8, -0.22 }, { -0.6, -0.44 }, { 0.3, -0.42 }, { 0.7, -0.3 } } ), { amber.r, amber.g, amber.b, 0.35 }, 2 );
+
+    // rivets along the hull edge:
+    for( int i{ 0 }; i < 7; i++ ) {
+        const auto f{ 0.6 - i * 0.22 };
+        _frame.FillCircle( at( f, 0.5 ), 2.5, { lit.r, lit.g, lit.b, 0.6 } );
+        _frame.FillCircle( at( f, -0.5 ), 2.5, { lit.r, lit.g, lit.b, 0.6 } );
+    }
+
+    // the drilling drum amidships: counter-turning teeth around a dark bore:
+    const auto drum{ at( 0.05, 0 ) };
+    _frame.FillCircle( drum, R * 0.42, { 0.03, 0.02, 0.02 } );
+    _frame.StrokeCircle( drum, R * 0.42, amber, 4 );
+    for( int i{ 0 }; i < 12; i++ ) {
+        const auto angle{ anim + Maths::Pi2 * i / 12 };
+        _frame.Line( drum + Vector::From( angle, R * 0.22 ), drum + Vector::From( angle + 0.25, R * 0.4 ), { amber.r, amber.g, amber.b, 0.9 }, 3 );
+    }
+    for( int i{ 0 }; i < 6; i++ ) {
+        const auto angle{ -anim * 1.6 + Maths::Pi2 * i / 6 };
+        _frame.FillCircle( drum + Vector::From( angle, R * 0.14 ), 3, lit );
+    }
+
+    // the head: a drill-cannon barrel with a glowing muzzle and flanking pods:
+    for( const auto side : { -1.0, 1.0 } ) {
+        _frame.FillCircle( at( 0.95, side * 0.3 ), 9, amber );
+        _frame.FillCircle( at( 0.95, side * 0.3 ), 4, dark );
+    }
+    _frame.Line( at( 0.9, 0 ), at( 1.55, 0 ), amber, 11 );
+    _frame.Line( at( 0.9, 0 ), at( 1.55, 0 ), dark, 5 );
+    for( int i{ 0 }; i < 3; i++ ) // barrel rings
+        _frame.Line( at( 1.05 + i * 0.14, -0.1 ), at( 1.05 + i * 0.14, 0.1 ), lit, 3 );
+    {
+        const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+        _frame.GradientCircle( at( 1.58, 0 ), 20, { 1, 0.9, 0.6, 0.7 }, { 1, 0.6, 0.2, 0 } );
+    }
+
+    // battle damage: cracks and ember glow grow with the phases
+    if( boss.phase >= 1 ) {
+        const Color_d crack{ 1, 0.35, 0.1, 0.9 };
+        _frame.Line( at( 0.4, 0.45 ), at( 0.15, 0.3 ), crack, 2 );
+        _frame.Line( at( 0.15, 0.3 ), at( 0.2, 0.12 ), crack, 2 );
+        _frame.Line( at( -0.3, -0.5 ), at( -0.45, -0.3 ), crack, 2 );
+        _frame.Line( at( -0.45, -0.3 ), at( -0.4, -0.12 ), crack, 2 );
+    }
+    if( boss.phase >= 2 ) {
+        const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+        const auto flicker{ 0.5 + 0.5 * std::sin( anim * 7 ) };
+        _frame.GradientCircle( at( 0.2, 0.25 ), R * 0.35, { 1, 0.4, 0.1, 0.35 * flicker }, { 1, 0.3, 0.1, 0 } );
+        _frame.GradientCircle( at( -0.45, -0.3 ), R * 0.3, { 1, 0.4, 0.1, 0.35 * ( 1 - flicker ) }, { 1, 0.3, 0.1, 0 } );
+    }
+
+    // blinking beacons on the nacelles:
+    if( std::fmod( anim, 2 ) < 1 ) {
+        _frame.FillCircle( at( 0.35, 1.0 ), 4, { 1, 0.1, 0.1 } );
+        _frame.FillCircle( at( 0.35, -1.0 ), 4, { 0.1, 1, 0.3 } );
+    }
+
+    // the stern pylon holding the core, braced to the hull corners:
+    const auto core{ _enemy.CorePosition() + _translation };
+    for( const auto side : { -1.0, 1.0 } )
+        _frame.Line( at( -0.9, side * 0.28 ), core, { amber.r, amber.g, amber.b, 0.8 }, 4 );
+    _frame.Line( at( -0.95, 0 ), core, amber, 8 );
+
+    // the rear core: armored behind shutters, glowing amber while the vent warms up, then
+    // exposed (cyan, flashing white when hit):
+    const bool armored{ boss.vent == 0 };
+    const bool warning{ boss.vent == 1 };
+    const bool flashing{ boss.coreFlash > 0 };
+    const auto pulse{ ( std::sin( m_foremanAnim * ( warning ? 14 : 5 ) ) + 1 ) * 0.5 };
+    const Color_d coreColor{ flashing ? Color_d{ 1, 1, 1 } : ( armored ? Color_d{ 0.45, 0.5, 0.55 } : ( warning ? Color_d{ 1, 0.6, 0.15 } : Color_d{ 0.35, 0.9, 1 } ) ) };
+    if( !armored ) {
+        const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+        _frame.GradientCircle( core, Enemy::coreRadius * ( flashing ? 4.5 : ( warning ? 2.5 + pulse * 1.5 : 3 + pulse ) ), { coreColor.r, coreColor.g, coreColor.b, flashing ? 0.7 : 0.4 }, { coreColor.r, coreColor.g, coreColor.b, 0 } );
+    }
+    _frame.FillCircle( core, Enemy::coreRadius * 0.75, { 0.05, 0.12, 0.18 } );
+    if( armored ) {
+        // closed shutters: two steel plates over a faint ember
+        _frame.FillCircle( core, Enemy::coreRadius * 0.4, { 0.35, 0.18, 0.1 } );
+        _frame.StrokeCircle( core, Enemy::coreRadius * 0.55, coreColor, Enemy::coreRadius * 0.5 );
+        _frame.StrokeCircle( core, Enemy::coreRadius, { coreColor.r, coreColor.g, coreColor.b, 0.9 }, 5 );
+    }
+    else {
+        _frame.FillCircle( core, Enemy::coreRadius * ( flashing ? 0.7 : 0.45 + pulse * 0.15 ), coreColor );
+        _frame.StrokeCircle( core, Enemy::coreRadius, { coreColor.r, coreColor.g, coreColor.b, 0.9 }, 3 );
+        for( int i{ 0 }; i < 3; i++ ) {
+            const auto angle{ -m_foremanAnim * 1.5 + Maths::Pi2 * i / 3 };
+            _frame.StrokeArc( core, Enemy::coreRadius + 9, angle, angle + 0.9, { coreColor.r, coreColor.g, coreColor.b, 0.8 }, 2.5 );
+        }
+    }
+}
+
+
 void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _frame )
 {
     const auto & ship{ _world.Ship() };
@@ -138,8 +394,14 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
             }
         }
         // nozzle and flames extend beyond the bounding box, keep a comfortable margin:
-        if( _Visible( _world, enemy.rocket.position, enemy.rocket.dynamic.boundingBoxRadius + 60 ) )
-            enemy.rocket.Draw( _frame, translation );
+        if( _Visible( _world, enemy.rocket.position, enemy.type == Enemy::eType::warden ? Enemy::pylonOrbit * 1.5 : enemy.rocket.dynamic.boundingBoxRadius + Enemy::coreRadius * 4 ) ) {
+            if( enemy.type == Enemy::eType::foreman )
+                _DrawForeman( enemy, _frame, translation );
+            else if( enemy.type == Enemy::eType::warden )
+                _DrawWarden( enemy, _frame, translation );
+            else
+                enemy.rocket.Draw( _frame, translation );
+        }
     }
 
     // draw lasers:

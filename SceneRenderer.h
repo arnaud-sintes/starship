@@ -19,6 +19,8 @@ public:
 
 private:
     bool _Visible( const World & _world, const Vector & _worldPosition, const double _radius ) const;
+    void _DrawWarden( const Enemy & _enemy, const NanoVGRenderer::Frame & _frame, const Vector & _translation );
+    void _DrawForeman( const Enemy & _enemy, const NanoVGRenderer::Frame & _frame, const Vector & _translation );
     void _DrawAttractors( const World & _world, const NanoVGRenderer::Frame & _frame, const Vector & _translation );
 
 private:
@@ -28,6 +30,8 @@ private:
     double m_plasmaShieldReflectAnimation{ 0 };
     double m_decoyPing{ 0 };
     double m_singularityAnim{ 0 };
+    double m_foremanAnim{ 0 };
+    double m_wardenAnim{ 0 };
 
     struct VisibleAttractor
     {

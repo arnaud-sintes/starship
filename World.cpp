@@ -4,7 +4,6 @@
 // - functional:
 //      - more stages (StageDirector.cpp), with different ennemies (more variety) and specific choregraphies
 //      - add special stages (asteroid field, mine field, rescue broken ship etc.)
-//      - end of stage big boss
 
 namespace
 {
@@ -55,6 +54,38 @@ namespace
     constexpr double goodyWeightUnlocked{ 1 };  // the regulars
     constexpr double goodyWeightFresh{ 0.6 };   // freshly unlocked, during their first mission
 
+    // the foreman, stage 1 boss:
+    constexpr double shipLaserDamage{ 0.2 };
+    constexpr double foremanFightSeconds{ 55 };       // of sustained laser fire at the current fire power
+    constexpr double foremanOtherDamageScale{ 0.35 }; // missiles, blasts and rams hurt it less than lasers
+    constexpr double foremanCoreMultiplier{ 4 };      // laser damage on its rear core
+    constexpr double foremanHoldDistance{ 420 };
+    constexpr double foremanSpeed{ 1.6 };             // px/tick
+    constexpr double foremanMaxTurn{ 0.0025 };        // rad/tick: slow enough to be outflanked
+    constexpr double foremanPullRange{ 650 }, foremanPullStrength{ 0.05 }; // enraged gravity well on the ship
+    constexpr int foremanVentFirstSeconds{ 7 };       // before the first vent
+    constexpr int foremanVentClosedSeconds{ 12 };     // armored period, shortened by 2 s per phase
+    constexpr double foremanVentWarningSeconds{ 1.5 };
+    constexpr int foremanVentOpenSeconds{ 4 };        // exposed window
+    constexpr double foremanVentTurn{ 0.0004 };       // rad/tick: nearly frozen while venting
+    constexpr double foremanVentSpeedScale{ 0.4 };
+    constexpr double foremanAttractorDamage{ 0.04 };  // of its max hull per attractor rammed (reduced like any non-laser damage)
+    constexpr int foremanMaxMines{ 14 };
+    constexpr size_t foremanMaxWasps{ 5 };
+
+    // the warden, stage 2 boss: three pylons shield the core
+    constexpr double wardenPylonSeconds{ 15 };        // of sustained laser fire per pylon
+    constexpr double wardenCoreSeconds{ 45 };         // of sustained laser fire on the exposed core
+    constexpr double wardenHoldDistance{ 560 };
+    constexpr double wardenSpeed{ 1.0 };              // px/tick
+    constexpr double wardenMaxTurn{ 0.006 };          // rad/tick
+    constexpr double wardenPylonSpin{ 0.009 };        // rad/tick, accelerating as the pylons fall
+    constexpr double wardenPylonPullRange{ 650 }, wardenPylonPullStrength{ 0.03 }; // each live pylon is a gravity well
+    constexpr double wardenCorePullRange{ 750 }, wardenCorePullStrength{ 0.05 };   // the exposed core drags the ship in
+    constexpr double wardenOtherDamageScale{ 0.35 };  // missiles, blasts and rams vs the exposed core
+    constexpr int wardenMaxMines{ 16 };
+    constexpr size_t wardenMaxWasps{ 6 };
+
     constexpr size_t maxParticules{ 2500 }; // global cap, keeps sustained blast chains from melting the frame
 
     // turret bonus:
@@ -69,6 +100,17 @@ namespace
     constexpr double gravityMineSpawnMin{ 0.7 }, gravityMineSpawnMax{ 1.5 }; // in max screen dimensions
     constexpr double gravityMineDespawn{ 2.2 };
     constexpr double gravityMineSeparation{ 300 };
+
+    // pull of a gravity well on an object at _from:
+    Vector WellPull( const Vector & _from, const Vector & _source, const double _range, const double _strength )
+    {
+        const auto delta{ _source - _from };
+        const auto distance{ delta.Distance() };
+        if( distance <= 1 || distance >= _range )
+            return {};
+        const auto falloff{ 1 - distance / _range };
+        return delta * ( 1.0 / distance ) * ( _strength * falloff * falloff );
+    }
 
     Color_d _RingColor( const eFadeColor _color )
     {
@@ -97,6 +139,7 @@ World::World( AudioDirector & _audio, const Dimension_ui & _screenDimension, con
     , m_stage{ _frameRate, _checkpoint.progress }
     , m_checkpoint{ _checkpoint }
     , m_score{ _checkpoint.score }
+    , m_lives{ _checkpoint.lives }
     , m_laserSpeed{ static_cast< eLaserSpeed >( _checkpoint.laserSpeed ) }
     , m_laserPass{ static_cast< eLaserPass >( _checkpoint.laserPass ) }
     , m_homingMissiles{ _checkpoint.homingMissiles }
@@ -157,6 +200,29 @@ void World::_AddEnemy( const Enemy::eType _type )
                         { 8, 8, 0.05, 0.5 }, // propellant
                         { 0, 0.2, false, 0.005, 0.01, 0.5, 0 }, // engine: slow creep into view
                         { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0, { 0, 0 } } };
+                case Enemy::eType::foreman: {
+                    // hit points follow the player's fire power, whatever the laser level:
+                    const double fireRate{ static_cast< double >( m_laserPass ) * m_frameRate / static_cast< double >( m_laserSpeed ) };
+                    const double hitPoints{ shipLaserDamage * fireRate * foremanFightSeconds };
+                    constexpr double hullStroke{ 14 };
+                    return Rocket{ { 1, 0.62, 0.25 }, {}, orientation, {}, {}, 0,
+                        3, // damage: a ram hurts
+                        { hitPoints, hitPoints, 0, 1 - hullStroke / hitPoints }, // shield: the hull stays 14 px thick at any laser level
+                        { 70, 70, 5, 0 }, // propellant: gives the 70 px body
+                        { 0, 0.001, false, 0.0001, 0.0001, 0.9, 0 }, // engine: inert, the steering drives the motion
+                        { { 0, 0 }, 0.0015, { false, false }, 0.0004, 0.002, 0.5, { 0, 0 } } }; // slow turning
+                }
+                case Enemy::eType::warden: {
+                    const double fireRate{ static_cast< double >( m_laserPass ) * m_frameRate / static_cast< double >( m_laserSpeed ) };
+                    const double hitPoints{ shipLaserDamage * fireRate * wardenCoreSeconds };
+                    constexpr double hullStroke{ 14 };
+                    return Rocket{ { 0.7, 0.5, 1 }, {}, orientation, {}, {}, 0,
+                        3, // damage: a ram hurts
+                        { hitPoints, hitPoints, 0, 1 - hullStroke / hitPoints }, // shield: the exposed core
+                        { 95, 95, 5, 0 }, // propellant: gives the 95 px body
+                        { 0, 0.001, false, 0.0001, 0.0001, 0.9, 0 }, // engine: inert, the steering drives the motion
+                        { { 0, 0 }, 0.0015, { false, false }, 0.0004, 0.002, 0.5, { 0, 0 } } };
+                }
                 case Enemy::eType::chaser:
                 default:
                     return Rocket{ { 1, 0.5, 0.75 }, {}, orientation, {}, {}, 0,
@@ -178,6 +244,10 @@ void World::_AddEnemy( const Enemy::eType _type )
         spawnMin = 0.6;
         spawnMax = 0.9;
     }
+    else if( _type == Enemy::eType::foreman || _type == Enemy::eType::warden ) {
+        spawnMin = 0.9;
+        spawnMax = 1.0;
+    }
 
     auto & enemy{ m_enemies.emplace_back( Enemy{ buildRocket(), _type,
             static_cast< int >( Maths::Random( 0, m_frameRate * 5 ) ),
@@ -188,6 +258,15 @@ void World::_AddEnemy( const Enemy::eType _type )
         Maths::Random( spawnMin, spawnMax ) * static_cast< double >( std::max( m_screenDimension.width, m_screenDimension.height ) ) );
     enemy.rocket.id = m_nextRocketId++;
     enemy.rocket.RefreshGeometry();
+    enemy.boss.maxShield = enemy.rocket.shield.capacity;
+    enemy.boss.lastShield = enemy.rocket.shield.value;
+    enemy.boss.orbit = Maths::Random( 0, 1 ) < 0.5 ? -1 : 1;
+    enemy.boss.ventTimer = m_frameRate * foremanVentFirstSeconds;
+    if( _type == Enemy::eType::warden ) {
+        const double fireRate{ static_cast< double >( m_laserPass ) * m_frameRate / static_cast< double >( m_laserSpeed ) };
+        enemy.boss.pylonMax = shipLaserDamage * fireRate * wardenPylonSeconds;
+        enemy.boss.pylonShield.fill( enemy.boss.pylonMax );
+    }
 }
 
 
@@ -313,7 +392,7 @@ void World::_HandleControls( const PlayerInput & _input )
             const auto wideAngle{ ( rightSide ? 1 : -1 ) * ( Maths::PiHalf * wave * 0.05 ) }; // wave amplitude
             const auto momentum{ Vector::From( m_ship.orientation + Maths::Pi - wideAngle, 50 ) }; // 50px length
             auto & laser{ m_lasers.emplace_back( Laser{ m_ship.position - momentum + m_ship.dynamic.headPosition + position, momentum,
-                0.2 } ) }; // damage
+                shipLaserDamage } ) }; // damage
             laser.Refresh();
             m_laserAlternate++;
         }
@@ -436,6 +515,56 @@ bool World::_LaserRocketCollision( Laser & _laser, Rocket & _other )
         return false;
     _LaserImpact( _laser, _other );
     return true;
+}
+
+
+bool World::_LaserCoreCollision( Laser & _laser, Enemy & _enemy )
+{
+    const auto hit{ Maths::Collision( _enemy.CorePosition(), Enemy::coreRadius, _laser.dynamic.positionA, _laser.dynamic.positionB ) };
+    if( !hit )
+        return false;
+    if( !_enemy.CoreOpen() ) {
+        // armored: the shot is absorbed with a dull spark
+        _AddExplosion( *hit, {}, eExplosion::small, eFadeColor::orange );
+        m_audio.PlayAt( eSound::laserCollision, _RelativeToShip( *hit ) );
+        return true;
+    }
+    _LaserImpact( _laser, _enemy.rocket ); // a regular hit...
+    _enemy.rocket.shield.value -= _laser.damage * ( foremanCoreMultiplier - 1 ); // ...hurting much more
+    _enemy.boss.laserDamage += _laser.damage * foremanCoreMultiplier;
+    _enemy.boss.coreFlash = 10;
+    _AddExplosion( *hit, {}, eExplosion::small, eFadeColor::rose );
+    m_audio.PlayAt( eSound::laserCollision, _RelativeToShip( *hit ) );
+    _AddScore( 5 );
+    return true;
+}
+
+
+bool World::_LaserPylonCollision( Laser & _laser, Enemy & _enemy )
+{
+    for( int i{ 0 }; i < Enemy::pylonCount; i++ ) {
+        if( !_enemy.PylonAlive( i ) )
+            continue;
+        const auto position{ _enemy.PylonPosition( i ) };
+        const auto hit{ Maths::Collision( position, Enemy::pylonRadius, _laser.dynamic.positionA, _laser.dynamic.positionB ) };
+        if( !hit )
+            continue;
+        const auto index{ static_cast< size_t >( i ) };
+        _enemy.boss.pylonShield.at( index ) -= _laser.damage;
+        _enemy.boss.pylonFlash.at( index ) = 8;
+        _AddExplosion( *hit, {}, eExplosion::small, eFadeColor::violet );
+        m_audio.PlayAt( eSound::laserCollision, _RelativeToShip( *hit ) );
+        _AddScore( 3 );
+        if( !_enemy.PylonAlive( i ) ) {
+            // the pylon bursts: a friendly shockwave and its well is gone
+            _Detonate( position, {}, eExplosion::big, eFadeColor::violet, 240, 0, 10, true );
+            m_audio.PlayAt( eSound::attractorExplosion, _RelativeToShip( position ) );
+            m_audio.PlayAt( eSound::shipExplosion, _RelativeToShip( position ) );
+            _AddScore( 250 );
+        }
+        return true;
+    }
+    return false;
 }
 
 
@@ -643,7 +772,8 @@ void World::_UpdateAttractions()
     if( !m_shipDestroyed )
         m_attractedRockets.emplace_back( &m_ship );
     for( auto & enemy : m_enemies )
-        m_attractedRockets.emplace_back( &enemy.rocket );
+        if( !enemy.IsBoss() ) // too heavy to be moved by the wells
+            m_attractedRockets.emplace_back( &enemy.rocket );
     for( auto & missile : m_missiles )
         m_attractedRockets.emplace_back( &missile.rocket );
     constexpr double windForceFactor{ 0.05 }; // terminal wind drift of ~1-2 px/tick for the ship
@@ -659,6 +789,20 @@ void World::_UpdateAttractions()
         // singularity pull (the ship resists it better - it must stay escapable):
         if( m_singularityTicks > 0 )
             attraction += _SingularityPull( pRocket->position ) * ( pRocket == &m_ship ? 0.5 : 1.0 );
+        // the enraged foreman drags the ship toward itself:
+        if( pRocket == &m_ship )
+            for( const auto & enemy : m_enemies ) {
+                // the warden: each live pylon is a gravity well, and its exposed core drags the ship in
+                if( enemy.type == Enemy::eType::warden ) {
+                    for( int i{ 0 }; i < Enemy::pylonCount; i++ )
+                        if( enemy.PylonAlive( i ) )
+                            attraction += WellPull( m_ship.position, enemy.PylonPosition( i ), wardenPylonPullRange, wardenPylonPullStrength );
+                    if( enemy.PylonsAlive() == 0 )
+                        attraction += WellPull( m_ship.position, enemy.rocket.position, wardenCorePullRange, wardenCorePullStrength );
+                }
+                if( enemy.type == Enemy::eType::foreman && enemy.boss.phase == 2 )
+                    attraction += WellPull( m_ship.position, enemy.rocket.position, foremanPullRange, foremanPullStrength );
+            }
         // the local solar wind pushes every rocket through the same force pathway:
         pRocket->dynamic.attraction = attraction + m_wind.At( pRocket->position ) * windForceFactor;
     }
@@ -809,7 +953,18 @@ void World::_UpdateEnemyCollisions()
                 _AddScore( 5 );
             }
         }
-        // enemy-attractors collision:
+        // enemy-attractors collision (the foreman plows through them, shattering them
+        // at the cost of some hull; the others die on contact):
+        if( enemy.IsBoss() )
+            m_attractors.ForEachInRange( enemy.rocket.position, enemy.rocket.dynamic.boundingBoxRadius,
+                [ & ]( const int, Attractor & _attractor ){
+                    if( Maths::Collision( enemy.rocket.position, enemy.rocket.dynamic.boundingBoxRadius, _attractor.position, _attractor.radius ) ) {
+                        enemy.rocket.shield.value -= enemy.boss.maxShield * foremanAttractorDamage;
+                        _attractor.shield -= 1000;
+                        _AddExplosion( _attractor.position, enemy.rocket.momentum, eExplosion::medium, eFadeColor::rose );
+                    }
+                } );
+        else
         m_attractors.ForEachInRange( enemy.rocket.position, enemy.rocket.dynamic.boundingBoxRadius,
             [ & ]( const int, Attractor & _attractor ){
                 if( Maths::Collision( enemy.rocket.position, enemy.rocket.dynamic.boundingBoxRadius, _attractor.position, _attractor.radius ) ) {
@@ -829,8 +984,22 @@ void World::_UpdateLaserCollisions()
         for( auto & enemy : m_enemies ) {
             if( pCollision != nullptr )
                 break;
+            if( enemy.type == Enemy::eType::foreman && _LaserCoreCollision( laser, enemy ) ) {
+                pCollision = &enemy.rocket;
+                continue;
+            }
+            if( enemy.type == Enemy::eType::warden && _LaserPylonCollision( laser, enemy ) ) {
+                pCollision = &enemy.rocket;
+                continue;
+            }
             if( _LaserRocketCollision( laser, enemy.rocket ) ) {
                 pCollision = &enemy.rocket;
+                if( enemy.type == Enemy::eType::foreman )
+                    enemy.boss.laserDamage += laser.damage;
+                else if( enemy.type == Enemy::eType::warden ) {
+                    enemy.boss.laserDamage += laser.damage;
+                    enemy.boss.coreFlash = 6; // the barrier (or the exposed core) flashes
+                }
                 m_audio.PlayAt( eSound::laserCollision, _RelativeToShip( pCollision->position ) );
                 _AddScore( 2 ); // hits pay little, kills pay big
             }
@@ -993,7 +1162,19 @@ void World::_UpdateEnemies()
         }
         else
             _SteerEnemy( enemy );
+        if( enemy.type == Enemy::eType::foreman )
+            _UpdateForemanDamage( enemy );
+        else if( enemy.type == Enemy::eType::warden )
+            _UpdateWardenDamage( enemy );
+        // the bosses are too heavy to be spun by what hits them: the turn limit applies
+        // before the physics step (a hit's rotation impulse would otherwise be integrated
+        // for a tick) and after it (the steering adds its own)
+        const auto maxTurn{ enemy.type == Enemy::eType::warden ? wardenMaxTurn : ( enemy.type == Enemy::eType::foreman ? ( enemy.CoreOpen() ? foremanVentTurn : foremanMaxTurn ) : 0.0 ) };
+        if( enemy.IsBoss() )
+            enemy.rocket.rotationMomentum = std::clamp( enemy.rocket.rotationMomentum, -maxTurn, maxTurn );
         enemy.rocket.Update();
+        if( enemy.IsBoss() )
+            enemy.rocket.rotationMomentum = std::clamp( enemy.rocket.rotationMomentum, -maxTurn, maxTurn );
 
         // shield:
         if( enemy.rocket.shield.value <= 0 ) {
@@ -1008,6 +1189,39 @@ void World::_UpdateEnemies()
                     _Detonate( enemy.rocket.position, enemy.rocket.momentum, eExplosion::big, eFadeColor::orange, enemyBlastRadius, enemyBlastDamage, enemyBlastImpulse );
                     _AddScore( 150 );
                     break;
+                case Enemy::eType::foreman: {
+                    // a friendly blast wipes the surroundings, the hull bursts in a ring, and a laser upgrade is left behind:
+                    _Detonate( enemy.rocket.position, enemy.rocket.momentum, eExplosion::big, eFadeColor::orange, 320, 2, 14, true );
+                    m_audio.PlayAt( eSound::attractorExplosion, _RelativeToShip( enemy.rocket.position ) );
+                    m_audio.PlayAt( eSound::mineExplosion, _RelativeToShip( enemy.rocket.position ) );
+                    for( int i{ 0 }; i < 14; i++ ) {
+                        const auto angle{ Maths::Pi2 * i / 14 };
+                        _AddExplosion( enemy.rocket.position + Vector::From( angle, enemy.rocket.dynamic.bodyRadius * 0.8 ), Vector::From( angle, 1.5 ), eExplosion::big,
+                            i % 2 == 0 ? eFadeColor::orange : eFadeColor::rose );
+                    }
+                    if( m_laserSpeed != eLaserSpeed::fast || m_laserPass != eLaserPass::height )
+                        m_goodies.emplace_back( Goody{ enemy.rocket.position, Goody::eType::laserUp } );
+                    _AddScore( 1000 );
+                    m_stage.OnBossDefeated();
+                    break;
+                }
+                case Enemy::eType::warden: {
+                    // the core collapses: a huge friendly blast, rings of fire, a laser upgrade
+                    _Detonate( enemy.rocket.position, enemy.rocket.momentum, eExplosion::big, eFadeColor::violet, 420, 2, 16, true );
+                    m_audio.PlayAt( eSound::attractorExplosion, _RelativeToShip( enemy.rocket.position ) );
+                    m_audio.PlayAt( eSound::mineExplosion, _RelativeToShip( enemy.rocket.position ) );
+                    for( int ring{ 0 }; ring < 2; ring++ )
+                        for( int i{ 0 }; i < 16; i++ ) {
+                            const auto angle{ Maths::Pi2 * i / 16 + ring * 0.2 };
+                            _AddExplosion( enemy.rocket.position + Vector::From( angle, enemy.rocket.dynamic.bodyRadius * ( 0.5 + ring * 0.7 ) ), Vector::From( angle, 1.5 + ring ), eExplosion::big,
+                                i % 2 == 0 ? eFadeColor::violet : eFadeColor::azure );
+                        }
+                    if( m_laserSpeed != eLaserSpeed::fast || m_laserPass != eLaserPass::height )
+                        m_goodies.emplace_back( Goody{ enemy.rocket.position, Goody::eType::laserUp } );
+                    _AddScore( 2000 );
+                    m_stage.OnBossDefeated();
+                    break;
+                }
                 case Enemy::eType::chaser:
                 default:
                     _MaybeDropGoody( enemy.rocket.position );
@@ -1020,7 +1234,8 @@ void World::_UpdateEnemies()
             m_audio.StopLoop( enemy.sound_rotationEngine );
             if( !m_shipDestroyed )
                 m_stage.OnKill();
-            m_pendingSpawns.emplace_back( PendingSpawn{ enemy.type, static_cast< int >( m_stage.Mission().respawnSeconds * m_frameRate ) } );
+            if( !enemy.IsBoss() )
+                m_pendingSpawns.emplace_back( PendingSpawn{ enemy.type, static_cast< int >( m_stage.Mission().respawnSeconds * m_frameRate ) } );
             continue;
         }
 
@@ -1029,6 +1244,13 @@ void World::_UpdateEnemies()
             _EnemyAction( enemy );
     }
     std::erase_if( m_enemies, []( const Enemy & _enemy ){ return _enemy.dead; } );
+
+    // the wasps released by the foreman (requested during the pass: spawning
+    // here keeps the references of the loop valid):
+    for( ; m_bossWasps > 0; m_bossWasps-- ) {
+        _AddEnemy( Enemy::eType::wasp );
+        m_enemies.back().rocket.position = m_bossSpawn + Vector::From( Maths::Random( 0, Maths::Pi2 ), 120 );
+    }
     _RefillEnemies();
 }
 
@@ -1057,6 +1279,9 @@ void World::_UpdateMission()
         return;
     if( m_stage.Update() == StageDirector::eEvent::cleared )
         _OnMissionCleared();
+    // boss alert: the siren goes with the flashing banner
+    if( m_stage.Phase() == StageDirector::ePhase::intro && m_stage.IsBoss() && m_stage.PhaseTicks() % m_frameRate == 1 )
+        m_audio.Play( eSound::lowShieldAlert, 0.9 );
 
     // the attractor field fills in with the missions, out of the player's sight:
     m_attractors.SetDensity( m_stage.Mission().attractorDensity );
@@ -1064,10 +1289,44 @@ void World::_UpdateMission()
 }
 
 
+void World::DebugSkip()
+{
+    // banners are skipped; an objective is brought to its last kill (or last seconds);
+    // a boss is brought just above its next phase threshold
+    if( m_stage.Phase() == StageDirector::ePhase::freePlay )
+        return;
+    if( m_stage.Phase() != StageDirector::ePhase::active ) {
+        m_stage.DebugSkipBanner();
+        return;
+    }
+    if( !m_stage.IsBoss() ) {
+        m_stage.DebugJumpAlmostDone( m_stage.Progress() );
+        return;
+    }
+    for( auto & enemy : m_enemies ) {
+        if( !enemy.IsBoss() )
+            continue;
+        auto & boss{ enemy.boss };
+        auto & shield{ enemy.rocket.shield.value };
+        if( enemy.type == Enemy::eType::warden && enemy.PylonsAlive() > 0 ) {
+            for( int i{ 0 }; i < Enemy::pylonCount; i++ )
+                if( enemy.PylonAlive( i ) ) {
+                    boss.pylonShield.at( static_cast< size_t >( i ) ) = boss.pylonMax * 0.03;
+                    break;
+                }
+            continue;
+        }
+        const auto ratio{ enemy.type == Enemy::eType::warden || boss.phase == 2 ? 0.04 : ( boss.phase == 0 ? 0.67 : 0.34 ) };
+        shield = std::min( shield, boss.maxShield * ratio );
+        boss.lastShield = shield;
+    }
+}
+
+
 void World::_OnMissionCleared()
 {
     // retry restarts the NEXT mission, with the gear as it stands now:
-    m_checkpoint = { m_stage.NextProgress(), m_score, static_cast< int >( m_laserSpeed ), static_cast< int >( m_laserPass ), m_homingMissiles, m_magneticMines };
+    m_checkpoint = { m_stage.NextProgress(), m_score, static_cast< int >( m_laserSpeed ), static_cast< int >( m_laserPass ), m_homingMissiles, m_magneticMines, m_lives };
 
     // debriefing: repairs, and the surviving hostiles are wiped out harmlessly (no
     // score, no goody) so the banner is a real breather:
@@ -1095,10 +1354,293 @@ void World::_OnMissionCleared()
 }
 
 
+void World::_UpdateForemanDamage( Enemy & _enemy )
+{
+    auto & boss{ _enemy.boss };
+    auto & shield{ _enemy.rocket.shield.value };
+
+    // lasers (and especially the rear core hits) count full, anything else is reduced:
+    const auto taken{ std::max( boss.lastShield - shield, 0.0 ) };
+    const auto other{ std::max( taken - boss.laserDamage, 0.0 ) };
+    shield = boss.lastShield - std::min( taken, boss.laserDamage ) - other * foremanOtherDamageScale;
+    boss.lastShield = shield;
+    boss.laserDamage = 0;
+    if( boss.coreFlash > 0 )
+        boss.coreFlash--;
+
+    // the rear core vents periodically: armored, then a telegraphed warning, then exposed
+    // for a few seconds while the barge freezes (the windows come faster in later phases):
+    if( boss.ventTimer > 0 )
+        boss.ventTimer--;
+    else if( boss.vent == 0 ) {
+        boss.vent = 1;
+        boss.ventTimer = static_cast< int >( m_frameRate * foremanVentWarningSeconds );
+        m_audio.PlayAt( eSound::lowShieldAlert, _RelativeToShip( _enemy.rocket.position ) );
+    }
+    else if( boss.vent == 1 ) {
+        boss.vent = 2;
+        boss.ventTimer = m_frameRate * foremanVentOpenSeconds;
+        boss.ventCadence = 0;
+        m_audio.PlayAt( eSound::attractorExplosion, _RelativeToShip( _enemy.rocket.position ) );
+    }
+    else {
+        boss.vent = 0;
+        boss.ventTimer = m_frameRate * ( foremanVentClosedSeconds - 2 * boss.phase );
+    }
+
+    // phases follow the shield; each new one bursts the hull with a friendly shockwave:
+    const auto ratio{ shield / boss.maxShield };
+    const auto phase{ ratio > 2.0 / 3 ? 0 : ( ratio > 1.0 / 3 ? 1 : 2 ) };
+    if( phase > boss.phase ) {
+        boss.phase = phase;
+        m_audio.PlayAt( eSound::attractorExplosion, _RelativeToShip( _enemy.rocket.position ) );
+        _Detonate( _enemy.rocket.position, {}, eExplosion::big, eFadeColor::rose, 280, 0, 12, true );
+        for( int i{ 0 }; i < 8; i++ ) {
+            const auto angle{ Maths::Pi2 * i / 8 };
+            _AddExplosion( _enemy.rocket.position + Vector::From( angle, _enemy.rocket.dynamic.bodyRadius ), Vector::From( angle, 1.2 ), eExplosion::medium, eFadeColor::rose );
+        }
+    }
+}
+
+
+void World::_SteerForeman( Enemy & _enemy )
+{
+    // a slow, heavy barge: closes in to its holding distance, then circles the ship
+    // while its head keeps facing it (turning slowly: the stern can be outflanked)
+    auto & rocket{ _enemy.rocket };
+    const auto delta{ m_ship.position - rocket.position };
+    const auto distance{ std::max( delta.Distance(), 1.0 ) };
+    const auto toShip{ delta * ( 1.0 / distance ) };
+    const Vector tangent{ -toShip.v * _enemy.boss.orbit, toShip.u * _enemy.boss.orbit };
+    const auto speed{ foremanSpeed * ( _enemy.boss.phase == 2 ? 1.5 : 1.0 ) * ( _enemy.CoreOpen() ? foremanVentSpeedScale : 1.0 ) };
+    const auto radial{ std::clamp( ( distance - foremanHoldDistance ) * 0.01, -speed, speed ) };
+    const auto desired{ toShip * radial + tangent * ( speed * 0.6 ) };
+    const auto mass{ std::max( rocket.dynamic.totalMass, 1.0 ) };
+    rocket.thrustMotion += ( desired * mass - rocket.thrustMotion ) * 0.03; // velocity control, heavy inertia
+    rocket.PointTo( m_ship.position, 0.3 );
+}
+
+
+void World::_ForemanAction( Enemy & _enemy )
+{
+    if( m_shipDestroyed )
+        return;
+    auto & rocket{ _enemy.rocket };
+    auto & boss{ _enemy.boss };
+    const auto delta{ m_ship.position - rocket.position };
+    const auto distance{ delta.Distance() };
+    const auto fireSlug{ [ & ]( const double _angle ){
+            m_slugs.emplace_back( Slug{ rocket.position + Vector::From( _angle, rocket.dynamic.boundingBoxRadius + 12 ), Vector::From( _angle, slugSpeed ) } );
+            m_audio.PlayAt( eSound::laserShot, _RelativeToShip( rocket.position ) );
+        } };
+
+    // vented: the aimed barrage stops, the barge lashes out through its rear instead
+    if( boss.vent == 2 ) {
+        if( boss.ventCadence++ % 40 == 0 ) {
+            const auto count{ boss.phase == 2 ? 9 : 7 };
+            for( int i{ 0 }; i < count; i++ )
+                fireSlug( rocket.orientation + ( i - ( count - 1 ) * 0.5 ) * 0.3 );
+        }
+        return;
+    }
+
+    // slugs: aimed fans (3 then 5 slugs), and in the enraged phase a rotating spiral
+    // alternating with the fans:
+    const bool spiralling{ boss.phase == 2 && ( boss.cycle++ % ( m_frameRate * 7 ) ) < m_frameRate * 4 };
+    if( spiralling ) {
+        if( boss.spiralTicks++ % 6 == 0 ) {
+            fireSlug( boss.spiral );
+            boss.spiral += 0.42;
+        }
+    }
+    else if( distance < 800 && boss.slugCadence++ > ( boss.phase == 0 ? 110 : 85 ) ) {
+        boss.slugCadence = 0;
+        const auto predicted{ m_ship.position + m_ship.momentum * ( distance / slugSpeed ) };
+        const auto aim{ ( predicted - rocket.position ).Orientation() };
+        const auto fan{ boss.phase == 0 ? 1 : 2 }; // slugs each side of the aim
+        for( int i{ -fan }; i <= fan; i++ )
+            fireSlug( aim + i * 0.16 );
+    }
+
+    // homing missiles, in pairs:
+    const auto missilePeriod{ m_frameRate * ( boss.phase == 0 ? 6 : ( boss.phase == 1 ? 5 : 4 ) ) };
+    if( distance < 900 && boss.missileCadence++ > missilePeriod ) {
+        boss.missileCadence = 0;
+        for( const auto offset : { -0.6, 0.6 } )
+            _SpawnMissile( rocket, true, offset, rocket.dynamic.boundingBoxRadius + 24, 3 );
+        m_audio.PlayAt( eSound::missileShot, _RelativeToShip( rocket.position ) );
+    }
+
+    if( boss.phase == 0 )
+        return;
+
+    // second phase: wasps released in pairs...
+    if( boss.waspCadence++ > m_frameRate * 5 ) {
+        boss.waspCadence = 0;
+        const auto wasps{ static_cast< size_t >( std::ranges::count_if( m_enemies, []( const Enemy & _other ){ return !_other.dead && _other.type == Enemy::eType::wasp; } ) ) };
+        if( wasps < foremanMaxWasps ) {
+            m_bossWasps = 2;
+            m_bossSpawn = rocket.position;
+        }
+    }
+    // ...and gravity mines laid in its wake, behind the rear core:
+    if( boss.mineCadence++ > m_frameRate * 7 / 2 ) {
+        boss.mineCadence = 0;
+        if( m_gravityMines.size() < static_cast< size_t >( foremanMaxMines ) )
+            m_gravityMines.emplace_back( GravityMine{ rocket.position + Vector::From( rocket.orientation, rocket.dynamic.boundingBoxRadius + 90 ), Maths::Random( 0, Maths::Pi2 ) } );
+    }
+}
+
+
+void World::_UpdateWardenDamage( Enemy & _enemy )
+{
+    auto & boss{ _enemy.boss };
+    auto & shield{ _enemy.rocket.shield.value };
+
+    // the pylons shield the core completely; once they are down, lasers count full and
+    // anything else is reduced:
+    const auto alive{ _enemy.PylonsAlive() };
+    if( alive > 0 )
+        shield = boss.lastShield;
+    else {
+        const auto taken{ std::max( boss.lastShield - shield, 0.0 ) };
+        const auto other{ std::max( taken - boss.laserDamage, 0.0 ) };
+        shield = boss.lastShield - std::min( taken, boss.laserDamage ) - other * wardenOtherDamageScale;
+    }
+    boss.lastShield = shield;
+    boss.laserDamage = 0;
+    if( boss.coreFlash > 0 )
+        boss.coreFlash--;
+    for( auto & flash : boss.pylonFlash )
+        flash = std::max( flash - 1, 0 );
+
+    // the phases are the fallen pylons; each one bursts the central hull with a shockwave:
+    const auto phase{ Enemy::pylonCount - alive };
+    if( phase > boss.phase ) {
+        boss.phase = phase;
+        m_audio.PlayAt( eSound::lowShieldAlert, _RelativeToShip( _enemy.rocket.position ) );
+        _Detonate( _enemy.rocket.position, {}, eExplosion::big, eFadeColor::violet, 300, 0, 12, true );
+        for( int i{ 0 }; i < 8; i++ ) {
+            const auto angle{ Maths::Pi2 * i / 8 };
+            _AddExplosion( _enemy.rocket.position + Vector::From( angle, _enemy.rocket.dynamic.bodyRadius ), Vector::From( angle, 1.2 ), eExplosion::medium, eFadeColor::violet );
+        }
+        if( phase == Enemy::pylonCount )
+            boss.cycle = 0; // the enraged cycle starts clean
+    }
+}
+
+
+void World::_SteerWarden( Enemy & _enemy )
+{
+    // a slow sentinel: holds its distance from the ship, drifting sideways, its pylons
+    // turning faster as they fall
+    auto & rocket{ _enemy.rocket };
+    auto & boss{ _enemy.boss };
+    boss.pylonAngle += wardenPylonSpin * ( 1 + boss.phase * 0.35 );
+    const auto delta{ m_ship.position - rocket.position };
+    const auto distance{ std::max( delta.Distance(), 1.0 ) };
+    const auto toShip{ delta * ( 1.0 / distance ) };
+    const Vector tangent{ -toShip.v * boss.orbit, toShip.u * boss.orbit };
+    const auto speed{ wardenSpeed * ( boss.phase == Enemy::pylonCount ? 1.6 : 1.0 ) };
+    const auto radial{ std::clamp( ( distance - wardenHoldDistance ) * 0.01, -speed, speed ) };
+    const auto desired{ toShip * radial + tangent * ( speed * 0.35 ) };
+    const auto mass{ std::max( rocket.dynamic.totalMass, 1.0 ) };
+    rocket.thrustMotion += ( desired * mass - rocket.thrustMotion ) * 0.03;
+    rocket.PointTo( m_ship.position, 0.3 );
+}
+
+
+void World::_WardenAction( Enemy & _enemy )
+{
+    if( m_shipDestroyed )
+        return;
+    auto & rocket{ _enemy.rocket };
+    auto & boss{ _enemy.boss };
+    const auto delta{ m_ship.position - rocket.position };
+    const auto distance{ delta.Distance() };
+    const auto phase{ boss.phase };
+    const auto fire{ [ & ]( const Vector & _from, const double _angle ){
+            m_slugs.emplace_back( Slug{ _from + Vector::From( _angle, 14 ), Vector::From( _angle, slugSpeed ) } );
+            m_audio.PlayAt( eSound::laserShot, _RelativeToShip( _from ) );
+        } };
+    const auto aimFrom{ [ & ]( const Vector & _from ){
+            const auto predicted{ m_ship.position + m_ship.momentum * ( ( m_ship.position - _from ).Distance() / slugSpeed ) };
+            return ( predicted - _from ).Orientation();
+        } };
+
+    // the live pylons take turns firing aimed slugs, in bigger fans as their number drops:
+    const auto alive{ _enemy.PylonsAlive() };
+    if( alive > 0 && distance < 1000 && boss.slugCadence++ > 48 - phase * 8 ) {
+        boss.slugCadence = 0;
+        for( int tries{ 0 }; tries < Enemy::pylonCount; tries++ ) {
+            boss.cycle = ( boss.cycle + 1 ) % Enemy::pylonCount;
+            if( !_enemy.PylonAlive( boss.cycle ) )
+                continue;
+            const auto from{ _enemy.PylonPosition( boss.cycle ) };
+            const auto aim{ aimFrom( from ) };
+            const auto fan{ phase == 0 ? 0 : phase }; // slugs each side of the aim
+            for( int i{ -fan }; i <= fan; i++ )
+                fire( from, aim + i * 0.18 );
+            break;
+        }
+    }
+
+    // the core's own homing missiles, in salvos:
+    const auto missilePeriod{ m_frameRate * ( phase == 0 ? 8 : ( phase == 1 ? 6 : ( phase == 2 ? 5 : 4 ) ) ) };
+    if( distance < 1000 && boss.missileCadence++ > missilePeriod ) {
+        boss.missileCadence = 0;
+        const auto salvo{ phase == 0 ? 2 : ( phase == 3 ? 4 : 3 ) };
+        for( int i{ 0 }; i < salvo; i++ )
+            _SpawnMissile( rocket, true, ( i - ( salvo - 1 ) * 0.5 ) * 0.5, rocket.dynamic.boundingBoxRadius + 24, 3 );
+        m_audio.PlayAt( eSound::missileShot, _RelativeToShip( rocket.position ) );
+    }
+
+    // the belt as a weapon: gravity mines laid on a ring around the core, closing the arena
+    if( phase >= 1 && boss.mineCadence++ > m_frameRate * ( phase == 1 ? 5 : 3 ) ) {
+        boss.mineCadence = 0;
+        if( m_gravityMines.size() < static_cast< size_t >( wardenMaxMines ) )
+            m_gravityMines.emplace_back( GravityMine{ rocket.position + Vector::From( Maths::Random( 0, Maths::Pi2 ), Maths::Random( 380, 560 ) ), Maths::Random( 0, Maths::Pi2 ) } );
+    }
+
+    // from the second fallen pylon, wasps pour out of the core:
+    if( phase >= 2 && boss.waspCadence++ > m_frameRate * ( phase == 2 ? 7 : 5 ) ) {
+        boss.waspCadence = 0;
+        const auto wasps{ static_cast< size_t >( std::ranges::count_if( m_enemies, []( const Enemy & _other ){ return !_other.dead && _other.type == Enemy::eType::wasp; } ) ) };
+        if( wasps < wardenMaxWasps ) {
+            m_bossWasps = 2;
+            m_bossSpawn = rocket.position;
+        }
+    }
+
+    // the last pylon and the exposed core pulse rings of slugs (a rotating ring, then a gap)
+    if( phase >= 2 ) {
+        const auto period{ m_frameRate * ( phase == 2 ? 5 : 3 ) };
+        if( boss.ventCadence++ > period ) {
+            boss.ventCadence = 0;
+            const auto count{ phase == 2 ? 12 : 18 };
+            boss.spiral += 0.21;
+            for( int i{ 0 }; i < count; i++ )
+                fire( rocket.position + Vector::From( boss.spiral + Maths::Pi2 * i / count, rocket.dynamic.bodyRadius ), boss.spiral + Maths::Pi2 * i / count );
+        }
+    }
+
+    // enraged core: a slow slug spiral on top of the rings
+    if( phase == Enemy::pylonCount && boss.spiralTicks++ % 7 == 0 ) {
+        fire( rocket.position, boss.spiralTicks * 0.19 );
+    }
+}
+
+
 void World::_SteerEnemy( Enemy & _enemy )
 {
     auto & rocket{ _enemy.rocket };
     switch( _enemy.type ) {
+        case Enemy::eType::foreman:
+            _SteerForeman( _enemy );
+            break;
+        case Enemy::eType::warden:
+            _SteerWarden( _enemy );
+            break;
         case Enemy::eType::wasp:
             // kamikaze: aims straight at the ship
             rocket.Acquire( m_ship, 0.6 );
@@ -1134,6 +1676,12 @@ void World::_SteerEnemy( Enemy & _enemy )
 void World::_EnemyAction( Enemy & _enemy )
 {
     switch( _enemy.type ) {
+        case Enemy::eType::foreman:
+            _ForemanAction( _enemy );
+            break;
+        case Enemy::eType::warden:
+            _WardenAction( _enemy );
+            break;
         case Enemy::eType::chaser:
             // launches a homing missile aiming the ship every 5 seconds:
             if( _enemy.shotRate++ > m_frameRate * 5 ) {
@@ -1662,6 +2210,12 @@ void World::_DestroyShip()
 {
     m_shipDestroyed = true;
     m_shipDestroyedTicks = 0;
+    // a ship is lost (in free play the game is won already: nothing is at stake), and the
+    // retry keeps the count:
+    if( m_stage.Phase() != StageDirector::ePhase::freePlay ) {
+        m_lives = std::max( m_lives - 1, 0 );
+        m_checkpoint.lives = m_lives;
+    }
     m_ship.shield.value = 0;
     m_plasmaShield = 0;
     m_audio.Play( eSound::shipExplosion );
