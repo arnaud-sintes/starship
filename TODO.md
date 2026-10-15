@@ -21,6 +21,7 @@ Also `hellstorm` ("Hellstorm!") and `repulsor` ("Shockwave!") voice callouts, la
 Bonus items:
 
 - game-over screen: no UI confirmation sound on the retry click
+- ship upgrade screen: buying a level borrows `laserPowerUp` - wants a dedicated `shipUpgrade.wav` (mechanical clunk / power-up chime)
 - blast shockwaves have no dedicated boom (they ride each source's explosion sound - acceptable)
 
 ### Priority order

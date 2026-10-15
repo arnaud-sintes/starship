@@ -11,10 +11,15 @@ The game is split in **stages**, each one a sequence of **missions** displayed a
 - the pressure ramps up from mission to mission: more concurrent enemies, more gravity mines, a denser field of strange attractors (it fills in out of your sight), and a shorter delay (2.5s down to 0.6s) before a destroyed enemy is replaced
 - entering a new stage pauses the game on a full-screen **scenario screen** (like the prologue, click to engage) describing what awaits you
 - clearing a mission wipes out the remaining hostiles and fully restores your shield and propellant
+- clearing a mission also earns a **skill point**: the game pauses on the **ship upgrade** screen, where you spend it on one of the four ship systems (5 levels each). The hull grows with your build - a thicker shield ring, a bigger tank, a wider nozzle - and so does its mass:
+    - **Shield**: +20% capacity and faster repair, but heavier (slower)
+    - **Propellant**: +15% tank and faster refuel, but heavier (slower)
+    - **Engine**: +15% thrust and quicker spool-up, burns more propellant
+    - **Rotators**: +20% turn power, sharper aiming
 - after the last mission, an **epilogue** screen (with your final score) ends the story, then the game goes on in **free play** (endless, no objective, the last mission's setup)
 - the starfield follows the story: a dense sky in deep space (stage 1), thinning out in the glare of the planet (stage 2)
 
-You have **5 ships** (shown under the score). When one is destroyed, you retry the **current mission** with the gear (laser power, missiles, mines) and the score you had when it began, minus a ship. Lose the fifth and it is **game over**: click to start a new game from the very beginning. Free play, once the story is complete, has no such limit.
+You have **5 ships** (shown under the score). When one is destroyed, you retry the **current mission** with the gear (laser power, missiles, mines, ship upgrades) and the score you had when it began, minus a ship. Lose the fifth and it is **game over**: click to start a new game from the very beginning. Free play, once the story is complete, has no such limit.
 
 <iframe style='width:100%;height:480px' src="https://www.youtube.com/embed/_N0ygKAERLQ" allowfullscreen></iframe>
 
@@ -94,7 +99,7 @@ Sound effects are played through [miniaudio](https://miniaud.io/)'s engine (WASA
 
 The simulation runs at a **fixed 60Hz timestep, decoupled from rendering**: wall-clock time is accumulated and late frames trigger catch-up ticks, so the game always runs at real-time speed (under sustained overload, catch-up is capped and the game slows down rather than spiraling).
 
-The code is organized around a few focused classes: `World` (simulation only), `StageDirector` (stage/mission table and flow: objectives, rosters, goody tiers), `SceneRenderer`/`Hud` (drawing only), `Game` (input, prologue and composition), `AudioDirector`/`Audio` (game events to positional sounds, backend behind a facade).
+The code is organized around a few focused classes: `World` (simulation only), `StageDirector` (stage/mission table and flow: objectives, rosters, goody tiers), `ShipUpgrades` (skill points and ship system levels), `SceneRenderer`/`Hud` (drawing only), `Game` (input, prologue and composition), `AudioDirector`/`Audio` (game events to positional sounds, backend behind a facade).
 
 Resources (fonts and sound effects) are all packed in a unique *resource.dat* file using a custom packer.
 

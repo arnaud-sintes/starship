@@ -28,6 +28,8 @@ private:
     void _DrawPrologue( const NanoVGRenderer::Frame & _frame );
     void _DrawStageStory( const NanoVGRenderer::Frame & _frame );
     void _DrawTutorial( const NanoVGRenderer::Frame & _frame );
+    std::pair< Vector, Vector > _UpgradeCardRect( const size_t _index ) const; // one per ShipUpgrades::eSystem
+    void _DrawUpgrade( const NanoVGRenderer::Frame & _frame );
     void _DrawGameOver( const NanoVGRenderer::Frame & _frame );
     void _NewGame(); // out of lives: back to the very beginning
     void _DrawCursor( const NanoVGRenderer::Frame & _frame );
@@ -48,6 +50,7 @@ private:
         stageStory, // full-screen scenario of a new stage, world frozen behind
         epilogue,   // full-screen ending once every mission is cleared, then free play
         tutorial, // world frozen behind an explanation panel
+        upgrade,  // world frozen behind the ship upgrade cards, until the skill points are spent
         gameOver,
     };
     eStep m_step{ eStep::stage11_prologue };
