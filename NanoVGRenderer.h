@@ -50,6 +50,7 @@ public:
     void StrokeArc( const Position_d & _position, const double _radius, const double _angleA, const double _angleB, const Color_d & _color, const double _strokeWidth, const bool _clockWise = true ) const;
     void FillPolygon( const std::vector< Position_d > & _points, const Color_d & _color ) const;
     void StrokePolygon( const std::vector< Position_d > & _points, const Color_d & _color, const double _strokeWidth ) const; // closed, rounded joins
+    void StrokePolyline( const std::vector< Position_d > & _points, const Color_d & _color, const double _strokeWidth ) const; // open, rounded joins and caps
     void FillRectangle( const Position_d & _a, const Position_d & _b, const Color_d & _color, const double _borderRadius = 0 ) const;
     void GradientRectangle( const Position_d & _a, const Position_d & _b, const Color_d & _colorTop, const Color_d & _colorBottom, const double _borderRadius = 0 ) const; // vertical gradient
     void StrokeRectangle( const Position_d & _a, const Position_d & _b, const Color_d & _color, const double _strokeWidth, const double _borderRadius = 0 ) const;

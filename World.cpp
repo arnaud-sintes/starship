@@ -79,6 +79,8 @@ namespace
     constexpr double wardenHoldDistance{ 560 };
     constexpr double wardenSpeed{ 1.0 };              // px/tick
     constexpr double wardenMaxTurn{ 0.006 };          // rad/tick
+    constexpr double wardenOrbitTilt{ 0.8 }, wardenOrbitWobble{ 0.15 }; // rad: the pylons' orbit seen at an angle, wobbling
+    constexpr double wardenOrbitPrecession{ 0.003 };  // rad/tick: the orbital plane turns slowly
     constexpr double wardenPylonSpin{ 0.009 };        // rad/tick, accelerating as the pylons fall
     constexpr double wardenPylonPullRange{ 650 }, wardenPylonPullStrength{ 0.03 }; // each live pylon is a gravity well
     constexpr double wardenCorePullRange{ 750 }, wardenCorePullStrength{ 0.05 };   // the exposed core drags the ship in
@@ -1252,6 +1254,12 @@ void World::_UpdateEnemies()
         m_enemies.back().rocket.position = m_bossSpawn + Vector::From( Maths::Random( 0, Maths::Pi2 ), 120 );
     }
     _RefillEnemies();
+    if( m_debugPlaceBoss )
+        for( auto & enemy : m_enemies )
+            if( enemy.IsBoss() ) {
+                enemy.rocket.position = m_ship.position + Vector{ 520, -100 };
+                m_debugPlaceBoss = false;
+            }
 }
 
 
@@ -1259,6 +1267,8 @@ void World::_RefillEnemies()
 {
     // the stage decides what is missing; a destroyed enemy is replaced after its
     // delay, anything else missing (mission start...) shows up right away:
+    if( m_debugSandbox )
+        return;
     for( auto & pending : m_pendingSpawns )
         pending.ticks--;
     for( const auto type : m_stage.Missing( m_enemies ) ) {
@@ -1284,8 +1294,38 @@ void World::_UpdateMission()
         m_audio.Play( m_stage.Mission().roster.front().type == Enemy::eType::warden ? eSound::bossWarningWarden : eSound::bossWarningForeman );
 
     // the attractor field fills in with the missions, out of the player's sight:
-    m_attractors.SetDensity( m_stage.Mission().attractorDensity );
+    m_attractors.SetDensity( m_debugSandbox ? 0 : m_stage.Mission().attractorDensity );
     m_attractors.ApplyDensity( m_ship.position, static_cast< double >( std::max( m_screenDimension.width, m_screenDimension.height ) ) + m_attractors.MaxRadius() );
+}
+
+
+void World::DebugBossInView()
+{
+    m_debugPlaceBoss = true;
+    DebugSkip(); // the briefing banner, the boss comes with the fight
+}
+
+
+void World::DebugMinesLayout()
+{
+    // a sandbox to look at the mines: no enemy, no attractor, the ship is invincible; the player's
+    // mines in a row above the ship, the gravity mines (which pull the others) in a row below
+    m_debugSandbox = true;
+    m_debugInvincible = true;
+    for( auto & enemy : m_enemies ) {
+        m_audio.StopLoop( enemy.sound_mainEngine );
+        m_audio.StopLoop( enemy.sound_rotationEngine );
+    }
+    m_enemies.clear();
+    m_pendingSpawns.clear();
+    m_attractors.SetDensity( 0 );
+    m_attractors.ApplyDensity( m_ship.position, 0 );
+    constexpr int count{ 4 };
+    for( int i{ 0 }; i < count; i++ ) {
+        const auto offset{ i - ( count - 1 ) * 0.5 };
+        m_mines.emplace_back( Mine{ m_ship.position + Vector{ offset * 180, -250 }, 0.5 } );
+        m_gravityMines.emplace_back( GravityMine{ m_ship.position + Vector{ offset * 330, 250 }, Maths::Random( 0, Maths::Pi2 ) } );
+    }
 }
 
 
@@ -1537,6 +1577,8 @@ void World::_SteerWarden( Enemy & _enemy )
     auto & rocket{ _enemy.rocket };
     auto & boss{ _enemy.boss };
     boss.pylonAngle += wardenPylonSpin * ( 1 + boss.phase * 0.35 );
+    boss.orbitAzimuth += wardenOrbitPrecession;
+    boss.orbitTilt = wardenOrbitTilt + wardenOrbitWobble * std::sin( boss.orbitAzimuth * 2.3 ); // keeps the pylons clear of the core
     const auto delta{ m_ship.position - rocket.position };
     const auto distance{ std::max( delta.Distance(), 1.0 ) };
     const auto toShip{ delta * ( 1.0 / distance ) };
@@ -1782,11 +1824,12 @@ void World::_UpdateGravityMines()
 
     // population maintenance around the ship:
     const auto maxDimension{ static_cast< double >( std::max( m_screenDimension.width, m_screenDimension.height ) ) };
-    std::erase_if( m_gravityMines, [ & ]( const GravityMine & _gravityMine ){
-            const auto limit{ gravityMineDespawn * maxDimension };
-            return ( _gravityMine.position - m_ship.position ).DistanceSquared() > limit * limit; // left far behind, silently recycled
-        } );
-    if( m_gravityMines.size() < m_stage.Mission().gravityMines ) { // at most one spawn attempt per tick
+    if( !m_debugSandbox )
+        std::erase_if( m_gravityMines, [ & ]( const GravityMine & _gravityMine ){
+                const auto limit{ gravityMineDespawn * maxDimension };
+                return ( _gravityMine.position - m_ship.position ).DistanceSquared() > limit * limit; // left far behind, silently recycled
+            } );
+    if( !m_debugSandbox && m_gravityMines.size() < m_stage.Mission().gravityMines ) { // at most one spawn attempt per tick
         const auto position{ m_ship.position + Vector::From( Maths::Random( 0, Maths::Pi2 ), Maths::Random( gravityMineSpawnMin, gravityMineSpawnMax ) * maxDimension ) };
         bool valid{ true };
         for( const auto & other : m_gravityMines )

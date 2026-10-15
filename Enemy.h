@@ -43,6 +43,7 @@ struct Enemy
         std::array< int, 3 > pylonFlash{};  // ticks left of the "pylon was hit" flash
         double pylonMax{ 0 };
         double pylonAngle{ 0 };
+        double orbitTilt{ 0.8 }, orbitAzimuth{ 0 }; // the orbital plane of the pylons, seen at an angle: a wobbling ellipse
         int vent{ 0 };           // rear core: 0 armored, 1 warning (glowing), 2 vented (exposed)
         int ventTimer{ 0 };      // ticks left in the current vent state
         int ventCadence{ 0 };    // rear slug ring cadence while vented
@@ -57,7 +58,17 @@ struct Enemy
     // the pylons of the warden, orbiting its core:
     static constexpr int pylonCount{ 3 };
     static constexpr double pylonOrbit{ 250 }, pylonRadius{ 34 };
-    Vector PylonPosition( const int _index ) const { return rocket.position + Vector::From( boss.pylonAngle + Maths::Pi2 * _index / pylonCount, pylonOrbit ); }
+    Vector3 PylonSpace( const int _index ) const // relative to the core, z toward the viewer: the pylons pass in front of and behind it
+    {
+        const auto angle{ boss.pylonAngle + Maths::Pi2 * _index / pylonCount };
+        return Vector3{ std::cos( angle ), std::sin( angle ), 0 }.RotatedX( boss.orbitTilt ).RotatedZ( boss.orbitAzimuth ) * pylonOrbit;
+    }
+    Vector3 PylonOrbitNormal() const { return Vector3{ 0, 0, 1 }.RotatedX( boss.orbitTilt ).RotatedZ( boss.orbitAzimuth ); }
+    Vector PylonPosition( const int _index ) const // what the pylon looks like on screen is where it is hit and where it pulls from
+    {
+        const auto space{ PylonSpace( _index ) };
+        return rocket.position + Vector{ space.x, space.y };
+    }
     bool PylonAlive( const int _index ) const { return boss.pylonShield.at( static_cast< size_t >( _index ) ) > 0; }
     int PylonsAlive() const
     {

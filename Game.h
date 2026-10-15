@@ -14,7 +14,14 @@
 class Game
 {
 public:
-    Game( const Win32::Windows & _windows, const View & _view, const Packer::Resources & _resources, const int _frameRate );
+    struct Options
+    {
+        bool minesLayout{ false }; // TEMPORARY test option (--mines): straight into a sandbox with a layout of mines
+        bool foreman{ false };     // TEMPORARY test option (--foreman): straight into the stage 1 boss, invincible (F10 toggles)
+        bool warden{ false };      // TEMPORARY test option (--warden): same with the stage 2 boss
+    };
+
+    Game( const Win32::Windows & _windows, const View & _view, const Packer::Resources & _resources, const int _frameRate, const Options & _options = {} );
 
 public:
     void Tick(); // one fixed-rate simulation step, called 0..N times per rendered frame

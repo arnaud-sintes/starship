@@ -172,11 +172,13 @@
     <ClCompile Include="Hud.cpp" />
     <ClCompile Include="Laser.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Mesh3D.cpp" />
     <ClCompile Include="Mine.cpp" />
     <ClCompile Include="NanoVGRenderer.cpp" />
     <ClCompile Include="OpenGL.cpp" />
     <ClCompile Include="Rocket.cpp" />
     <ClCompile Include="SceneRenderer.cpp" />
+    <ClCompile Include="SpikedBall.cpp" />
     <ClCompile Include="StageDirector.cpp" />
     <ClCompile Include="StarField.cpp" />
     <ClCompile Include="WindField.cpp" />
@@ -201,7 +203,9 @@
     <ClInclude Include="GravityMine.h" />
     <ClInclude Include="Hud.h" />
     <ClInclude Include="Laser.h" />
+    <ClInclude Include="Mesh3D.h" />
     <ClInclude Include="Mine.h" />
+    <ClInclude Include="SpikedBall.h" />
     <ClInclude Include="Missile.h" />
     <ClInclude Include="NanoVGRenderer.h" />
     <ClInclude Include="OpenGL.h" />

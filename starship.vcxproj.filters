@@ -26,7 +26,13 @@
     <ClCompile Include="Laser.cpp">
       <Filter>game</Filter>
     </ClCompile>
+    <ClCompile Include="Mesh3D.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
     <ClCompile Include="Mine.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
+    <ClCompile Include="SpikedBall.cpp">
       <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="Rocket.cpp">
@@ -107,6 +113,12 @@
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="Laser.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="SpikedBall.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="Mesh3D.h">
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="Mine.h">

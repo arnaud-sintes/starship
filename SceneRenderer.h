@@ -31,6 +31,7 @@ private:
     double m_decoyPing{ 0 };
     double m_singularityAnim{ 0 };
     double m_foremanAnim{ 0 };
+    double m_foremanOpen{ 0 }; // armor petals of the rear core: 0 closed .. 1 open
     double m_wardenAnim{ 0 };
 
     struct VisibleAttractor

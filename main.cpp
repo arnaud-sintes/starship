@@ -7,8 +7,17 @@
 
 //#define _DISPLAY_FPS
 
-int main( int, char * )
+int main( const int _argc, char * _argv[] )
 {
+    Game::Options options;
+    for( int i{ 1 }; i < _argc; i++ )
+        if( std::string_view{ _argv[ i ] } == "--mines" ) // TEMPORARY test option: a sandbox with a layout of mines
+            options.minesLayout = true;
+        else if( std::string_view{ _argv[ i ] } == "--foreman" ) // TEMPORARY test option: straight to the stage 1 boss
+            options.foreman = true;
+        else if( std::string_view{ _argv[ i ] } == "--warden" ) // TEMPORARY test option: straight to the stage 2 boss
+            options.warden = true;
+
     const bool fullscreen{ true };
     Win32::SetDpiAware();
 
@@ -36,7 +45,7 @@ int main( int, char * )
 
     const unsigned long long frameRate{ 60 }; // 60 fps render target
     const unsigned long long tickRate{ 60 }; // fixed simulation rate
-    Game game{ window, view, *resources, static_cast< int >( tickRate ) };
+    Game game{ window, view, *resources, static_cast< int >( tickRate ), options };
 
     // fixed-timestep simulation, decoupled from rendering: the accumulator collects
     // wall-clock time and the world ticks at exactly tickRate, so a late frame

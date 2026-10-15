@@ -1,5 +1,7 @@
 #include "GravityMine.h"
 
+#include "SpikedBall.h"
+
 
 void GravityMine::Update()
 {
@@ -33,24 +35,22 @@ void GravityMine::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _tr
     _frame.GradientCircle( translated, dynamic.radius * 3.2,
         Color_d{ 1, 0.15, 0.3, 0.4 + pulse * 0.2 }, Color_d{ 0.5, 0.05, 0.15, 0 } );
 
-    // naval-mine body: a dark sphere - no rings, no bullseye:
+    // naval-mine body: a dark sphere tumbling in fake 3D, nine glowing horns (odd count avoids any crosshair symmetry)
+    // and an off-center molten ember orbiting on its surface:
     const auto bodyRadius{ dynamic.radius - 3 };
-    _frame.FillCircle( translated, bodyRadius, Color_d{ 0.28, 0.05, 0.14 } );
-
-    // seven horns slowly rotating, tips glowing (odd count avoids any crosshair symmetry):
-    constexpr int horns{ 7 };
-    for( int i{ 0 }; i < horns; i++ ) {
-        const auto angle{ spin + Maths::Pi2 * i / horns };
-        const auto tipDistance{ bodyRadius + 6 + pulse * 2 };
-        _frame.Line( translated + Vector::From( angle, bodyRadius - 2 ),
-            translated + Vector::From( angle, tipDistance ),
-            Color_d{ 1, 0.3, 0.42 }, 3.5 );
-        _frame.FillCircle( translated + Vector::From( angle, tipDistance ), 2.2,
-            Color_d{ 1, 0.55, 0.5, 0.8 + pulse * 0.2 } );
-    }
-
-    // partial rim light for volume, and an off-center molten ember slowly orbiting:
-    _frame.StrokeArc( translated, bodyRadius - 1.5, -spin * 0.3, -spin * 0.3 + 1.9, Color_d{ 1, 0.45, 0.6, 0.55 }, 2 );
-    _frame.FillCircle( translated + Vector::From( -spin * 0.7, bodyRadius * 0.35 ), 2.5 + pulse,
-        Color_d{ 1, 0.5, 0.35, 0.85 } );
+    SpikedBall::Draw( _frame, translated, {
+        .horns = 9,
+        .bodyRadius = bodyRadius,
+        .tipDistance = bodyRadius + 6 + pulse * 2,
+        .hornWidth = 3.5,
+        .tipRadius = 2.2,
+        .yaw = spin,
+        .pitch = 0.5 + spin * 0.63,
+        .body = Color_d{ 0.28, 0.05, 0.14 },
+        .horn = Color_d{ 1, 0.3, 0.42 },
+        .tip = Color_d{ 1, 0.55, 0.5, 0.8 + pulse * 0.2 },
+        .highlight = Color_d{ 1, 0.5, 0.6, 0.4 },
+        .ember = Color_d{ 1, 0.5, 0.35, 0.85 },
+        .emberAngle = -spin * 0.7,
+        .emberRadius = 2.5 + pulse } );
 }

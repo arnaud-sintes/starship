@@ -1,5 +1,7 @@
 #include "Mine.h"
 
+#include "SpikedBall.h"
+
 
 void Mine::Update()
 {
@@ -13,7 +15,7 @@ void Mine::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translati
     const auto translated{ position + _translation };
     const auto sinGrow{ std::sin( grow ) };
     const auto pulse{ ( sinGrow + 1 ) * 0.5 };
-    const auto spin{ grow * 0.2 }; // slow rotation
+    const auto spin{ grow * 0.22 }; // slow rotation
 
     // same design language as the gravity mines - dark sphere plus glowing horns -
     // but in the friendly green/white scheme:
@@ -21,20 +23,18 @@ void Mine::Draw( const NanoVGRenderer::Frame & _frame, const Vector & _translati
     _frame.GradientCircle( translated, dynamic.radius * 2.6,
         Color_d{ 0.25, 1, 0.5, 0.35 + pulse * 0.15 }, Color_d{ 0.05, 0.4, 0.2, 0 } );
 
-    const auto bodyRadius{ dynamic.radius - 7 };
-    _frame.FillCircle( translated, bodyRadius, Color_d{ 0.06, 0.24, 0.13 } );
-
-    constexpr int horns{ 6 };
-    for( int i{ 0 }; i < horns; i++ ) {
-        const auto angle{ spin + Maths::Pi2 * i / horns };
-        const auto tipDistance{ dynamic.radius - 1 + pulse * 2 };
-        _frame.Line( translated + Vector::From( angle, bodyRadius - 2 ),
-            translated + Vector::From( angle, tipDistance ),
-            Color_d{ 0.35, 1, 0.55 + sinGrow * 0.2 }, 3 );
-        _frame.FillCircle( translated + Vector::From( angle, tipDistance ), 2,
-            Color_d{ 1, 1, 1, 0.8 + pulse * 0.2 } );
-    }
-
-    // partial white rim light for volume:
-    _frame.StrokeArc( translated, bodyRadius - 1.5, -spin * 0.4, -spin * 0.4 + 1.9, Color_d{ 1, 1, 1, 0.55 }, 1.5 );
+    // the horns and body are a fake-3D ball tumbling on two axes (each mine with its own phase):
+    const auto phase{ position.u * 0.017 + position.v * 0.031 };
+    SpikedBall::Draw( _frame, translated, {
+        .horns = 8,
+        .bodyRadius = dynamic.radius - 7,
+        .tipDistance = dynamic.radius - 1 + pulse * 2,
+        .hornWidth = 3,
+        .tipRadius = 2,
+        .yaw = spin + phase,
+        .pitch = 0.5 + grow * 0.14 + phase * 0.7,
+        .body = Color_d{ 0.06, 0.24, 0.13 },
+        .horn = Color_d{ 0.35, 1, 0.55 + sinGrow * 0.2 },
+        .tip = Color_d{ 1, 1, 1, 0.8 + pulse * 0.2 },
+        .highlight = Color_d{ 0.8, 1, 0.9, 0.4 } } );
 }

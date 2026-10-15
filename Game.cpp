@@ -8,15 +8,29 @@ namespace
 }
 
 
-Game::Game( const Win32::Windows & _windows, const View & _view, const Packer::Resources & _resources, const int _frameRate )
+Game::Game( const Win32::Windows & _windows, const View & _view, const Packer::Resources & _resources, const int _frameRate, const Options & _options )
     : m_windows{ _windows }
     , m_view{ _view }
     , m_frameRate{ _frameRate }
     , m_audio{ _view.logical, _resources }
-    , m_world{ std::make_unique< World >( m_audio, _view.logical, _frameRate ) }
+    , m_world{ std::make_unique< World >( m_audio, _view.logical, _frameRate, _options.minesLayout ? WorldCheckpoint{ .progress = 99 } : ( _options.warden ? WorldCheckpoint{ .progress = 11 } : ( _options.foreman ? WorldCheckpoint{ .progress = 5 } : WorldCheckpoint{} ) ) ) } // 99: past the last mission, free play; 5, 11: the bosses
     , m_scene{ _view.logical }
     , m_hud{ _view.logical }
-{}
+{
+    if( _options.minesLayout ) {
+        m_world->DebugMinesLayout();
+        m_step = eStep::stage11; // no prologue, no tutorial, no epilogue
+        m_tutorialEnabled = false;
+        m_epilogueShown = true;
+    }
+    else if( _options.warden || _options.foreman ) {
+        m_world->DebugToggleInvincible();
+        m_world->DebugBossInView();
+        m_step = eStep::stage11; // no prologue, no tutorial, no scenario screen
+        m_tutorialEnabled = false;
+        m_storyStage = _options.warden ? 2 : 1;
+    }
+}
 
 
 void Game::_Restart()

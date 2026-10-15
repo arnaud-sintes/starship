@@ -77,6 +77,8 @@ public:
     void DebugToggleInvincible() { m_debugInvincible = !m_debugInvincible; } // TEMPORARY
     bool DebugInvincible() const { return m_debugInvincible; }
     void DebugSkip(); // TEMPORARY: skips to just before the next phase (banner / mission end / boss phase)
+    void DebugBossInView(); // TEMPORARY (--foreman, --warden): no briefing banner, and the boss shows up next to the ship instead of out of the screen
+    void DebugMinesLayout(); // TEMPORARY (--mines): an empty free-play sandbox with a fixed layout of both mine types
 
     bool PlasmaShieldActive() const { return m_plasmaShield > 0; }
     double PlasmaShieldRadius() const { return m_plasmaShieldRadius; }
@@ -247,6 +249,8 @@ private:
     int m_score{ 0 };
     int m_lives{ 5 };
     bool m_debugInvincible{ false }; // TEMPORARY test shortcut
+    bool m_debugPlaceBoss{ false };  // TEMPORARY: the boss is moved next to the ship when it shows up
+    bool m_debugSandbox{ false };    // TEMPORARY: no enemy, no gravity mine population, no attractor
 
     enum class eLaserSpeed : int
     {

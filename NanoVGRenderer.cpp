@@ -179,6 +179,30 @@ void NanoVGRenderer::Frame::StrokePolygon( const std::vector< Position_d > & _po
 }
 
 
+void NanoVGRenderer::Frame::StrokePolyline( const std::vector< Position_d > & _points, const Color_d & _color, const double _strokeWidth ) const
+{
+    if( _points.size() < 2 )
+        return;
+    auto context{ static_cast< NVGcontext * >( m_context ) };
+    ::nvgSave( context );
+    ::nvgBeginPath( context );
+    for( size_t i{ 0 }; i < _points.size(); i++ ) {
+        const auto point{ _points.at( i ).ToType< float >() };
+        if( i == 0 )
+            ::nvgMoveTo( context, point.x, point.y );
+        else
+            ::nvgLineTo( context, point.x, point.y );
+    }
+    const auto color{ ( _color * 255 ).ToType< unsigned char >() };
+    ::nvgStrokeColor( context, ::nvgRGBA( color.r, color.g, color.b, color.a ) );
+    ::nvgStrokeWidth( context, static_cast< float >( _strokeWidth ) );
+    ::nvgLineJoin( context, NVG_ROUND );
+    ::nvgLineCap( context, NVG_ROUND );
+    ::nvgStroke( context );
+    ::nvgRestore( context );
+}
+
+
 void NanoVGRenderer::Frame::FillArc( const Position_d & _position, const double _radius, const double _angleA, const double _angleB, const Color_d & _color, const bool _clockWise ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };

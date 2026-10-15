@@ -159,6 +159,24 @@ struct Vector
 
 
 // --------------
+// fake 3D: objects keep a few points in space, rotate them and drop z when drawing (z points toward the viewer)
+struct Vector3
+{
+    double x{ 0 }, y{ 0 }, z{ 0 };
+
+    Vector3 RotatedX( const double _angle ) const { const auto c{ std::cos( _angle ) }, s{ std::sin( _angle ) }; return { x, y * c - z * s, y * s + z * c }; }
+    Vector3 RotatedY( const double _angle ) const { const auto c{ std::cos( _angle ) }, s{ std::sin( _angle ) }; return { x * c + z * s, y, z * c - x * s }; }
+    Vector3 RotatedZ( const double _angle ) const { const auto c{ std::cos( _angle ) }, s{ std::sin( _angle ) }; return { x * c - y * s, x * s + y * c, z }; }
+    Vector3 operator * ( const double _value ) const { return { x * _value, y * _value, z * _value }; }
+    Vector3 operator + ( const Vector3 & _other ) const { return { x + _other.x, y + _other.y, z + _other.z }; }
+    Vector3 operator - ( const Vector3 & _other ) const { return { x - _other.x, y - _other.y, z - _other.z }; }
+    double DotProd( const Vector3 & _other ) const { return x * _other.x + y * _other.y + z * _other.z; }
+    Vector3 CrossProd( const Vector3 & _other ) const { return { y * _other.z - z * _other.y, z * _other.x - x * _other.z, x * _other.y - y * _other.x }; }
+    Vector3 Normalized() const { const auto length{ std::sqrt( DotProd( *this ) ) }; return length > 0 ? *this * ( 1 / length ) : *this; }
+};
+
+
+// --------------
 struct Maths
 {
     inline static const double Pi{ std::numbers::pi };
