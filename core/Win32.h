@@ -81,6 +81,7 @@ public:
         lShift =  0xA0,
         rShift = 0xA1,        
         f9 = 0x78,
+        f10 = 0x79,
     };
     bool KeyPressed( const eKey _key ) const { return m_keyPressed.at( static_cast< unsigned char >( _key ) ); }
     bool LeftMouseButtonPressed() const { return m_leftMouseButtonPressed; }

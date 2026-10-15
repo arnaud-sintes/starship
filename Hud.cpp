@@ -208,6 +208,9 @@ void Hud::Draw( const World & _world, const NanoVGRenderer::Frame & _frame )
     if( significant != std::string::npos )
         _frame.Text( { scoreCorner.u, scoreCorner.v + 16 }, "sourceCodePro", 26, score.substr( significant ), valueColor, NanoVGRenderer::Frame::eTextAlign::topRight );
 
+    if( _world.DebugInvincible() )
+        _frame.Text( { scoreCorner.u, scoreCorner.v + 80 }, "openSansBold", 12, "INVINCIBLE", bonusColor, NanoVGRenderer::Frame::eTextAlign::topRight, 2.2 );
+
     // remaining ships, as small hulls (the lost ones stay as dim outlines); free play has none:
     if( _world.Stage().Phase() != StageDirector::ePhase::freePlay ) {
         constexpr int maxLives{ 5 };

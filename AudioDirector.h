@@ -44,6 +44,18 @@ enum class eSound : size_t
     attractorLaserCollision,
     attractorExplosion,
     attractorShipCollision,
+    // announcer (VocalSynth): bosses, objectives, lives
+    bossWarningForeman,
+    bossWarningWarden,
+    missionCleared,
+    stageCleared,
+    foremanPhase2,
+    foremanPhase3,
+    foremanVent,
+    wardenPylon,
+    wardenCoreExposed,
+    lastShip,
+    gameOver,
     count
 };
 

@@ -88,6 +88,7 @@ private:
     int m_storyStage{ 1 }; // highest stage whose scenario screen was shown (stage 1 has the prologue)
     bool m_epilogueShown{ false };
     bool m_debugKeyDown{ false }; // TEMPORARY F9 test shortcut
+    bool m_debugInvincibleKeyDown{ false }; // TEMPORARY F10 test shortcut
     double m_cursorFlash{ 0 };
     double m_overlayAnim{ 0 };
 };

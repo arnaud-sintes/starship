@@ -74,6 +74,8 @@ public:
                 return &enemy;
         return nullptr;
     }
+    void DebugToggleInvincible() { m_debugInvincible = !m_debugInvincible; } // TEMPORARY
+    bool DebugInvincible() const { return m_debugInvincible; }
     void DebugSkip(); // TEMPORARY: skips to just before the next phase (banner / mission end / boss phase)
 
     bool PlasmaShieldActive() const { return m_plasmaShield > 0; }
@@ -244,6 +246,7 @@ private:
 private:
     int m_score{ 0 };
     int m_lives{ 5 };
+    bool m_debugInvincible{ false }; // TEMPORARY test shortcut
 
     enum class eLaserSpeed : int
     {

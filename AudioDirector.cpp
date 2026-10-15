@@ -49,6 +49,17 @@ bool AudioDirector::_Init( const Packer::Resources & _resources )
         "attractorLaserCollision.wav",
         "attractorExplosion.wav",
         "attractorShipCollision.wav",
+        "bossWarningForeman.wav",
+        "bossWarningWarden.wav",
+        "missionCleared.wav",
+        "stageCleared.wav",
+        "foremanPhase2.wav",
+        "foremanPhase3.wav",
+        "foremanVent.wav",
+        "wardenPylon.wav",
+        "wardenCoreExposed.wav",
+        "lastShip.wav",
+        "gameOver.wav",
     };
     for( size_t id{ 0 }; id < files.size(); id++ ) {
         const auto itResource{ _resources.find( files.at( id ) ) };

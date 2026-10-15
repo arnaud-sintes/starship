@@ -1279,9 +1279,9 @@ void World::_UpdateMission()
         return;
     if( m_stage.Update() == StageDirector::eEvent::cleared )
         _OnMissionCleared();
-    // boss alert: the siren goes with the flashing banner
-    if( m_stage.Phase() == StageDirector::ePhase::intro && m_stage.IsBoss() && m_stage.PhaseTicks() % m_frameRate == 1 )
-        m_audio.Play( eSound::lowShieldAlert, 0.9 );
+    // boss alert: the announcer goes with the flashing banner
+    if( m_stage.Phase() == StageDirector::ePhase::intro && m_stage.IsBoss() && m_stage.PhaseTicks() == 1 )
+        m_audio.Play( m_stage.Mission().roster.front().type == Enemy::eType::warden ? eSound::bossWarningWarden : eSound::bossWarningForeman );
 
     // the attractor field fills in with the missions, out of the player's sight:
     m_attractors.SetDensity( m_stage.Mission().attractorDensity );
@@ -1332,8 +1332,7 @@ void World::_OnMissionCleared()
     // score, no goody) so the banner is a real breather:
     m_ship.shield.value = m_ship.shield.capacity;
     m_ship.propellant.value = m_ship.propellant.capacity;
-    m_audio.Play( eSound::laserPowerUp, 0.9 );
-    m_audio.Play( eSound::shieldRepair, 0.9 );
+    m_audio.Play( m_stage.IsBoss() ? eSound::stageCleared : eSound::missionCleared );
     for( auto & enemy : m_enemies ) {
         _AddExplosion( enemy.rocket.position, enemy.rocket.momentum, eExplosion::big );
         m_audio.PlayAt( eSound::shipExplosion, _RelativeToShip( enemy.rocket.position ) );
@@ -1375,7 +1374,7 @@ void World::_UpdateForemanDamage( Enemy & _enemy )
     else if( boss.vent == 0 ) {
         boss.vent = 1;
         boss.ventTimer = static_cast< int >( m_frameRate * foremanVentWarningSeconds );
-        m_audio.PlayAt( eSound::lowShieldAlert, _RelativeToShip( _enemy.rocket.position ) );
+        m_audio.Play( eSound::foremanVent );
     }
     else if( boss.vent == 1 ) {
         boss.vent = 2;
@@ -1393,6 +1392,7 @@ void World::_UpdateForemanDamage( Enemy & _enemy )
     const auto phase{ ratio > 2.0 / 3 ? 0 : ( ratio > 1.0 / 3 ? 1 : 2 ) };
     if( phase > boss.phase ) {
         boss.phase = phase;
+        m_audio.Play( phase == 1 ? eSound::foremanPhase2 : eSound::foremanPhase3 );
         m_audio.PlayAt( eSound::attractorExplosion, _RelativeToShip( _enemy.rocket.position ) );
         _Detonate( _enemy.rocket.position, {}, eExplosion::big, eFadeColor::rose, 280, 0, 12, true );
         for( int i{ 0 }; i < 8; i++ ) {
@@ -1518,7 +1518,7 @@ void World::_UpdateWardenDamage( Enemy & _enemy )
     const auto phase{ Enemy::pylonCount - alive };
     if( phase > boss.phase ) {
         boss.phase = phase;
-        m_audio.PlayAt( eSound::lowShieldAlert, _RelativeToShip( _enemy.rocket.position ) );
+        m_audio.Play( phase == Enemy::pylonCount ? eSound::wardenCoreExposed : eSound::wardenPylon );
         _Detonate( _enemy.rocket.position, {}, eExplosion::big, eFadeColor::violet, 300, 0, 12, true );
         for( int i{ 0 }; i < 8; i++ ) {
             const auto angle{ Maths::Pi2 * i / 8 };
@@ -2179,6 +2179,9 @@ void World::_UpdateAlerts()
 {
     if( m_shipDestroyed )
         return;
+
+    if( m_debugInvincible )
+        m_ship.shield.value = m_ship.shield.capacity;
 
     // ship shield management: once the shield is fully depleted, the next hit is fatal
     if( m_ship.shield.value < 0 ) {

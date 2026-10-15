@@ -25,6 +25,8 @@ void Game::_Restart()
     const WorldCheckpoint checkpoint{ m_world->Checkpoint() };
     m_world = std::make_unique< World >( m_audio, m_view.logical, m_frameRate, checkpoint );
     m_step = eStep::stage11;
+    if( m_world->Lives() == 1 && m_world->Stage().Phase() != StageDirector::ePhase::freePlay )
+        m_audio.Play( eSound::lastShip );
 }
 
 
@@ -96,12 +98,19 @@ void Game::Tick()
         if( f9 && !m_debugKeyDown )
             m_world->DebugSkip();
         m_debugKeyDown = f9;
+        // TEMPORARY test shortcut: F10 toggles the invincibility
+        const auto f10{ m_windows.KeyPressed( Win32::Windows::eKey::f10 ) };
+        if( f10 && !m_debugInvincibleKeyDown )
+            m_world->DebugToggleInvincible();
+        m_debugInvincibleKeyDown = f10;
         m_world->Update( input );
         m_audio.Update();
         // let the explosion play out before the overlay:
         if( m_world->ShipDestroyed() && m_world->ShipDestroyedTicks() > m_frameRate * 2 ) {
             m_step = eStep::gameOver;
             m_clickArmed = false;
+            if( m_world->OutOfLives() )
+                m_audio.Play( eSound::gameOver );
             return;
         }
         // all the missions are cleared: the epilogue, then free play

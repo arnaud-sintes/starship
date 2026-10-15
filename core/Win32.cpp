@@ -161,8 +161,13 @@ bool Win32::Windows::Dispatch()
             m_leftMouseButtonPressed = msg.message == WM_LBUTTONDOWN;
         if( msg.message == WM_RBUTTONDOWN || msg.message == WM_RBUTTONUP )
             m_rightMouseButtonPressed = msg.message == WM_RBUTTONDOWN;
-        if( ( msg.message == WM_KEYDOWN || msg.message == WM_KEYUP ) && msg.wParam < m_keyPressed.size() )
-            m_keyPressed.at( msg.wParam ) = msg.message == WM_KEYDOWN;
+        // F10 (and Alt combinations) arrive as system key messages:
+        const bool keyDown{ msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN };
+        const bool keyUp{ msg.message == WM_KEYUP || msg.message == WM_SYSKEYUP };
+        if( ( keyDown || keyUp ) && msg.wParam < m_keyPressed.size() )
+            m_keyPressed.at( msg.wParam ) = keyDown;
+        if( ( keyDown || keyUp ) && msg.wParam == VK_F10 )
+            continue; // keep the default handler from starting the (absent) system menu loop
         ::TranslateMessage( &msg );
         ::DispatchMessage( &msg );
     }
