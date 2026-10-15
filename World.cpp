@@ -144,10 +144,12 @@ World::World( AudioDirector & _audio, const Dimension_ui & _screenDimension, con
     , m_laserPass{ static_cast< eLaserPass >( _checkpoint.laserPass ) }
     , m_homingMissiles{ _checkpoint.homingMissiles }
     , m_magneticMines{ _checkpoint.magneticMines }
+    , m_upgrades{ _checkpoint.upgrades }
     , m_plasmaShield{ _frameRate * 10 } // 10 seconds immunity at startup
     , m_wind{ _frameRate }
 {
     m_ship.id = m_nextRocketId++;
+    m_upgrades.ApplyAll( m_ship );
     m_ship.RefreshGeometry();
     m_ship.momentum -= m_wind.Base();
     m_shipBaseEnginePower = m_ship.engine.power;
@@ -1323,10 +1325,28 @@ void World::DebugSkip()
 }
 
 
+void World::Upgrade( const ShipUpgrades::eSystem _system )
+{
+    if( !m_upgrades.CanUpgrade( _system ) )
+        return;
+    const double enginePower{ m_ship.engine.power };
+    ShipUpgrades::ApplyLevel( m_ship, _system );
+    m_shipBaseEnginePower += m_ship.engine.power - enginePower; // overdrive restores the upgraded power
+    m_ship.RefreshGeometry();
+    m_upgrades.levels.at( static_cast< size_t >( _system ) )++;
+    m_upgrades.points--;
+    m_checkpoint.upgrades = m_upgrades; // a retry keeps what was spent
+    m_audio.Play( eSound::laserPowerUp ); // TODO dedicated sound (see TODO.md)
+}
+
+
 void World::_OnMissionCleared()
 {
+    // a skill point per cleared mission (spent on the upgrade screen, see Game):
+    m_upgrades.points++;
+
     // retry restarts the NEXT mission, with the gear as it stands now:
-    m_checkpoint = { m_stage.NextProgress(), m_score, static_cast< int >( m_laserSpeed ), static_cast< int >( m_laserPass ), m_homingMissiles, m_magneticMines, m_lives };
+    m_checkpoint = { m_stage.NextProgress(), m_score, static_cast< int >( m_laserSpeed ), static_cast< int >( m_laserPass ), m_homingMissiles, m_magneticMines, m_lives, m_upgrades };
 
     // debriefing: repairs, and the surviving hostiles are wiped out harmlessly (no
     // score, no goody) so the banner is a real breather:

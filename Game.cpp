@@ -63,6 +63,25 @@ void Game::Tick()
         return;
     }
 
+    if( m_step == eStep::upgrade ) {
+        m_audio.Update();
+        if( !m_windows.LeftMouseButtonPressed() )
+            m_clickArmed = true;
+        else if( m_clickArmed ) {
+            const auto cursor{ m_view.ToLogical( m_windows.CursorPosition() ) };
+            for( size_t i{ 0 }; i < static_cast< size_t >( ShipUpgrades::eSystem::count ); i++ ) {
+                const auto [ a, b ]{ _UpgradeCardRect( i ) };
+                if( cursor.u >= a.u && cursor.u <= b.u && cursor.v >= a.v && cursor.v <= b.v ) {
+                    m_world->Upgrade( static_cast< ShipUpgrades::eSystem >( i ) );
+                    m_clickArmed = false;
+                }
+            }
+            if( !m_world->Upgrades().AnyUpgradable() )
+                m_step = eStep::stage11;
+        }
+        return;
+    }
+
     if( m_step == eStep::tutorial ) {
         // world frozen behind the panel; the audio loops keep breathing
         m_audio.Update();
@@ -127,6 +146,13 @@ void Game::Tick()
             m_clickArmed = false;
             return;
         }
+        // skill points to spend (earned on the debriefing, or kept over a retry):
+        const auto phase{ m_world->Stage().Phase() };
+        if( !m_world->ShipDestroyed() && ( phase == StageDirector::ePhase::cleared || phase == StageDirector::ePhase::intro ) && m_world->Upgrades().AnyUpgradable() ) {
+            m_step = eStep::upgrade;
+            m_clickArmed = false;
+            return;
+        }
         // first close encounter with something new: pause and explain it
         if( !m_world->ShipDestroyed() && _DetectTutorial() ) {
             m_step = eStep::tutorial;
@@ -172,6 +198,8 @@ void Game::Draw( const NanoVGRenderer::Frame & _frame )
         m_hud.Draw( *m_world, _frame );
         if( m_step == eStep::tutorial )
             _DrawTutorial( _frame );
+        else if( m_step == eStep::upgrade )
+            _DrawUpgrade( _frame );
     }
     _DrawCursor( _frame );
 }
@@ -318,6 +346,89 @@ void Game::_DrawTutorial( const NanoVGRenderer::Frame & _frame )
         _frame.Line( end, end + Vector{ -6.0, -approach * 9 }, lineColor, lineWidth );
         _frame.Line( end, end + Vector{ 6.0, -approach * 9 }, lineColor, lineWidth );
     }
+}
+
+
+std::pair< Vector, Vector > Game::_UpgradeCardRect( const size_t _index ) const
+{
+    // a row of cards in the lower part of the screen, the ship stays visible at the center:
+    constexpr double cardWidth{ 250 }, cardHeight{ 150 }, gap{ 20 };
+    constexpr double count{ static_cast< double >( ShipUpgrades::eSystem::count ) };
+    const Vector screenCenter{ static_cast< double >( m_view.logical.width ) * 0.5, static_cast< double >( m_view.logical.height ) * 0.5 };
+    const double left{ screenCenter.u - ( count * cardWidth + ( count - 1 ) * gap ) * 0.5 + static_cast< double >( _index ) * ( cardWidth + gap ) };
+    const double top{ screenCenter.v + 140 };
+    return { { left, top }, { left + cardWidth, top + cardHeight } };
+}
+
+
+void Game::_DrawUpgrade( const NanoVGRenderer::Frame & _frame )
+{
+    m_overlayAnim += 0.05;
+    const auto & dimension{ m_view.logical };
+    const Vector screen{ static_cast< double >( dimension.width ), static_cast< double >( dimension.height ) };
+    const Vector screenCenter{ screen * 0.5 };
+    const double pulse{ ( std::sin( m_overlayAnim * 2 ) + 1 ) * 0.5 };
+    const auto & upgrades{ m_world->Upgrades() };
+
+    // light veil, the frozen world stays visible behind:
+    _frame.FillRectangle( {}, screen, { 0, 0.01, 0.03, 0.45 } );
+
+    // title block in the upper part:
+    const Vector titleCenter{ screenCenter - Vector{ 0, 250 } };
+    _frame.Text( titleCenter - Vector{ 0, 55 }, "openSansBold", 15, "H A N G A R", { accentColor.r, accentColor.g, accentColor.b, 0.85 }, NanoVGRenderer::Frame::eTextAlign::center, 6 );
+    _frame.Text( titleCenter + Vector{ 0, 3 }, "openSansBold", 56, "SHIP UPGRADE", { accentColor.r, accentColor.g, accentColor.b, 0.3 }, NanoVGRenderer::Frame::eTextAlign::center, 6 );
+    _frame.Text( titleCenter, "openSansBold", 56, "SHIP UPGRADE", colorWhite, NanoVGRenderer::Frame::eTextAlign::center, 6 );
+    _frame.Text( titleCenter + Vector{ 0, 55 }, "openSansBold", 16, std::format( "{} SKILL POINT{} TO ASSIGN", upgrades.points, upgrades.points > 1 ? "S" : "" ),
+        { 0.85, 0.92, 1, 0.9 }, NanoVGRenderer::Frame::eTextAlign::center, 3 );
+
+    // the ship itself (screen center) is the live preview: a pulsing ring frames it
+    const auto & ship{ m_world->Ship() };
+    _frame.StrokeCircle( screenCenter, ship.dynamic.boundingBoxRadius + 26 + pulse * 6, { accentColor.r, accentColor.g, accentColor.b, 0.6 }, 1.5 );
+
+    struct Card
+    {
+        const char * title;
+        const char * line1;
+        const char * line2;
+        bool heavier; // the drawback shows in red
+    };
+    static const std::array< Card, static_cast< size_t >( ShipUpgrades::eSystem::count ) > cards{ {
+        { "SHIELD", "+20% capacity, faster repair", "thicker hull - heavier", true },
+        { "PROPELLANT", "+15% tank, faster refuel", "bigger tank - heavier", true },
+        { "ENGINE", "+15% thrust, quicker spool-up", "burns more propellant", false },
+        { "ROTATORS", "+20% turn power", "sharper aiming", false },
+    } };
+    const auto cursor{ m_view.ToLogical( m_windows.CursorPosition() ) };
+    for( size_t i{ 0 }; i < cards.size(); i++ ) {
+        const auto & card{ cards.at( i ) };
+        const auto system{ static_cast< ShipUpgrades::eSystem >( i ) };
+        const auto [ a, b ]{ _UpgradeCardRect( i ) };
+        const bool enabled{ upgrades.CanUpgrade( system ) };
+        const bool hover{ enabled && cursor.u >= a.u && cursor.u <= b.u && cursor.v >= a.v && cursor.v <= b.v };
+        const double alpha{ enabled ? 1.0 : 0.45 };
+        _frame.GradientRectangle( a, b, { 0.07, 0.12, 0.2, hover ? 0.95 : 0.75 }, { 0.02, 0.045, 0.09, hover ? 0.95 : 0.75 }, 10 );
+        _frame.StrokeRectangle( a, b, { accentColor.r, accentColor.g, accentColor.b, hover ? 0.95 : 0.4 * alpha }, 1.5, 10 );
+        const double centerU{ ( a.u + b.u ) * 0.5 };
+        _frame.Text( { centerU, a.v + 28 }, "openSansBold", 20, card.title, hover ? colorWhite : Color_d{ 0.45, 0.72, 1, alpha }, NanoVGRenderer::Frame::eTextAlign::center, 3 );
+        _frame.Text( { centerU, a.v + 60 }, "openSans", 15, card.line1, { 0.85, 0.92, 1, 0.9 * alpha }, NanoVGRenderer::Frame::eTextAlign::center );
+        _frame.Text( { centerU, a.v + 82 }, "openSans", 15, card.line2,
+            card.heavier ? Color_d{ dangerColor.r, dangerColor.g, dangerColor.b, 0.85 * alpha } : Color_d{ 0.62, 0.72, 0.88, 0.85 * alpha }, NanoVGRenderer::Frame::eTextAlign::center );
+
+        // level pips:
+        constexpr double pipGap{ 22 };
+        const double pipLeft{ centerU - ( ShipUpgrades::maxLevel - 1 ) * pipGap * 0.5 };
+        const int level{ upgrades.Level( system ) };
+        for( int pip{ 0 }; pip < ShipUpgrades::maxLevel; pip++ ) {
+            const Vector position{ pipLeft + pip * pipGap, b.v - 28 };
+            if( pip < level )
+                _frame.FillCircle( position, 6, { accentColor.r, accentColor.g, accentColor.b, 0.95 } );
+            else if( pip == level && hover )
+                _frame.FillCircle( position, 6, { 1, 1, 1, 0.35 + pulse * 0.5 } ); // the level about to be bought
+            _frame.StrokeCircle( position, 6, { accentColor.r, accentColor.g, accentColor.b, 0.6 * alpha }, 1.2 );
+        }
+    }
+
+    _frame.Text( screenCenter + Vector{ 0, 340 }, "openSansBold", 13, "CLICK A SYSTEM TO UPGRADE IT", { 1, 1, 1, 0.3 + pulse * 0.45 }, NanoVGRenderer::Frame::eTextAlign::center, 4 );
 }
 
 
