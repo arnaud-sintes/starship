@@ -58,16 +58,13 @@ struct Enemy
     // the pylons of the warden, orbiting its core:
     static constexpr int pylonCount{ 3 };
     static constexpr double pylonOrbit{ 250 }, pylonRadius{ 34 };
-    Vector3 PylonSpace( const int _index ) const // relative to the core, z toward the viewer: the pylons pass in front of and behind it
-    {
-        const auto angle{ boss.pylonAngle + Maths::Pi2 * _index / pylonCount };
-        return Vector3{ std::cos( angle ), std::sin( angle ), 0 }.RotatedX( boss.orbitTilt ).RotatedZ( boss.orbitAzimuth ) * pylonOrbit;
-    }
+    // the orbit of the pylons, a tilted and precessing circle around the core (z is height: the pylons pass in front of and behind it)
+    Vector3 OrbitPoint( const double _angle ) const { return Vector3{ std::cos( _angle ), std::sin( _angle ), 0 }.RotatedX( boss.orbitTilt ).RotatedZ( boss.orbitAzimuth ) * pylonOrbit; }
+    Vector3 PylonSpace( const int _index ) const { return OrbitPoint( boss.pylonAngle + Maths::Pi2 * _index / pylonCount ); }
     Vector3 PylonOrbitNormal() const { return Vector3{ 0, 0, 1 }.RotatedX( boss.orbitTilt ).RotatedZ( boss.orbitAzimuth ); }
     Vector PylonPosition( const int _index ) const // what the pylon looks like on screen is where it is hit and where it pulls from
     {
-        const auto space{ PylonSpace( _index ) };
-        return rocket.position + Vector{ space.x, space.y };
+        return rocket.position + PylonSpace( _index ).Oblique();
     }
     bool PylonAlive( const int _index ) const { return boss.pylonShield.at( static_cast< size_t >( _index ) ) > 0; }
     int PylonsAlive() const

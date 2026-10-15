@@ -33,7 +33,13 @@ struct Mesh3D
     static Mesh3D Lathe( const std::vector< std::pair< double, double > > & _profile, const int _segments, const double _y, const double _z,
         const std::function< Color_d( int, int ) > & _color, const Color_d & _edge, const double _valley = 1, const double _twist = 0, const double _spin = 0 );
 
+    // a torus around the z axis (the ring in the xy plane); _style gets the (segment, side) of every face
+    static Mesh3D Torus( const double _radius, const double _tube, const int _segments, const int _sides, const std::function< void( int, int, Face & ) > & _style );
+    // a faceted sphere (80 triangles); _style gets the index and the direction of every face
+    static Mesh3D Icosphere( const double _radius, const std::function< void( int, const Vector3 &, Face & ) > & _style );
+
     Mesh3D Glowing( const double _glow ) const; // a copy, emissive
+    Mesh3D Transformed( const std::function< Vector3( const Vector3 & ) > & _transform ) const; // a copy, its points moved
 
 private:
     void _Orient(); // convex solids: outward is away from the centroid

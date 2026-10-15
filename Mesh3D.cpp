@@ -1,10 +1,11 @@
 #include "Mesh3D.h"
 
+#include <map>
+
 
 namespace
 {
-    constexpr double shiftX{ 0.1 }, shiftY{ -0.55 };                 // oblique projection: where a unit of height goes on the screen
-    const Vector3 viewer{ -shiftX, -shiftY, 1 };                     // toward the viewer: what is seen along the projection
+    const Vector3 viewer{ Vector3::Viewer() };
     const Vector3 light{ Vector3{ -0.5, -0.35, 0.8 }.Normalized() }; // from the upper left
 
     // right-hand normal of a polygon (not normalized): outward when the corners turn counter-clockwise seen from outside
@@ -119,11 +120,80 @@ Mesh3D Mesh3D::Lathe( const std::vector< std::pair< double, double > > & _profil
 }
 
 
+Mesh3D Mesh3D::Torus( const double _radius, const double _tube, const int _segments, const int _sides, const std::function< void( int, int, Face & ) > & _style )
+{
+    Mesh3D mesh;
+    for( int j{ 0 }; j < _segments; j++ ) {
+        const auto theta{ Maths::Pi2 * j / _segments };
+        for( int k{ 0 }; k < _sides; k++ ) {
+            const auto phi{ Maths::Pi2 * k / _sides };
+            const auto radial{ _radius + _tube * std::cos( phi ) };
+            mesh.vertices.emplace_back( Vector3{ radial * std::cos( theta ), radial * std::sin( theta ), _tube * std::sin( phi ) } );
+        }
+    }
+    const auto index{ [ & ]( const int _segment, const int _side ) { return ( _segment % _segments ) * _sides + _side % _sides; } };
+    for( int j{ 0 }; j < _segments; j++ )
+        for( int k{ 0 }; k < _sides; k++ ) {
+            Face face;
+            face.corners = { index( j, k ), index( j + 1, k ), index( j + 1, k + 1 ), index( j, k + 1 ) };
+            _style( j, k, face );
+            const auto theta{ Maths::Pi2 * ( j + 0.5 ) / _segments };
+            OrientFace( mesh.vertices, face, Vector3{ _radius * std::cos( theta ), _radius * std::sin( theta ), 0 } ); // outward: away from the tube axis
+            mesh.faces.emplace_back( std::move( face ) );
+        }
+    return mesh;
+}
+
+
+Mesh3D Mesh3D::Icosphere( const double _radius, const std::function< void( int, const Vector3 &, Face & ) > & _style )
+{
+    Mesh3D mesh;
+    const auto t{ ( 1 + std::sqrt( 5.0 ) ) * 0.5 };
+    for( const auto & point : std::array< Vector3, 12 >{ { { -1, t, 0 }, { 1, t, 0 }, { -1, -t, 0 }, { 1, -t, 0 }, { 0, -1, t }, { 0, 1, t },
+                { 0, -1, -t }, { 0, 1, -t }, { t, 0, -1 }, { t, 0, 1 }, { -t, 0, -1 }, { -t, 0, 1 } } } )
+        mesh.vertices.emplace_back( point.Normalized() * _radius );
+    std::vector< std::array< int, 3 > > triangles{ { 0, 11, 5 }, { 0, 5, 1 }, { 0, 1, 7 }, { 0, 7, 10 }, { 0, 10, 11 }, { 1, 5, 9 }, { 5, 11, 4 }, { 11, 10, 2 }, { 10, 7, 6 }, { 7, 1, 8 },
+        { 3, 9, 4 }, { 3, 4, 2 }, { 3, 2, 6 }, { 3, 6, 8 }, { 3, 8, 9 }, { 4, 9, 5 }, { 2, 4, 11 }, { 6, 2, 10 }, { 8, 6, 7 }, { 9, 8, 1 } };
+    std::map< std::pair< int, int >, int > middles;
+    const auto middle{ [ & ]( const int _a, const int _b ) {
+            const auto key{ std::minmax( _a, _b ) };
+            const auto found{ middles.find( key ) };
+            if( found != middles.end() )
+                return found->second;
+            mesh.vertices.emplace_back( ( ( mesh.vertices.at( static_cast< size_t >( _a ) ) + mesh.vertices.at( static_cast< size_t >( _b ) ) ).Normalized() ) * _radius );
+            return middles.emplace( key, static_cast< int >( mesh.vertices.size() ) - 1 ).first->second;
+        } };
+    std::vector< std::array< int, 3 > > subdivided;
+    for( const auto & [ a, b, c ] : triangles ) {
+        const auto ab{ middle( a, b ) }, bc{ middle( b, c ) }, ca{ middle( c, a ) };
+        subdivided.insert( subdivided.end(), { { a, ab, ca }, { b, bc, ab }, { c, ca, bc }, { ab, bc, ca } } );
+    }
+    int index{ 0 };
+    for( const auto & triangle : subdivided ) {
+        Face face;
+        face.corners = { triangle[ 0 ], triangle[ 1 ], triangle[ 2 ] };
+        _style( index++, FaceCenter( mesh.vertices, face.corners ).Normalized(), face );
+        mesh.faces.emplace_back( std::move( face ) );
+    }
+    mesh._Orient();
+    return mesh;
+}
+
+
 Mesh3D Mesh3D::Glowing( const double _glow ) const
 {
     auto mesh{ *this };
     for( auto & face : mesh.faces )
         face.glow = _glow;
+    return mesh;
+}
+
+
+Mesh3D Mesh3D::Transformed( const std::function< Vector3( const Vector3 & ) > & _transform ) const
+{
+    auto mesh{ *this };
+    for( auto & vertex : mesh.vertices )
+        vertex = _transform( vertex );
     return mesh;
 }
 
@@ -158,7 +228,7 @@ Vector3 Scene3D::World( const Vector3 & _model ) const
 
 Vector Scene3D::Project( const Vector3 & _world ) const
 {
-    return { m_origin.u + _world.x + shiftX * _world.z, m_origin.v + _world.y + shiftY * _world.z };
+    return m_origin + _world.Oblique();
 }
 
 

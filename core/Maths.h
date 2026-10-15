@@ -164,6 +164,11 @@ struct Vector3
 {
     double x{ 0 }, y{ 0 }, z{ 0 };
 
+    // the oblique projection of the fake 3D: z is height, it shifts the point up the screen (the ground plane is the game's)
+    static constexpr double obliqueShiftX{ 0.1 }, obliqueShiftY{ -0.55 };
+    static Vector3 Viewer() { return { -obliqueShiftX, -obliqueShiftY, 1 }; } // toward the viewer: what is seen along the projection
+    Vector Oblique() const { return { x + obliqueShiftX * z, y + obliqueShiftY * z }; }
+
     Vector3 RotatedX( const double _angle ) const { const auto c{ std::cos( _angle ) }, s{ std::sin( _angle ) }; return { x, y * c - z * s, y * s + z * c }; }
     Vector3 RotatedY( const double _angle ) const { const auto c{ std::cos( _angle ) }, s{ std::sin( _angle ) }; return { x * c + z * s, y, z * c - x * s }; }
     Vector3 RotatedZ( const double _angle ) const { const auto c{ std::cos( _angle ) }, s{ std::sin( _angle ) }; return { x * c - y * s, x * s + y * c, z }; }

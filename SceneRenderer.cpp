@@ -33,12 +33,12 @@ void SceneRenderer::DrawBackdrop( const World & _world, const NanoVGRenderer::Fr
 
 void SceneRenderer::_DrawWarden( const Enemy & _enemy, const NanoVGRenderer::Frame & _frame, const Vector & _translation )
 {
-    // the sentinel of the belt: an armillary of rotating rings around a dark eye, shielded
-    // by a barrier as long as its three pylons (gravity wells, tethered to the core) stand.
-    // Once they fall, the barrier drops and the eye burns open.
-    // Fake 3D: the rings, the fins and the pylons' orbit are real 3D points, rotated then projected
-    // (z points toward the viewer); what is behind the core is drawn first, dimmed, what is in
-    // front of it last. The pylons are hit and pull exactly where they are projected.
+    // the sentinel of the belt: a faceted crystal sphere turning slowly, its eye following you, wrapped
+    // in a gyroscope of three tumbling rings and a crown of spikes, shielded by a barrier as long as its
+    // three pylons (gravity wells, tethered to the core) stand. Once they fall, the barrier drops and the
+    // eye burns open.
+    // It is drawn as solids (see Mesh3D), in pixels: the pylons orbit on a tilted, precessing plane, in
+    // front of and behind the core, and are hit and pull exactly where they are projected.
     const auto & rocket{ _enemy.rocket };
     const auto & boss{ _enemy.boss };
     const auto center{ rocket.position + _translation };
@@ -53,171 +53,208 @@ void SceneRenderer::_DrawWarden( const Enemy & _enemy, const NanoVGRenderer::Fra
     const Color_d accent{ exposed ? Color_d{ 1, 0.35 + 0.35 * health, 0.55 + 0.3 * health } : violet };
     const bool hit{ boss.coreFlash > 0 };
 
-    const auto light{ Vector3{ -0.4, -0.5, 0.75 }.Normalized() }; // from the upper left
-    const auto project{ [ & ]( const Vector3 & _point ) { return Position_d{ center.u + _point.x, center.v + _point.y }; } };
-    const auto shade{ []( const Color_d & _color, const double _depth, const double _alpha = 1 ) { // _depth: -1 (far) .. 1 (near)
-        const auto closeness{ ( _depth + 1 ) * 0.5 };
-        const auto brightness{ 0.5 + 0.5 * closeness };
-        return Color_d{ _color.r * brightness, _color.g * brightness, _color.b * brightness, _color.a * _alpha * ( 0.55 + 0.45 * closeness ) };
-    } };
+    Scene3D scene{ center, 0, 1 };
+    const auto r{ R * 0.85 }; // the sphere
+    const auto viewer{ Vector3::Viewer() };
+    const auto project{ [ & ]( const Vector3 & _point ) { return scene.ProjectModel( _point ); } };
 
-    {
+    // where the eye looks: toward the ship, and a bit toward the viewer
+    const auto toShip{ m_screenCenter - center };
+    const auto gaze{ ( Vector3{ toShip.u, toShip.v, 0 }.Normalized() * 0.55 + Vector3{ 0, 0, 0.8 } ).Normalized() };
+
+    // moves a mesh built along the x axis to _origin, its x axis along _axis, turning around it
+    const auto place{ [ & ]( const Vector3 & _origin, const Vector3 & _axis, const double _turn ) {
+            const auto reference{ std::abs( _axis.z ) < 0.9 ? Vector3{ 0, 0, 1 } : Vector3{ 1, 0, 0 } };
+            const auto side{ _axis.CrossProd( reference ).Normalized() };
+            const auto up{ _axis.CrossProd( side ) };
+            const auto e2{ side * std::cos( _turn ) + up * std::sin( _turn ) };
+            const auto e3{ up * std::cos( _turn ) - side * std::sin( _turn ) };
+            return [ = ]( const Vector3 & _v ) { return _origin + _axis * _v.x + e2 * _v.y + e3 * _v.z; };
+        } };
+
+    scene.Add( { 0, 0, -400 }, [ & ]() {
         const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
-        _frame.GradientCircle( center, R * 3, { accent.r, accent.g, accent.b, 0.18 }, { accent.r, accent.g, accent.b, 0 } );
-    }
-
-    // the pylons' wells: contracting rings show the pull
-    for( int i{ 0 }; i < Enemy::pylonCount; i++ ) {
-        if( !_enemy.PylonAlive( i ) )
-            continue;
-        const auto position{ _enemy.PylonPosition( i ) + _translation };
-        for( int ring{ 0 }; ring < 3; ring++ ) {
-            const auto phase{ std::fmod( anim * 0.6 + ring / 3.0, 1.0 ) };
-            _frame.StrokeCircle( position, 190 * ( 1 - phase ) + 30, { violet.r, violet.g, violet.b, 0.22 * phase }, 2 );
-        }
-    }
-
-    // a tilted ring of arcs turning on itself, the far side or the near side of it:
-    std::vector< Position_d > points;
-    const auto drawRing{ [ & ]( const double _radius, const int _arcs, const double _fill, const double _spin, const double _tiltX, const double _tiltY,
-                                const Color_d & _color, const double _width, const bool _front ) {
-        const auto steps{ std::max( 8, 40 / _arcs ) };
-        for( int arc{ 0 }; arc < _arcs; arc++ ) {
-            const auto start{ _spin + Maths::Pi2 * arc / _arcs };
-            const auto length{ Maths::Pi2 / _arcs * _fill };
-            points.clear();
-            double depth{ 0 };
-            for( int step{ 0 }; step <= steps; step++ ) {
-                const auto angle{ start + length * step / steps };
-                const auto point{ Vector3{ std::cos( angle ), std::sin( angle ), 0 }.RotatedX( _tiltX ).RotatedY( _tiltY ) * _radius };
-                points.emplace_back( project( point ) );
-                depth += point.z / _radius / ( steps + 1 );
+        _frame.GradientCircle( center, R * 3.2, { accent.r, accent.g, accent.b, 0.2 }, { accent.r, accent.g, accent.b, 0 } );
+        for( int i{ 0 }; i < Enemy::pylonCount; i++ ) { // the wells: contracting rings show the pull
+            if( !_enemy.PylonAlive( i ) )
+                continue;
+            const auto position{ _enemy.PylonPosition( i ) + _translation };
+            for( int ring{ 0 }; ring < 3; ring++ ) {
+                const auto phase{ std::fmod( anim * 0.6 + ring / 3.0, 1.0 ) };
+                _frame.StrokeCircle( position, 190 * ( 1 - phase ) + 30, { violet.r, violet.g, violet.b, 0.22 * phase }, 2 );
             }
-            if( ( depth >= 0 ) == _front )
-                _frame.StrokePolyline( points, shade( _color, depth ), _width * ( 0.8 + 0.2 * ( depth + 1 ) * 0.5 ) );
         }
-    } };
+    } );
 
-    // the fins around the equator, in a plane of their own:
-    const auto finTiltX{ 1.1 + 0.25 * std::sin( anim * 0.3 ) }, finTiltY{ anim * 0.2 };
-    const auto drawFins{ [ & ]( const bool _front ) {
-        for( int i{ 0 }; i < 8; i++ ) {
-            const auto angle{ anim * 0.5 + Maths::Pi2 * i / 8 };
-            const std::array< Vector3, 3 > corners{
-                Vector3{ std::cos( angle - 0.14 ), std::sin( angle - 0.14 ), 0 }.RotatedX( finTiltX ).RotatedY( finTiltY ) * ( R * 0.95 ),
-                Vector3{ std::cos( angle ), std::sin( angle ), 0 }.RotatedX( finTiltX ).RotatedY( finTiltY ) * ( R * 1.4 ),
-                Vector3{ std::cos( angle + 0.14 ), std::sin( angle + 0.14 ), 0 }.RotatedX( finTiltX ).RotatedY( finTiltY ) * ( R * 0.95 ) };
-            const auto depth{ ( corners[ 0 ].z + corners[ 1 ].z + corners[ 2 ].z ) / ( 3 * R * 1.4 ) };
-            if( ( depth >= 0 ) != _front )
-                continue;
-            const std::vector< Position_d > fin{ project( corners[ 0 ] ), project( corners[ 1 ] ), project( corners[ 2 ] ) };
-            _frame.FillPolygon( fin, shade( { 0.14, 0.1, 0.22 }, depth ) );
-            _frame.StrokePolygon( fin, shade( { violet.r, violet.g, violet.b, 0.8 }, depth ), 2.5 );
-        }
-    } };
+    // the track of the pylons, a faint tilted ellipse: its far side below the core, its near side above
+    const auto drawTrack{ [ & ]( const bool _front ) {
+            std::vector< Position_d > run;
+            const auto flush{ [ & ]() {
+                    if( run.size() >= 2 )
+                        _frame.StrokePolyline( run, { violet.r, violet.g, violet.b, _front ? 0.3 : 0.15 }, 1.5 );
+                    run.clear();
+                } };
+            constexpr int steps{ 72 };
+            for( int i{ 0 }; i <= steps; i++ ) {
+                const auto point{ _enemy.OrbitPoint( Maths::Pi2 * i / steps ) };
+                if( ( point.DotProd( viewer ) >= 0 ) == _front )
+                    run.emplace_back( project( point ) );
+                else
+                    flush();
+            }
+            flush();
+        } };
+    scene.Add( { 0, 0, -390 }, [ & ]() { drawTrack( false ); } );
+    scene.Add( { 0, 0, 150 }, [ & ]() { drawTrack( true ); } );
 
-    // a pylon and its tether to the core: a crystal (an octahedron tumbling on its long axis), lit from the upper left
-    const auto drawTetherAndPylon{ [ & ]( const int _index, const bool _front ) {
-        const auto space{ _enemy.PylonSpace( _index ) };
-        if( ( space.z >= 0 ) != _front )
-            return;
-        const auto position{ _enemy.PylonPosition( _index ) + _translation };
-        const auto index{ static_cast< size_t >( _index ) };
-        const auto depth{ space.z / Enemy::pylonOrbit };
-        const auto scale{ 1 + 0.2 * depth };
-        if( !_enemy.PylonAlive( _index ) ) { // a smoldering stump
-            const auto flicker{ 0.5 + 0.5 * std::sin( anim * 8 + _index * 2 ) };
-            _frame.FillCircle( position, 9 * scale, { 0.12, 0.08, 0.15 } );
-            _frame.FillCircle( position, 4 * scale, { 1, 0.4, 0.2, 0.4 + 0.4 * flicker } );
-            return;
-        }
+    // the core: a faceted crystal sphere, plated, turning slowly; its facets burn once the barrier is down
+    const auto spinZ{ anim * 0.12 }, spinX{ 0.35 + 0.2 * std::sin( anim * 0.2 ) };
+    scene.Add( Mesh3D::Icosphere( r, [ & ]( const int _face, const Vector3 &, Mesh3D::Face & _out ) {
+            const auto variation{ 1.0 + 0.5 * std::fmod( _face * 0.6180339, 1.0 ) };
+            const bool plate{ _face % 5 == 0 };
+            _out.color = hit ? Color_d{ 0.9, 0.85, 1 } : ( plate ? Color_d{ 0.3, 0.22, 0.5 } : Color_d{ 0.17 * variation, 0.11 * variation, 0.3 * variation } );
+            _out.glow = hit ? 0.5 : ( exposed && plate ? 0.45 + 0.25 * std::sin( anim * 6 + _face ) : 0 );
+            if( exposed && plate && !hit )
+                _out.color = accent;
+            _out.edge = { ice.r, ice.g, ice.b, 0.55 };
+            _out.edgeWidth = 1.5;
+        } ).Transformed( [ & ]( const Vector3 & _v ) { return _v.RotatedZ( spinZ ).RotatedX( spinX ); } ) );
+
+    // the eye, on the sphere where it looks: dim and shuttered under the barrier, burning once exposed
+    scene.Add( { 0, 0, 120 }, [ & ]() {
+        const auto side{ gaze.CrossProd( Vector3{ 0, 0, 1 } ).Normalized() };
+        const auto up{ gaze.CrossProd( side ) };
+        const auto eyeRadius{ r * 0.42 };
+        const auto circle{ [ & ]( const double _radius, const double _lift ) { // a circle on the sphere around the gaze
+                std::vector< Position_d > points;
+                for( int i{ 0 }; i < 28; i++ ) {
+                    const auto angle{ Maths::Pi2 * i / 28 };
+                    points.emplace_back( project( ( gaze * r + ( side * std::cos( angle ) + up * std::sin( angle ) ) * _radius ).Normalized() * ( r + _lift ) ) );
+                }
+                return points;
+            } };
+        const auto pulse{ ( std::sin( anim * ( exposed ? 9 : 3 ) ) + 1 ) * 0.5 };
+        const Color_d eye{ hit && exposed ? Color_d{ 1, 1, 1 } : ( exposed ? accent : ice ) };
+        const auto eyeCenter{ project( gaze * ( r + 1 ) ) };
         {
             const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
-            _frame.Line( center, position, shade( { violet.r, violet.g, violet.b, 0.35 }, depth ), 7 );
+            _frame.GradientCircle( eyeCenter, r * ( exposed ? 1.6 + pulse * 0.5 : 0.8 ), { eye.r, eye.g, eye.b, exposed ? 0.55 : 0.25 }, { eye.r, eye.g, eye.b, 0 } );
         }
-        _frame.Line( center, position, shade( { ice.r, ice.g, ice.b, 0.7 }, depth ), 2 );
-        for( int bead{ 0 }; bead < 3; bead++ ) { // energy flowing to the core
-            const auto t{ std::fmod( anim * 0.7 + bead / 3.0 + _index * 0.3, 1.0 ) };
-            _frame.FillCircle( position + ( center - position ) * t, 3.5, { 1, 1, 1, 0.9 } );
-        }
+        _frame.FillPolygon( circle( eyeRadius * 1.25, 1 ), { 0.04, 0.02, 0.08 } );
+        _frame.StrokePolygon( circle( eyeRadius * 1.25, 1 ), violet, 3 );
+        _frame.FillPolygon( circle( eyeRadius * ( exposed ? 0.8 + pulse * 0.15 : 0.55 ), 2 ), eye );
+        _frame.FillPolygon( circle( eyeRadius * 0.28, 3 ), { 0.05, 0.03, 0.08 } ); // the pupil
+        if( exposed )
+            for( int i{ 0 }; i < 12; i++ ) { // crown of flames
+                const auto angle{ anim * 2 + Maths::Pi2 * i / 12 };
+                const auto direction{ side * std::cos( angle ) + up * std::sin( angle ) };
+                const auto from{ ( gaze * r + direction * eyeRadius * 1.25 ).Normalized() * ( r + 2 ) };
+                const auto to{ ( gaze * r + direction * eyeRadius * ( 1.7 + 0.4 * std::sin( anim * 11 + i ) ) ).Normalized() * ( r + 2 ) };
+                _frame.Line( project( from ), project( to ), { accent.r, accent.g, accent.b, 0.9 }, 3 );
+            }
+    } );
 
-        const auto ratio{ std::clamp( boss.pylonShield.at( index ) / boss.pylonMax, 0.0, 1.0 ) };
-        const bool flash{ boss.pylonFlash.at( index ) > 0 };
-        const Color_d body{ flash ? Color_d{ 1, 1, 1 } : ice };
-        const auto radial{ space.Normalized() };
-        const auto normal{ _enemy.PylonOrbitNormal() };
-        const auto side{ normal.CrossProd( radial ) };
-        const auto tumble{ anim * 1.5 + _index * 2.1 };
-        const std::array< Vector3, 3 > axes{ radial * ( 44 * scale ),
-            ( side * std::cos( tumble ) + normal * std::sin( tumble ) ) * ( 20 * scale ),
-            ( normal * std::cos( tumble ) - side * std::sin( tumble ) ) * ( 20 * scale ) };
-        {
-            const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
-            _frame.GradientCircle( position, ( 36 + 6 * std::sin( anim * 5 + _index ) ) * scale, { body.r, body.g, body.b, flash ? 0.8 : 0.4 }, { body.r, body.g, body.b, 0 } );
-        }
-        for( int face{ 0 }; face < 8; face++ ) { // the 8 faces, only the ones turned toward the viewer
-            const auto sign{ []( const int _bit ) { return _bit != 0 ? 1.0 : -1.0; } };
-            const std::array< Vector3, 3 > corners{ axes[ 0 ] * sign( face & 1 ), axes[ 1 ] * sign( face & 2 ), axes[ 2 ] * sign( face & 4 ) };
-            auto faceNormal{ ( corners[ 1 ] - corners[ 0 ] ).CrossProd( corners[ 2 ] - corners[ 0 ] ).Normalized() };
-            if( faceNormal.DotProd( corners[ 0 ] + corners[ 1 ] + corners[ 2 ] ) < 0 )
-                faceNormal = faceNormal * -1;
-            if( faceNormal.z <= 0 )
-                continue;
-            const auto lambert{ std::max( 0.0, faceNormal.DotProd( light ) ) };
-            const std::vector< Position_d > polygon{ Position_d{ position.u + corners[ 0 ].x, position.v + corners[ 0 ].y },
-                Position_d{ position.u + corners[ 1 ].x, position.v + corners[ 1 ].y }, Position_d{ position.u + corners[ 2 ].x, position.v + corners[ 2 ].y } };
-            _frame.FillPolygon( polygon, { 0.06 + body.r * 0.4 * lambert, 0.06 + body.g * 0.4 * lambert, 0.14 + body.b * 0.4 * lambert } );
-            _frame.StrokePolygon( polygon, { body.r * ( 0.6 + 0.4 * lambert ), body.g * ( 0.6 + 0.4 * lambert ), body.b * ( 0.6 + 0.4 * lambert ) }, 2.5 );
-        }
-        _frame.StrokeArc( position, 42 * scale, -Maths::Pi * 0.5, -Maths::Pi * 0.5 + Maths::Pi2 * ratio, { 1, 0.75 + 0.2 * ratio, 1, 0.8 }, 3 ); // remaining hull
-    } };
-
-    // behind the core:
-    for( int i{ 0 }; i < Enemy::pylonCount; i++ )
-        drawTetherAndPylon( i, false );
-    drawRing( R * 1.12, 3, 0.53, -anim * 1.2, 0.9 + 0.3 * std::sin( anim * 0.4 ), anim * 0.35, ice, 4, false );
-    drawRing( R * 0.82, 4, 0.34, anim * 1.8, -0.7, 0.6 + anim * 0.5, violet, 3, false );
-    drawFins( false );
-
-    // the core: a dark sphere, lit from the upper left
-    _frame.FillCircle( center, R, { 0.07, 0.05, 0.12 } );
-    _frame.GradientCircle( { center.u - R * 0.35, center.v - R * 0.35 }, R * 0.65, { ice.r, ice.g, ice.b, 0.22 }, { ice.r, ice.g, ice.b, 0 } );
-    _frame.StrokeCircle( center, R, violet, 7 );
-    _frame.StrokeCircle( center, R * 0.7, { ice.r, ice.g, ice.b, 0.3 }, 2 );
-
-    // the eye: dim and shuttered under the barrier, burning once exposed
-    const auto pulse{ ( std::sin( anim * ( exposed ? 9 : 3 ) ) + 1 ) * 0.5 };
-    const Color_d eye{ hit && exposed ? Color_d{ 1, 1, 1 } : ( exposed ? accent : ice ) };
-    {
-        const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
-        _frame.GradientCircle( center, R * ( exposed ? 1.8 + pulse * 0.5 : 0.9 ), { eye.r, eye.g, eye.b, exposed ? 0.55 : 0.25 }, { eye.r, eye.g, eye.b, 0 } );
+    // the crown: eight spikes around a tilted equator
+    const auto crownTilt{ 1.15 + 0.2 * std::sin( anim * 0.3 ) }, crownTurn{ anim * 0.2 };
+    for( int i{ 0 }; i < 8; i++ ) {
+        const auto direction{ Vector3{ std::cos( anim * 0.5 + Maths::Pi2 * i / 8 ), std::sin( anim * 0.5 + Maths::Pi2 * i / 8 ), 0 }.RotatedX( crownTilt ).RotatedY( crownTurn ) };
+        scene.Add( Mesh3D::Lathe( { { 0, 13 }, { 92, 0 } }, 4, 0, 0,
+                [ & ]( const int, const int _segment ) { return _segment % 2 == 0 ? Color_d{ 0.5, 0.36, 0.8 } : Color_d{ 0.3, 0.2, 0.55 }; }, { ice.r, ice.g, ice.b, 0.85 } )
+            .Transformed( place( direction * ( r * 0.92 ), direction, 0 ) ) );
     }
-    _frame.FillCircle( center, R * ( exposed ? 0.42 + pulse * 0.1 : 0.28 ), eye );
-    _frame.FillCircle( center, R * 0.12, { 0.05, 0.03, 0.08 } );
-    if( exposed )
-        for( int i{ 0 }; i < 10; i++ ) { // crown of flames
-            const auto angle{ anim * 2 + Maths::Pi2 * i / 10 };
-            _frame.Line( center + Vector::From( angle, R * 0.5 ), center + Vector::From( angle, R * ( 0.75 + 0.2 * std::sin( anim * 11 + i ) ) ), { accent.r, accent.g, accent.b, 0.9 }, 3 );
-        }
 
-    // in front of the core:
-    drawRing( R * 0.82, 4, 0.34, anim * 1.8, -0.7, 0.6 + anim * 0.5, violet, 3, true );
-    drawFins( true );
-    drawRing( R * 1.12, 3, 0.53, -anim * 1.2, 0.9 + 0.3 * std::sin( anim * 0.4 ), anim * 0.35, ice, 4, true );
+    // the gyroscope: three tumbling rings, banded, turning on themselves
+    const auto ring{ [ & ]( const double _radius, const double _tube, const double _tiltX, const double _tiltY, const double _spin ) {
+            scene.Add( Mesh3D::Torus( _radius, _tube, 24, 5, [ & ]( const int _segment, const int, Mesh3D::Face & _out ) {
+                    const bool lit{ _segment % 6 < 3 };
+                    _out.color = lit ? Color_d{ 0.45, 0.7, 0.95 } : Color_d{ 0.3, 0.2, 0.55 };
+                    _out.glow = exposed && lit ? 0.35 : 0.1;
+                    _out.edge = { ice.r, ice.g, ice.b, 0.5 };
+                    _out.edgeWidth = 1;
+                } ).Transformed( [ & ]( const Vector3 & _v ) { return _v.RotatedZ( _spin ).RotatedX( _tiltX ).RotatedY( _tiltY ); } ) );
+        } };
+    ring( r * 1.35, 5, 0.9 + 0.3 * std::sin( anim * 0.4 ), anim * 0.35, -anim * 1.2 );
+    ring( r * 1.6, 4, -0.7, 0.6 + anim * 0.5, anim * 1.8 );
+    ring( r * 1.9, 3, 1.4 + 0.2 * std::sin( anim * 0.27 ), -anim * 0.25, anim * 0.9 );
 
     // the barrier, up while a pylon stands; flashing white when shot: a translucent sphere with a turning lattice
-    if( !exposed ) {
-        const auto barrier{ hit ? Color_d{ 1, 1, 1, 0.95 } : Color_d{ violet.r, violet.g, violet.b, 0.45 } };
-        _frame.FillCircle( center, R * 1.65, { violet.r, violet.g, violet.b, hit ? 0.28 : 0.07 } );
-        _frame.StrokeCircle( center, R * 1.65, barrier, hit ? 5 : 2 );
-        for( const bool front : { false, true } ) {
-            drawRing( R * 1.65, 1, 1, 0, anim * 0.25, 0, barrier, hit ? 3 : 1.5, front );
-            drawRing( R * 1.65, 1, 1, 0, 1.2, anim * 0.3, barrier, hit ? 3 : 1.5, front );
+    if( !exposed )
+        scene.Add( { 0, 0, 230 }, [ & ]() {
+            const auto radius{ R * 1.65 };
+            const auto first{ viewer.CrossProd( Vector3{ 1, 0, 0 } ).Normalized() };
+            const auto second{ viewer.CrossProd( first ).Normalized() };
+            std::vector< Position_d > silhouette; // what the sphere looks like along the view
+            for( int i{ 0 }; i < 48; i++ )
+                silhouette.emplace_back( project( ( first * std::cos( Maths::Pi2 * i / 48 ) + second * std::sin( Maths::Pi2 * i / 48 ) ) * radius ) );
+            const auto barrier{ hit ? Color_d{ 1, 1, 1, 0.95 } : Color_d{ violet.r, violet.g, violet.b, 0.45 } };
+            _frame.FillPolygon( silhouette, { violet.r, violet.g, violet.b, hit ? 0.28 : 0.07 } );
+            _frame.StrokePolygon( silhouette, barrier, hit ? 5 : 2 );
+            for( int great{ 0 }; great < 3; great++ ) // the lattice: great circles, the near half brighter
+                for( const bool front : { false, true } ) {
+                    std::vector< Position_d > run;
+                    const auto flush{ [ & ]() {
+                            if( run.size() >= 2 )
+                                _frame.StrokePolyline( run, { barrier.r, barrier.g, barrier.b, barrier.a * ( front ? 0.6 : 0.2 ) }, hit ? 3 : 1.5 );
+                            run.clear();
+                        } };
+                    for( int i{ 0 }; i <= 48; i++ ) {
+                        const auto angle{ Maths::Pi2 * i / 48 };
+                        const auto point{ Vector3{ std::cos( angle ), std::sin( angle ), 0 }.RotatedX( 0.5 + great * 1.0 ).RotatedY( anim * 0.3 + great * 0.8 ) * radius };
+                        if( ( point.DotProd( viewer ) >= 0 ) == front )
+                            run.emplace_back( project( point ) );
+                        else
+                            flush();
+                    }
+                    flush();
+                }
+        } );
+
+    // the pylons: crystal obelisks tumbling on their long axis, tethered to the core, wearing a ring of remaining hull
+    for( int i{ 0 }; i < Enemy::pylonCount; i++ ) {
+        const auto space{ _enemy.PylonSpace( i ) };
+        const auto index{ static_cast< size_t >( i ) };
+        const auto position{ project( space ) };
+        const auto depth{ space.DotProd( viewer ) / Enemy::pylonOrbit }; // -1 far .. 1 near: the size, the brightness
+        const auto scale{ 1 + 0.15 * depth };
+        if( !_enemy.PylonAlive( i ) ) { // a smoldering stump
+            scene.Add( space, [ &, position, scale, i ]() {
+                const auto flicker{ 0.5 + 0.5 * std::sin( anim * 8 + i * 2 ) };
+                _frame.FillCircle( position, 9 * scale, { 0.12, 0.08, 0.15 } );
+                _frame.FillCircle( position, 4 * scale, { 1, 0.4, 0.2, 0.4 + 0.4 * flicker } );
+            } );
+            continue;
         }
+        const auto radial{ space.Normalized() };
+        const auto surface{ radial * r };
+        scene.Add( ( space + surface ) * 0.5, [ &, space, surface, i ]() {
+            {
+                const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+                _frame.Line( project( space ), project( surface ), { violet.r, violet.g, violet.b, 0.35 }, 7 );
+            }
+            _frame.Line( project( space ), project( surface ), { ice.r, ice.g, ice.b, 0.7 }, 2 );
+            for( int bead{ 0 }; bead < 3; bead++ ) { // energy flowing to the core
+                const auto t{ std::fmod( anim * 0.7 + bead / 3.0 + i * 0.3, 1.0 ) };
+                _frame.FillCircle( project( space + ( surface - space ) * t ), 3.5, { 1, 1, 1, 0.9 } );
+            }
+        } );
+        const bool flash{ boss.pylonFlash.at( index ) > 0 };
+        scene.Add( Mesh3D::Lathe( { { -46 * scale, 0 }, { -30 * scale, 18 * scale }, { 28 * scale, 18 * scale }, { 46 * scale, 0 } }, 6, 0, 0,
+                [ & ]( const int _band, const int _segment ) {
+                    return flash ? Color_d{ 1, 1, 1 } : ( _segment % 2 == 0 ? Color_d{ 0.45, 0.7, 0.95 } : ( _band == 1 ? Color_d{ 0.3, 0.2, 0.55 } : Color_d{ 0.36, 0.3, 0.7 } ) );
+                }, flash ? Color_d{ 1, 1, 1, 0.9 } : Color_d{ ice.r, ice.g, ice.b, 0.8 } ).Glowing( flash ? 0.6 : 0.2 )
+            .Transformed( place( space, radial, anim * 1.5 + i * 2.1 ) ) );
+        const auto ratio{ std::clamp( boss.pylonShield.at( index ) / boss.pylonMax, 0.0, 1.0 ) };
+        scene.Add( space + Vector3{ 0, 0, 40 }, [ &, position, scale, flash, ratio, i ]() {
+            const Color_d body{ flash ? Color_d{ 1, 1, 1 } : ice };
+            {
+                const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+                _frame.GradientCircle( position, ( 36 + 6 * std::sin( anim * 5 + i ) ) * scale, { body.r, body.g, body.b, flash ? 0.8 : 0.4 }, { body.r, body.g, body.b, 0 } );
+            }
+            _frame.StrokeArc( position, 42 * scale, -Maths::Pi * 0.5, -Maths::Pi * 0.5 + Maths::Pi2 * ratio, { 1, 0.75 + 0.2 * ratio, 1, 0.8 }, 3 );
+        } );
     }
 
-    for( int i{ 0 }; i < Enemy::pylonCount; i++ )
-        drawTetherAndPylon( i, true );
+    scene.Draw( _frame );
 }
 
 

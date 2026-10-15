@@ -32,6 +32,7 @@ public:
     void Viewport( const View & _view ) const;
     void Clear( const Color_d & _color ) const;
     void SetSwapInterval( const int _interval ) const; // 0 disables vsync (frame pacing is handled by the Timer)
+    void SaveScreenshot( const std::string & _path ) const; // TEMPORARY test option: the frame just drawn, as a 24-bit BMP (to call before the swap)
 
 private:
     const Win32::Handle & m_dc;

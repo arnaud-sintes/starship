@@ -79,7 +79,7 @@ namespace
     constexpr double wardenHoldDistance{ 560 };
     constexpr double wardenSpeed{ 1.0 };              // px/tick
     constexpr double wardenMaxTurn{ 0.006 };          // rad/tick
-    constexpr double wardenOrbitTilt{ 0.8 }, wardenOrbitWobble{ 0.15 }; // rad: the pylons' orbit seen at an angle, wobbling
+    constexpr double wardenOrbitTilt{ 0.5 }, wardenOrbitWobble{ 0.1 }; // rad: the pylons' orbit seen at an angle, wobbling
     constexpr double wardenOrbitPrecession{ 0.003 };  // rad/tick: the orbital plane turns slowly
     constexpr double wardenPylonSpin{ 0.009 };        // rad/tick, accelerating as the pylons fall
     constexpr double wardenPylonPullRange{ 650 }, wardenPylonPullStrength{ 0.03 }; // each live pylon is a gravity well

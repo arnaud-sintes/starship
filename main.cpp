@@ -10,6 +10,15 @@
 int main( const int _argc, char * _argv[] )
 {
     Game::Options options;
+    std::vector< double > screenshots; // TEMPORARY test option: --screenshot=2,5 saves screenshot1.bmp 2s after the start, screenshot2.bmp at 5s, then quits
+    for( int i{ 1 }; i < _argc; i++ ) {
+        const std::string_view argument{ _argv[ i ] };
+        if( argument.starts_with( "--screenshot=" ) ) {
+            std::istringstream list{ std::string{ argument.substr( 13 ) } };
+            for( std::string item; std::getline( list, item, ',' ); )
+                screenshots.emplace_back( std::stod( item ) );
+        }
+    }
     for( int i{ 1 }; i < _argc; i++ )
         if( std::string_view{ _argv[ i ] } == "--mines" ) // TEMPORARY test option: a sandbox with a layout of mines
             options.minesLayout = true;
@@ -54,6 +63,8 @@ int main( const int _argc, char * _argv[] )
     const unsigned long long maxCatchUp{ 5 * tickDuration }; // under sustained overload, slow down rather than spiral
     unsigned long long accumulator{ tickDuration }; // simulate the first tick immediately
     unsigned long long lastTime{ timer.Get() };
+    const auto startTime{ lastTime };
+    size_t shotsTaken{ 0 };
 
     Timer::FpsContext fpsContext{ frameRate };
     while( window.Dispatch() ) {
@@ -72,16 +83,23 @@ int main( const int _argc, char * _argv[] )
         const auto context{ ogl.MakeCurrent() };
         context.Viewport( view );
         context.Clear( { 0, 0.035, 0.075 } );
-        const auto frame{ nanoVG.CreateFrame( view ) };
-        game.Draw( frame );
+        {
+            const auto frame{ nanoVG.CreateFrame( view ) };
+            game.Draw( frame );
 
-        // frame rate information:
-        #ifdef _DISPLAY_FPS
-        temper.Update();
-        const auto & fpsState{ fpsContext.Update() };
-        const std::string fps{ std::format( "FPS {:.3}  |  {:.3}%{}", fpsState.avgFrameRate, fpsState.avgConsumption, fpsState.frameDropped ? "  |  FRAME DROPPED" : "" ) };
-        frame.Text( { 6, view.logical.ToType< double >().height - 4 }, "sourceCodePro", 13, fps, { 1, 1, 1, fpsState.frameDropped ? 0.9 : 0.4 }, NanoVGRenderer::Frame::eTextAlign::bottomLeft );
-        #endif
+            // frame rate information:
+            #ifdef _DISPLAY_FPS
+            temper.Update();
+            const auto & fpsState{ fpsContext.Update() };
+            const std::string fps{ std::format( "FPS {:.3}  |  {:.3}%{}", fpsState.avgFrameRate, fpsState.avgConsumption, fpsState.frameDropped ? "  |  FRAME DROPPED" : "" ) };
+            frame.Text( { 6, view.logical.ToType< double >().height - 4 }, "sourceCodePro", 13, fps, { 1, 1, 1, fpsState.frameDropped ? 0.9 : 0.4 }, NanoVGRenderer::Frame::eTextAlign::bottomLeft );
+            #endif
+        } // the frame is flushed
+        if( shotsTaken < screenshots.size() && static_cast< double >( currentTime - startTime ) * 1e-9 >= screenshots.at( shotsTaken ) ) {
+            context.SaveScreenshot( std::format( "screenshot{}.bmp", ++shotsTaken ) );
+            if( shotsTaken == screenshots.size() )
+                return 0;
+        }
     }
 
     return 0;
