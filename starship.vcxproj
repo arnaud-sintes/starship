@@ -178,6 +178,7 @@
     <ClCompile Include="OpenGL.cpp" />
     <ClCompile Include="Rocket.cpp" />
     <ClCompile Include="SceneRenderer.cpp" />
+    <ClCompile Include="ShipUpgrades.cpp" />
     <ClCompile Include="SpikedBall.cpp" />
     <ClCompile Include="StageDirector.cpp" />
     <ClCompile Include="StarField.cpp" />
@@ -212,6 +213,7 @@
     <ClInclude Include="Particule.h" />
     <ClInclude Include="Rocket.h" />
     <ClInclude Include="SceneRenderer.h" />
+    <ClInclude Include="ShipUpgrades.h" />
     <ClInclude Include="StageDirector.h" />
     <ClInclude Include="StarField.h" />
     <ClInclude Include="View.h" />

@@ -12,6 +12,7 @@
 #include "WindField.h"
 #include "AudioDirector.h"
 #include "StageDirector.h"
+#include "ShipUpgrades.h"
 
 
 // --------------
@@ -36,6 +37,7 @@ struct WorldCheckpoint
     int homingMissiles{ 0 };
     int magneticMines{ 0 };
     int lives{ 5 };       // ships left, this one included (free play is not counted)
+    ShipUpgrades upgrades; // levels bought and points left to spend
 };
 
 
@@ -66,6 +68,8 @@ public:
     const StageDirector & Stage() const { return m_stage; }
     const WorldCheckpoint & Checkpoint() const { return m_checkpoint; }
     int Lives() const { return m_lives; }
+    const ShipUpgrades & Upgrades() const { return m_upgrades; }
+    void Upgrade( const ShipUpgrades::eSystem _system ); // spends one point (no-op if not allowed)
     bool OutOfLives() const { return m_lives <= 0 && m_stage.Phase() != StageDirector::ePhase::freePlay; } // game over for good
     const Enemy * Boss() const // the boss, if on the field
     {
@@ -272,6 +276,7 @@ private:
 
     int m_homingMissiles{ 0 };
     int m_magneticMines{ 0 };
+    ShipUpgrades m_upgrades;
 
     // firing cadences (previously function-local statics):
     int m_laserCadence{ 0 };
