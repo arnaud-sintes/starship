@@ -8,6 +8,27 @@ namespace
 {
     constexpr Color_d accentColor{ 0.35, 0.65, 1 };
     constexpr Color_d dangerColor{ 1, 0.32, 0.38 };
+
+    // the TEMPORARY test options start from a given point of the game (99: past the last mission, free play; 5, 11: the bosses)
+    WorldCheckpoint _StartCheckpoint( const Game::Options & _options )
+    {
+        if( _options.maxed ) {
+            WorldCheckpoint checkpoint{ .progress = 99, .laserSpeed = 6, .laserPass = 8, .homingMissiles = 90, .magneticMines = 30 };
+            checkpoint.upgrades.levels.fill( ShipUpgrades::maxLevel );
+            return checkpoint;
+        }
+        if( _options.minesLayout || _options.singularity )
+            return { .progress = 99 };
+        if( _options.stocks )
+            return { .progress = 99, .homingMissiles = 90, .magneticMines = 30 };
+        if( _options.upgrades )
+            return { .progress = 1, .upgrades = { .points = 5 } };
+        if( _options.warden )
+            return { .progress = 11 };
+        if( _options.foreman )
+            return { .progress = 5 };
+        return {};
+    }
 }
 
 
@@ -17,7 +38,7 @@ Game::Game( const Win32::Windows & _windows, const View & _view, const Packer::R
     , m_frameRate{ _frameRate }
     , m_audio{ _view.logical, _resources }
     , m_updateChecker{ __ToString( VERSION ) }
-    , m_world{ std::make_unique< World >( m_audio, _view.logical, _frameRate, ( _options.minesLayout || _options.singularity ) ? WorldCheckpoint{ .progress = 99 } : ( _options.stocks ? WorldCheckpoint{ .progress = 99, .homingMissiles = 90, .magneticMines = 30 } : ( _options.upgrades ? WorldCheckpoint{ .progress = 1, .upgrades = { .points = 5 } } : ( _options.warden ? WorldCheckpoint{ .progress = 11 } : ( _options.foreman ? WorldCheckpoint{ .progress = 5 } : WorldCheckpoint{} ) ) ) ) ) } // 99: past the last mission, free play; 5, 11: the bosses
+    , m_world{ std::make_unique< World >( m_audio, _view.logical, _frameRate, _StartCheckpoint( _options ) ) }
     , m_scene{ _view.logical }
     , m_hud{ _view.logical }
     , m_splash{ _view.logical }
@@ -32,7 +53,7 @@ Game::Game( const Win32::Windows & _windows, const View & _view, const Packer::R
         m_tutorialEnabled = false;
         m_epilogueShown = true;
     }
-    else if( _options.stocks || _options.upgrades ) {
+    else if( _options.stocks || _options.upgrades || _options.maxed ) {
         if( _options.stocks )
             m_world->DebugToggleInvincible();
         m_step = eStep::stage11; // no prologue, no tutorial; the upgrade screen comes by itself
@@ -527,8 +548,8 @@ void Game::_DrawUpgrade( const NanoVGRenderer::Frame & _frame )
     };
     static const std::array< Card, static_cast< size_t >( ShipUpgrades::eSystem::count ) > cards{ {
         { "SHIELD", "+20% capacity, faster repair", "thicker hull - heavier", true },
-        { "PROPELLANT", "+15% tank, faster refuel", "bigger tank - heavier", true },
-        { "ENGINE", "+15% thrust, quicker spool-up", "burns more propellant", false },
+        { "PROPELLANT", "+30% tank, faster refuel", "bigger tank - heavier", true },
+        { "ENGINE", "+30% thrust, quicker spool-up", "burns more propellant", false },
         { "ROTATORS", "+20% turn power", "sharper aiming", false },
     } };
     const auto cursor{ m_pointer.Cursor() };

@@ -182,9 +182,8 @@ void Hud::Draw( const World & _world, const NanoVGRenderer::Frame & _frame )
         const auto labelEnd{ top.u + 14 + _frame.TextWidth( "openSansBold", 11, row.label, 2.6 ) + 10 };
         const Vector trackA{ top.u + 14, top.v + 22 };
         const double trackWidth{ gaugeWidth - 14 };
-        if( row.level >= 0 ) { // shield, propellant: the upgrade level as pips, the value, the bar
+        if( row.level >= 0 ) { // shield, propellant: the upgrade level as pips, the bar
             pips( { labelEnd, top.v + 6 }, ShipUpgrades::maxLevel, row.level, row.color );
-            _frame.Text( top + Vector{ gaugeWidth, 0 }, "sourceCodePro", 17, std::format( "{:3}", static_cast< int >( std::round( rate * 100 ) ) ), valueColor, NanoVGRenderer::Frame::eTextAlign::topRight );
             // the bar: a track, the level, ticks every quarter, a glowing tip
             _frame.FillRectangle( trackA, trackA + Vector{ trackWidth, gaugeBarHeight }, trackColor, gaugeBarHeight * 0.5 );
             if( rate > 0 ) {

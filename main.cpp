@@ -29,6 +29,8 @@ int main( const int _argc, char * _argv[] )
             showFps = true;
         else if( std::string_view{ _argv[ i ] } == "--stocks" ) // TEMPORARY test option: free play with big stocks of missiles and mines
             options.stocks = true;
+        else if( std::string_view{ _argv[ i ] } == "--maxed" ) // TEMPORARY test option: the ship and the weapons at their maximum
+            options.maxed = true;
         else if( std::string_view{ _argv[ i ] } == "--upgrades" ) // TEMPORARY test option: the ship upgrade screen
             options.upgrades = true;
         else if( std::string_view{ _argv[ i ] } == "--singularity" ) // TEMPORARY test option: a sandbox deploying singularities again and again

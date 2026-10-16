@@ -1,4 +1,4 @@
-# Starship beta 0.0.20
+# Starship beta 0.0.21
 
 ## Goal
 
@@ -13,8 +13,8 @@ The game is split in **stages**, each one a sequence of **missions** displayed a
 - clearing a mission wipes out the remaining hostiles and fully restores your shield and propellant
 - clearing a mission also earns a **skill point**: once the mission cleared banner is over, the game pauses on the **ship upgrade** screen, where you spend it on one of the four ship systems (5 levels each). The hull grows with your build - a thicker shield ring, a bigger tank, a wider nozzle - and so does its mass:
     - **Shield**: +20% capacity and faster repair, but heavier (slower)
-    - **Propellant**: +15% tank and faster refuel, but heavier (slower)
-    - **Engine**: +15% thrust and quicker spool-up, burns more propellant
+    - **Propellant**: +30% tank and faster refuel, but heavier (slower)
+    - **Engine**: +30% thrust and quicker spool-up, burns more propellant
     - **Rotators**: +20% turn power, sharper aiming
 - after the last mission, an **epilogue** screen (with your final score) ends the story, then the game goes on in **free play** (endless, no objective, the last mission's setup)
 - the starfield follows the story: a dense sky in deep space (stage 1), thinning out in the glare of the planet (stage 2)
@@ -112,6 +112,7 @@ Handy to try things out (they are not part of the story):
     - `starship.exe --mines`: an empty sandbox with a layout of both mine types (yours in a row above the ship, the gravity mines below)
     - `starship.exe --foreman`: the Foreman (stage 1 boss), next to the ship
     - `starship.exe --warden`: the Warden (stage 2 boss), next to the ship
+    - `starship.exe --maxed`: free play with the ship and the weapons at their maximum (every upgrade at level 5, the full laser, 90 homing missiles and 30 mines)
     - `starship.exe --stocks`: free play with 90 homing missiles and 30 mines to hold and release (middle button / B)
     - `starship.exe --upgrades`: straight to the ship upgrade screen with 5 skill points
     - `starship.exe --singularity`: the same empty sandbox, a singularity deployed beside the ship again and again

@@ -128,7 +128,6 @@ void SplashScreen::Draw( const NanoVGRenderer::Frame & _frame, const std::string
             _frame.FillCircle( lineCenter + Vector{ side * lineHalf, 0 }, 2.8, { 1, 1, 1, 1 } );
         }
     }
-    _frame.Text( lineCenter + Vector{ 0, 42 }, "openSansBold", 20, "A  S P A C E  S H O O T E R", { 0.9, 0.95, 1, 1.0 * EaseOut( ( t - 1.3 ) / 0.8 ) }, NanoVGRenderer::Frame::eTextAlign::center, 7 );
 
     // the version
     _frame.Text( { screen.u - 24, screen.v - 16 }, "sourceCodePro", 13, std::format( "BETA {}", _version ), { 1, 1, 1, 0.4 * fade }, NanoVGRenderer::Frame::eTextAlign::bottomRight );

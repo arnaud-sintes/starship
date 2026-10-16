@@ -23,6 +23,7 @@ public:
         bool foreman{ false };     // TEMPORARY test option (--foreman): straight into the stage 1 boss, invincible (F10 toggles)
         bool cheats{ false };      // --cheats: the F9 (skip) and F10 (invincibility) keys are active
         bool stocks{ false };      // TEMPORARY test option (--stocks): free play with big stocks of missiles and mines to hold and release, invincible
+        bool maxed{ false };       // TEMPORARY test option (--maxed): free play with the ship and the weapons at their maximum
         bool upgrades{ false };    // TEMPORARY test option (--upgrades): straight to the ship upgrade screen, with skill points to spend
         bool singularity{ false }; // TEMPORARY test option (--singularity): a free-play sandbox where a singularity is deployed again and again
         bool warden{ false };      // TEMPORARY test option (--warden): same with the stage 2 boss

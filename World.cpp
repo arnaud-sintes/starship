@@ -40,6 +40,7 @@ namespace
     constexpr int empDurationSeconds{ 4 };
     constexpr int overdriveDurationSeconds{ 8 };
     constexpr double overdrivePowerBoost{ 1.5 };
+    constexpr double shipConsumptionFactor{ 1.2 }; // the ship's own propellant burn modifier (enemies and missiles keep the base rate)
     constexpr int singularityDurationSeconds{ 3 };
     constexpr double singularityPullRange{ 800 };
     constexpr double singularityPullStrength{ 0.3 };
@@ -135,8 +136,8 @@ World::World( AudioDirector & _audio, const Dimension_ui & _screenDimension, con
     , m_frameRate{ _frameRate }
     , m_ship{ { 0.5, 0.75, 1 }, {}, Maths::PiHalf, { 0, -5 }, {}, 0,
         5, // damage
-        { 7, 7, 0.015, 0.65 }, // shield (quality keeps the mass close to the historical 5/0.5 setup)
-        { 20, 20, 0.015, 0.75 }, // propellant
+        { 7, 7, 0.012, 0.65 }, // shield (quality keeps the mass close to the historical 5/0.5 setup)
+        { 20, 20, 0.01, 0.75 }, // propellant
         { 0, 0.5, false, 0.005, 0.01, 0.75, 0 }, // engine
         { { 0, 0 }, 0.01, { false, false }, 0.001, 0.005, 0, { 0, 0 } } } // rotators
     , m_stage{ _frameRate, _checkpoint.progress }
@@ -156,6 +157,7 @@ World::World( AudioDirector & _audio, const Dimension_ui & _screenDimension, con
     m_ship.RefreshGeometry();
     m_ship.momentum -= m_wind.Base();
     m_shipBaseEnginePower = m_ship.engine.power;
+    m_ship.consumptionFactor = shipConsumptionFactor;
 
     m_sound_spaceWind = m_audio.CreateLoop( eSound::spaceWind, { 0.0, {}, {} } );
     m_sound_shipMainEngine = m_audio.CreateLoop( eSound::shipMainEngine, { 0.0, {}, {} } );
@@ -1967,7 +1969,7 @@ void World::_UpdateBonuses()
         m_ship.consumptionFactor = 0;
         m_ship.engine.power = m_shipBaseEnginePower * overdrivePowerBoost;
         if( m_overdriveTicks == 0 ) {
-            m_ship.consumptionFactor = 1;
+            m_ship.consumptionFactor = shipConsumptionFactor;
             m_ship.engine.power = m_shipBaseEnginePower;
             m_ship.engine.thrust = std::min( m_ship.engine.thrust, m_ship.engine.power );
             m_audio.Play( eSound::homingMissilesOff, 0.9 );

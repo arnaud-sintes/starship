@@ -27,20 +27,21 @@ void ShipUpgrades::ApplyLevel( Rocket & _ship, const eSystem _system )
         constexpr double capacityStep{ 1.4 }; // +20%, thicker hull ring
         _ship.shield.capacity += capacityStep;
         _ship.shield.value += capacityStep;
-        _ship.shield.repair_rate += 0.003;
+        _ship.shield.repair_rate += 0.0024;
         break;
     }
     case eSystem::propellant: {
-        constexpr double capacityStep{ 3 }; // +15%, bigger tank
+        constexpr double capacityStep{ 6 }; // +30%, bigger tank (the engine burns up to +75% more at full upgrade)
         _ship.propellant.capacity += capacityStep;
         _ship.propellant.value += capacityStep;
-        _ship.propellant.production_rate += 0.003;
-        _ship.propellant.quality += 0.01; // keeps the tank growth (and its mass) reasonable
+        _ship.propellant.production_rate += 0.003; // the refill keeps its share of the tank
+        _ship.propellant.quality += 0.02; // keeps the tank growth (and its mass) reasonable
         break;
     }
     case eSystem::engine:
-        _ship.engine.power += 0.075; // +15% top thrust, wider nozzle, more propellant burnt
-        _ship.engine.acceleration_rate += 0.001;
+        _ship.engine.power += 0.15; // +30% top thrust, wider nozzle, more propellant burnt (the tank grows as much)
+        _ship.engine.acceleration_rate += 0.002;
+        _ship.engine.quality += 0.02; // keeps the nozzle and the mass of the engine reasonable
         break;
     case eSystem::rotator:
         _ship.rotator.power += 0.002; // +20% turn power, sharper aiming
