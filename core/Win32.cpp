@@ -2,7 +2,12 @@
 
 #define NOMINMAX // keep std::min/max usable
 #include <windows.h>
+#include <winhttp.h>
+#include <shellapi.h>
 #undef GetModuleHandle
+
+#pragma comment( lib, "winhttp.lib" )
+#pragma comment( lib, "shell32.lib" )
 
 
 // ----------------
@@ -10,6 +15,49 @@
 void Win32::ShowConsole( const bool _show )
 {
     _ShowWindow( { ::GetConsoleWindow(), false }, _show );
+}
+
+
+std::optional< std::string > Win32::HttpsGet( const std::wstring & _host, const std::wstring & _path, const std::wstring & _userAgent )
+{
+    struct Internet
+    {
+        ::HINTERNET handle;
+        ~Internet() { if( handle ) ::WinHttpCloseHandle( handle ); }
+    };
+    const Internet session{ ::WinHttpOpen( _userAgent.c_str(), WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0 ) };
+    if( !session.handle )
+        return std::nullopt;
+    ::WinHttpSetTimeouts( session.handle, 4000, 4000, 4000, 6000 ); // resolve, connect, send, receive
+    const Internet connection{ ::WinHttpConnect( session.handle, _host.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0 ) };
+    if( !connection.handle )
+        return std::nullopt;
+    const Internet request{ ::WinHttpOpenRequest( connection.handle, L"GET", _path.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE ) };
+    if( !request.handle
+        || !::WinHttpSendRequest( request.handle, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0 )
+        || !::WinHttpReceiveResponse( request.handle, nullptr ) )
+        return std::nullopt;
+    ::DWORD status{ 0 }, size{ sizeof( status ) };
+    if( !::WinHttpQueryHeaders( request.handle, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &status, &size, WINHTTP_NO_HEADER_INDEX ) || status != 200 )
+        return std::nullopt;
+    constexpr size_t maxSize{ 256 * 1024 };
+    std::string body;
+    for( ::DWORD available{ 0 }; ::WinHttpQueryDataAvailable( request.handle, &available ) && available > 0 && body.size() < maxSize; ) {
+        std::string chunk( available, ' ' );
+        ::DWORD read{ 0 };
+        if( !::WinHttpReadData( request.handle, chunk.data(), available, &read ) )
+            return std::nullopt;
+        body.append( chunk, 0, read );
+    }
+    return body;
+}
+
+
+void Win32::OpenUrl( const std::string & _url )
+{
+    if( !_url.starts_with( "https://" ) ) // only web pages
+        return;
+    ::ShellExecuteW( nullptr, L"open", std::wstring{ _url.begin(), _url.end() }.c_str(), nullptr, nullptr, SW_SHOWNORMAL );
 }
 
 
@@ -187,6 +235,14 @@ Position_i Win32::Windows::CursorPosition() const
     ::GetCursorPos( &pos );
     ::ScreenToClient( m_wnd.As< ::HWND >(), &pos );
     return { pos.x, pos.y };
+}
+
+
+void Win32::Windows::SetCursorPosition( const Position_i & _position ) const
+{
+    ::POINT pos{ _position.x, _position.y };
+    ::ClientToScreen( m_wnd.As< ::HWND >(), &pos );
+    ::SetCursorPos( pos.x, pos.y );
 }
 
 

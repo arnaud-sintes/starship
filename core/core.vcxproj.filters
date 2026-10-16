@@ -7,6 +7,7 @@
     <ClCompile Include="Base64.cpp" />
     <ClCompile Include="Sha1.cpp" />
     <ClCompile Include="File.cpp" />
+    <ClCompile Include="Gamepad.cpp" />
     <ClCompile Include="Packer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -17,6 +18,7 @@
     <ClInclude Include="Base64.h" />
     <ClInclude Include="Sha1.h" />
     <ClInclude Include="File.h" />
+    <ClInclude Include="Gamepad.h" />
     <ClInclude Include="Packer.h" />
     <ClInclude Include="Macros.h" />
   </ItemGroup>

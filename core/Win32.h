@@ -22,6 +22,9 @@ public:
     // client area filling the whole primary monitor work area, window chrome accounted for:
     static Dimension_ui GetMaximizedClientDimension();
     static Position_i GetWorkAreaOrigin();
+    // a blocking HTTPS GET (short timeouts, 256 KB at most): the body when the answer is 200, nothing otherwise (no network included)
+    static std::optional< std::string > HttpsGet( const std::wstring & _host, const std::wstring & _path, const std::wstring & _userAgent );
+    static void OpenUrl( const std::string & _url ); // in the default browser
 
 private:
     static Handle _GetModuleHandle();
@@ -88,6 +91,7 @@ public:
     bool RightMouseButtonPressed() const { return m_rightMouseButtonPressed; }
     void ShowCursor( const bool _show = true ) const;
     Position_i CursorPosition() const;
+    void SetCursorPosition( const Position_i & _position ) const; // in the client area
     const Handle & GetWindowHandle() const { return m_wnd; }
     const Handle & GetDeviceContext() const { return m_dc; }
     const Dimension_ui & GetDimension() const{ return m_dimension; }

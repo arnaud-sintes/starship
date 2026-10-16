@@ -25,4 +25,10 @@ struct View
         return { _physicalPosition.x * static_cast< double >( logical.width ) / physical.width,
                  _physicalPosition.y * static_cast< double >( logical.height ) / physical.height };
     }
+
+    Position_i ToPhysical( const Vector & _logicalPosition ) const
+    {
+        return { static_cast< int >( std::lround( _logicalPosition.u * physical.width / logical.width ) ),
+                 static_cast< int >( std::lround( _logicalPosition.v * physical.height / logical.height ) ) };
+    }
 };

@@ -5,6 +5,8 @@
 #include "Hud.h"
 #include "AudioDirector.h"
 #include "View.h"
+#include "PointerInput.h"
+#include "UpdateChecker.h"
 #include "core/Packer.h"
 
 
@@ -18,6 +20,7 @@ public:
     {
         bool minesLayout{ false }; // TEMPORARY test option (--mines): straight into a sandbox with a layout of mines
         bool foreman{ false };     // TEMPORARY test option (--foreman): straight into the stage 1 boss, invincible (F10 toggles)
+        bool singularity{ false }; // TEMPORARY test option (--singularity): a free-play sandbox where a singularity is deployed again and again
         bool warden{ false };      // TEMPORARY test option (--warden): same with the stage 2 boss
     };
 
@@ -29,6 +32,7 @@ public:
 
 private:
     void _Restart();
+    std::string _Click() const; // "CLICK", or the gamepad button doing it
     std::pair< Vector, Vector > _PrologueButtonRect( const int _index ) const; // 0 = yes, 1 = no
     bool _DetectTutorial();
     void _DrawStory( const NanoVGRenderer::Frame & _frame, const std::string & _tag, const std::string & _title, const std::vector< const char * > & _lines ); // chapter tag, big title, scenario lines
@@ -40,6 +44,9 @@ private:
     void _DrawGameOver( const NanoVGRenderer::Frame & _frame );
     void _NewGame(); // out of lives: back to the very beginning
     void _DrawCursor( const NanoVGRenderer::Frame & _frame );
+    bool _UpdateNoticeVisible() const; // a newer release exists, and the screen is a menu
+    std::pair< Vector, Vector > _UpdateNoticeRect() const;
+    void _DrawUpdateNotice( const NanoVGRenderer::Frame & _frame );
 
 private:
     const Win32::Windows & m_windows;
@@ -61,6 +68,9 @@ private:
         gameOver,
     };
     eStep m_step{ eStep::stage11_prologue };
+    PointerInput m_pointer; // the mouse or the gamepad
+    UpdateChecker m_updateChecker; // asks GitHub for a newer release, in the background
+    bool m_noticePressed{ false }; // the button was down over the update notice
     bool m_clickArmed{ false }; // require a button release before accepting the retry click
 
     // in-game tutorial (opt-in at the prologue): the first time each object type comes

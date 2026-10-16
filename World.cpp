@@ -1308,6 +1308,17 @@ void World::DebugBossInView()
 }
 
 
+void World::DebugSingularity()
+{
+    // the mines sandbox, without the mines: _UpdateSingularity deploys the singularities
+    DebugMinesLayout();
+    m_mines.clear();
+    m_gravityMines.clear();
+    m_debugSingularity = true;
+    m_debugSingularityWait = m_frameRate;
+}
+
+
 void World::DebugMinesLayout()
 {
     // a sandbox to look at the mines: no enemy, no attractor, the ship is invincible; the player's
@@ -2035,6 +2046,13 @@ Vector World::_SingularityPull( const Vector & _position ) const
 
 void World::_UpdateSingularity()
 {
+    if( m_debugSingularity && m_singularityTicks <= 0 && ++m_debugSingularityWait >= m_frameRate ) { // TEMPORARY (--singularity)
+        m_debugSingularityWait = 0;
+        m_singularityPosition = m_ship.position + Vector{ 320, -140 };
+        m_singularityTotalTicks = m_frameRate * singularityDurationSeconds;
+        m_singularityTicks = m_singularityTotalTicks;
+        m_audio.Play( eSound::singularity );
+    }
     if( m_singularityTicks <= 0 )
         return;
     m_singularityTicks--;

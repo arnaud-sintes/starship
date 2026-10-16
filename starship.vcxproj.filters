@@ -68,6 +68,12 @@
     <ClCompile Include="OpenGL.cpp">
       <Filter>wrapper</Filter>
     </ClCompile>
+    <ClCompile Include="UpdateChecker.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
+    <ClCompile Include="PointerInput.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="external\nanovg\fontstash.h">
@@ -131,6 +137,12 @@
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="Particule.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="UpdateChecker.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="PointerInput.h">
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="Rocket.h">

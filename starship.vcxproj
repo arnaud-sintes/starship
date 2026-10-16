@@ -176,12 +176,14 @@
     <ClCompile Include="Mine.cpp" />
     <ClCompile Include="NanoVGRenderer.cpp" />
     <ClCompile Include="OpenGL.cpp" />
+    <ClCompile Include="PointerInput.cpp" />
     <ClCompile Include="Rocket.cpp" />
     <ClCompile Include="SceneRenderer.cpp" />
     <ClCompile Include="ShipUpgrades.cpp" />
     <ClCompile Include="SpikedBall.cpp" />
     <ClCompile Include="StageDirector.cpp" />
     <ClCompile Include="StarField.cpp" />
+    <ClCompile Include="UpdateChecker.cpp" />
     <ClCompile Include="WindField.cpp" />
     <ClCompile Include="World.cpp" />
   </ItemGroup>
@@ -211,10 +213,12 @@
     <ClInclude Include="NanoVGRenderer.h" />
     <ClInclude Include="OpenGL.h" />
     <ClInclude Include="Particule.h" />
+    <ClInclude Include="PointerInput.h" />
     <ClInclude Include="Rocket.h" />
     <ClInclude Include="SceneRenderer.h" />
     <ClInclude Include="ShipUpgrades.h" />
     <ClInclude Include="StageDirector.h" />
+    <ClInclude Include="UpdateChecker.h" />
     <ClInclude Include="StarField.h" />
     <ClInclude Include="View.h" />
     <ClInclude Include="WindField.h" />

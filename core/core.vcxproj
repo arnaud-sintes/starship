@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="Base64.cpp" />
     <ClCompile Include="File.cpp" />
+    <ClCompile Include="Gamepad.cpp" />
     <ClCompile Include="Maths.cpp" />
     <ClCompile Include="Packer.cpp" />
     <ClCompile Include="Sha1.cpp" />
@@ -30,6 +31,7 @@
   <ItemGroup>
     <ClInclude Include="Base64.h" />
     <ClInclude Include="File.h" />
+    <ClInclude Include="Gamepad.h" />
     <ClInclude Include="Macros.h" />
     <ClInclude Include="Maths.h" />
     <ClInclude Include="Packer.h" />

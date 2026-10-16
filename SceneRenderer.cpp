@@ -6,6 +6,17 @@
 namespace
 {
     constexpr double haloRadiusFactor{ 7 }; // attractor halo extent, in body radii
+
+    // moves a mesh built along the x axis to _origin, its x axis along _axis, turning around it
+    std::function< Vector3( const Vector3 & ) > Placement( const Vector3 & _origin, const Vector3 & _axis, const double _turn )
+    {
+        const auto reference{ std::abs( _axis.z ) < 0.9 ? Vector3{ 0, 0, 1 } : Vector3{ 1, 0, 0 } };
+        const auto side{ _axis.CrossProd( reference ).Normalized() };
+        const auto up{ _axis.CrossProd( side ) };
+        const auto e2{ side * std::cos( _turn ) + up * std::sin( _turn ) };
+        const auto e3{ up * std::cos( _turn ) - side * std::sin( _turn ) };
+        return [ = ]( const Vector3 & _v ) { return _origin + _axis * _v.x + e2 * _v.y + e3 * _v.z; };
+    }
 }
 
 
@@ -61,16 +72,6 @@ void SceneRenderer::_DrawWarden( const Enemy & _enemy, const NanoVGRenderer::Fra
     // where the eye looks: toward the ship, and a bit toward the viewer
     const auto toShip{ m_screenCenter - center };
     const auto gaze{ ( Vector3{ toShip.u, toShip.v, 0 }.Normalized() * 0.55 + Vector3{ 0, 0, 0.8 } ).Normalized() };
-
-    // moves a mesh built along the x axis to _origin, its x axis along _axis, turning around it
-    const auto place{ [ & ]( const Vector3 & _origin, const Vector3 & _axis, const double _turn ) {
-            const auto reference{ std::abs( _axis.z ) < 0.9 ? Vector3{ 0, 0, 1 } : Vector3{ 1, 0, 0 } };
-            const auto side{ _axis.CrossProd( reference ).Normalized() };
-            const auto up{ _axis.CrossProd( side ) };
-            const auto e2{ side * std::cos( _turn ) + up * std::sin( _turn ) };
-            const auto e3{ up * std::cos( _turn ) - side * std::sin( _turn ) };
-            return [ = ]( const Vector3 & _v ) { return _origin + _axis * _v.x + e2 * _v.y + e3 * _v.z; };
-        } };
 
     scene.Add( { 0, 0, -400 }, [ & ]() {
         const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
@@ -160,7 +161,7 @@ void SceneRenderer::_DrawWarden( const Enemy & _enemy, const NanoVGRenderer::Fra
         const auto direction{ Vector3{ std::cos( anim * 0.5 + Maths::Pi2 * i / 8 ), std::sin( anim * 0.5 + Maths::Pi2 * i / 8 ), 0 }.RotatedX( crownTilt ).RotatedY( crownTurn ) };
         scene.Add( Mesh3D::Lathe( { { 0, 13 }, { 92, 0 } }, 4, 0, 0,
                 [ & ]( const int, const int _segment ) { return _segment % 2 == 0 ? Color_d{ 0.5, 0.36, 0.8 } : Color_d{ 0.3, 0.2, 0.55 }; }, { ice.r, ice.g, ice.b, 0.85 } )
-            .Transformed( place( direction * ( r * 0.92 ), direction, 0 ) ) );
+            .Transformed( Placement( direction * ( r * 0.92 ), direction, 0 ) ) );
     }
 
     // the gyroscope: three tumbling rings, banded, turning on themselves
@@ -242,7 +243,7 @@ void SceneRenderer::_DrawWarden( const Enemy & _enemy, const NanoVGRenderer::Fra
                 [ & ]( const int _band, const int _segment ) {
                     return flash ? Color_d{ 1, 1, 1 } : ( _segment % 2 == 0 ? Color_d{ 0.45, 0.7, 0.95 } : ( _band == 1 ? Color_d{ 0.3, 0.2, 0.55 } : Color_d{ 0.36, 0.3, 0.7 } ) );
                 }, flash ? Color_d{ 1, 1, 1, 0.9 } : Color_d{ ice.r, ice.g, ice.b, 0.8 } ).Glowing( flash ? 0.6 : 0.2 )
-            .Transformed( place( space, radial, anim * 1.5 + i * 2.1 ) ) );
+            .Transformed( Placement( space, radial, anim * 1.5 + i * 2.1 ) ) );
         const auto ratio{ std::clamp( boss.pylonShield.at( index ) / boss.pylonMax, 0.0, 1.0 ) };
         scene.Add( space + Vector3{ 0, 0, 40 }, [ &, position, scale, flash, ratio, i ]() {
             const Color_d body{ flash ? Color_d{ 1, 1, 1 } : ice };
@@ -260,12 +261,14 @@ void SceneRenderer::_DrawWarden( const Enemy & _enemy, const NanoVGRenderer::Fra
 
 void SceneRenderer::_DrawForeman( const Enemy & _enemy, const NanoVGRenderer::Frame & _frame, const Vector & _translation )
 {
-    // a guild mining barge, a real piece of heavy machinery: a three-tier armored hull carrying cargo
-    // containers, a bridge tower and a swinging crane, two hazard-striped engine nacelles on struts, and a
-    // giant fluted drill turning at its head. A pylon holds the rear core (the weak spot) behind the stern:
-    // its armor petals close over it, tremble while the vent warms up, and open when it is exposed.
-    // Damage shows: cracks, fires, lost containers, a hotter hull.
-    // It is drawn as solids (see Mesh3D): the ground plane is the game's, so the core is where it is hit.
+    // a guild mining barge, a real piece of heavy machinery: a steel hull with ore hoppers and a bridge,
+    // two outrigger pods, and a bore head at its bow (a fluted drill spinning in a gyroscope of three
+    // cutter rings). Its thrusters are small and where the real exhaust leaves: a main engine bell at the
+    // stern, its glowing heart being the rear core (the weak spot), and four attitude nozzles on the pods.
+    // The core's armor petals close over it, tremble while the vent warms up, and open when it is exposed.
+    // Damage shows: cracks, fires, lost hoppers, a broken ring, a hotter hull.
+    // It is drawn as solids (see Mesh3D), in body radii: the ground plane is the game's, so the core and
+    // the nozzles are where the core is hit and where the exhaust comes out.
     const auto & rocket{ _enemy.rocket };
     const auto & boss{ _enemy.boss };
     const auto center{ rocket.position + _translation };
@@ -275,156 +278,190 @@ void SceneRenderer::_DrawForeman( const Enemy & _enemy, const NanoVGRenderer::Fr
     m_foremanAnim += 0.03 + ( 1 - health ) * 0.03;
     const auto anim{ m_foremanAnim };
     const auto core{ _enemy.CorePosition() + _translation };
-    // drawn bigger than its hit circle, around the core: the core stays where it is hit, the barge extends toward its head
-    constexpr double scale{ 1.25 }, coreX{ -1.12 }; // coreX: the core in model units, on the axis behind the stern
-    const auto unit{ R * scale };
-    const auto origin{ center + Vector::From( head, 1 ) * ( -( R + 6 ) - coreX * unit ) };
-    Scene3D scene{ origin, head, unit, 0.1 * std::sin( anim * 0.4 ) };
+    Scene3D scene{ center, head, R, 0.04 * std::sin( anim * 0.4 ) };
+    const auto project{ [ & ]( const Vector3 & _point ) { return scene.ProjectModel( _point ); } };
 
-    // guild amber, turning angry red as the hull fails:
+    // the real exhaust anchors (see Rocket::RefreshGeometry), in the model space: x toward the head, in body radii
+    const auto forward{ Vector::From( head, 1 ) };
+    const auto across{ Vector::From( head + Maths::PiHalf, 1 ) };
+    const auto toModel{ [ & ]( const Vector & _offset ) {
+            return Vector3{ ( _offset.u * forward.u + _offset.v * forward.v ) / R, ( _offset.u * across.u + _offset.v * across.v ) / R, 0 };
+        } };
+    const auto directionToModel{ [ & ]( const double _angle ) { return Vector3{ std::cos( _angle - head ), std::sin( _angle - head ), 0 }; } };
+
+    // guild amber and steel, the hull heating up as it fails:
+    const auto heat{ 1 - health };
     const Color_d amber{ 1, 0.3 + health * 0.4, 0.15 + health * 0.1 };
-    const Color_d edge{ amber.r, amber.g, amber.b, 0.9 };
+    const Color_d edge{ amber.r, amber.g, amber.b, 0.85 };
     const Color_d edgeSoft{ amber.r, amber.g, amber.b, 0.4 };
-    const Color_d hullDark{ 0.1, 0.06, 0.05 };
-    const Color_d plate{ 0.27, 0.16, 0.11 };
-    const Color_d deckPlate{ 0.36, 0.22, 0.14 };
-    const Color_d steel{ 0.3, 0.33, 0.38 };
+    const Color_d hullDark{ 0.08 + heat * 0.08, 0.07, 0.07 };
+    const Color_d deck{ 0.24 + heat * 0.16, 0.26 - heat * 0.08, 0.3 - heat * 0.14 };
+    const Color_d hullSide{ 0.13 + heat * 0.1, 0.14 - heat * 0.04, 0.17 - heat * 0.07 };
+    const Color_d steel{ 0.4, 0.43, 0.48 };
+    const Color_d amberPlate{ 0.62, 0.38, 0.12 };
+    const Color_d hazard{ 0.95, 0.62, 0.12 };
     const Color_d lit{ 1, 0.85, 0.55 };
-    const auto outlineOf{ []( const Color_d & _color ) { return Color_d{ std::min( _color.r * 1.5 + 0.1, 1.0 ), std::min( _color.g * 1.5 + 0.1, 1.0 ), std::min( _color.b * 1.5 + 0.1, 1.0 ), 0.85 }; } };
+    const Color_d none{ 0, 0, 0, 0 };
 
     scene.Add( { 0, 0, -3 }, [ & ]() {
         const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
-        _frame.GradientCircle( center, unit * 2.6, { amber.r, amber.g, amber.b, 0.16 }, { amber.r, amber.g, amber.b, 0 } );
+        _frame.GradientCircle( center, R * 2.1, { amber.r, amber.g, amber.b, 0.14 + heat * 0.08 }, { amber.r, amber.g, amber.b, 0 } );
     } );
 
-    // the hull: keel, armored mid-hull, upper deck
-    scene.Add( Mesh3D::Extrusion( { { 1.0, 0 }, { 0.8, 0.35 }, { 0.3, 0.5 }, { -0.7, 0.52 }, { -0.95, 0.28 }, { -0.95, -0.28 }, { -0.7, -0.52 }, { 0.3, -0.5 }, { 0.8, -0.35 } },
-        -0.14, 0.04, hullDark, hullDark, edgeSoft, 1.5 ) );
-    scene.Add( Mesh3D::Extrusion( { { 1.15, 0 }, { 0.85, 0.42 }, { 0.35, 0.58 }, { -0.7, 0.6 }, { -1.0, 0.3 }, { -1.0, -0.3 }, { -0.7, -0.6 }, { 0.35, -0.58 }, { 0.85, -0.42 } },
-        0.04, 0.22, deckPlate, plate, edge, 3 ) );
-    scene.Add( Mesh3D::Extrusion( { { 0.7, 0 }, { 0.55, 0.3 }, { 0.2, 0.4 }, { -0.55, 0.42 }, { -0.75, 0.2 }, { -0.75, -0.2 }, { -0.55, -0.42 }, { 0.2, -0.4 }, { 0.55, -0.3 } },
-        0.22, 0.32, deckPlate, plate, edge, 2.5 ) );
+    // the hull: keel, armored hull, an amber armor plate at the bow, the spine
+    scene.Add( Mesh3D::Extrusion( { { 0.9, 0 }, { 0.6, 0.4 }, { 0.15, 0.52 }, { -0.5, 0.52 }, { -0.7, 0.34 }, { -0.7, -0.34 }, { -0.5, -0.52 }, { 0.15, -0.52 }, { 0.6, -0.4 } },
+        -0.16, 0.04, hullDark, hullDark, edgeSoft, 1.5 ) );
+    scene.Add( Mesh3D::Extrusion( { { 1.0, 0 }, { 0.7, 0.46 }, { 0.2, 0.6 }, { -0.5, 0.6 }, { -0.76, 0.4 }, { -0.76, -0.4 }, { -0.5, -0.6 }, { 0.2, -0.6 }, { 0.7, -0.46 } },
+        0.04, 0.26, deck, hullSide, edge, 2.5 ) );
+    scene.Add( Mesh3D::Extrusion( { { 0.97, 0 }, { 0.7, 0.42 }, { 0.54, 0.44 }, { 0.54, -0.44 }, { 0.7, -0.42 } }, 0.26, 0.32, amberPlate, hullSide, edge, 2 ) );
+    scene.Add( Mesh3D::Extrusion( { { 0.5, 0 }, { 0.38, 0.16 }, { -0.36, 0.2 }, { -0.56, 0.14 }, { -0.56, -0.14 }, { -0.36, -0.2 }, { 0.38, -0.16 } },
+        0.26, 0.42, steel, hullSide, edge, 2 ) );
 
-    // rivet lights along the mid-hull edge, battle damage on it
-    scene.Add( { 0, 0, 0.22 }, [ & ]() {
-        for( int i{ 0 }; i < 7; i++ ) {
-            const auto x{ 0.6 - i * 0.22 };
-            _frame.FillCircle( scene.ProjectModel( { x, 0.51, 0.22 } ), 2.2, { lit.r, lit.g, lit.b, 0.6 } );
-            _frame.FillCircle( scene.ProjectModel( { x, -0.51, 0.22 } ), 2.2, { lit.r, lit.g, lit.b, 0.6 } );
+    // deck lights along the hull edge, battle damage on the deck
+    scene.Add( { 0, 0, 0.28 }, [ & ]() {
+        for( int i{ 0 }; i < 6; i++ ) {
+            const auto x{ 0.3 - i * 0.14 };
+            for( const auto side : { -1.0, 1.0 } )
+                _frame.FillCircle( project( { x, side * 0.57, 0.26 } ), 2, { lit.r, lit.g, lit.b, 0.4 + 0.5 * ( std::fmod( anim * 0.8 - i * 0.15, 1.0 ) < 0.2 ? 1 : 0 ) } );
         }
+        for( const auto side : { -1.0, 1.0 } ) // the engine room vents, glowing hotter as the hull fails
+            for( int i{ 0 }; i < 4; i++ ) {
+                const auto x{ -0.62 + i * 0.07 };
+                _frame.Line( project( { x, side * 0.3, 0.26 } ), project( { x + 0.04, side * 0.5, 0.26 } ), { 0.05, 0.04, 0.04, 0.9 }, 3 );
+                _frame.Line( project( { x, side * 0.3, 0.26 } ), project( { x + 0.04, side * 0.5, 0.26 } ), { 1, 0.4 + 0.3 * health, 0.1, 0.25 + 0.6 * heat }, 1.5 );
+            }
         if( boss.phase >= 1 ) {
             const Color_d crack{ 1, 0.35, 0.1, 0.9 };
-            const std::vector< std::vector< Vector3 > > cracks{ { { 0.4, 0.55, 0.22 }, { 0.2, 0.47, 0.22 }, { 0.02, 0.52, 0.22 }, { -0.1, 0.45, 0.22 } },
-                { { -0.3, -0.56, 0.22 }, { -0.45, -0.48, 0.22 }, { -0.55, -0.54, 0.22 } } };
+            const std::vector< std::vector< Vector3 > > cracks{ { { 0.86, 0.1, 0.32 }, { 0.74, 0.2, 0.32 }, { 0.68, 0.13, 0.32 }, { 0.56, 0.26, 0.32 } },
+                { { -0.48, -0.55, 0.26 }, { -0.38, -0.44, 0.26 }, { -0.44, -0.3, 0.26 } } };
             for( const auto & line : cracks )
                 for( size_t i{ 0 }; i + 1 < line.size(); i++ )
-                    _frame.Line( scene.ProjectModel( line.at( i ) ), scene.ProjectModel( line.at( i + 1 ) ), crack, 2 );
-        }
-        if( boss.phase >= 2 ) {
-            const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
-            const auto flicker{ 0.5 + 0.5 * std::sin( anim * 7 ) };
-            _frame.GradientCircle( scene.ProjectModel( { 0.25, 0.5, 0.22 } ), unit * 0.35, { 1, 0.4, 0.1, 0.35 * flicker }, { 1, 0.3, 0.1, 0 } );
-            _frame.GradientCircle( scene.ProjectModel( { -0.45, -0.5, 0.22 } ), unit * 0.3, { 1, 0.4, 0.1, 0.35 * ( 1 - flicker ) }, { 1, 0.3, 0.1, 0 } );
+                    _frame.Line( project( line.at( i ) ), project( line.at( i + 1 ) ), crack, 2 );
         }
     } );
 
-    // the cargo containers on the deck; the damage costs some, and sets the places on fire
-    const std::array< Color_d, 6 > containerColors{ Color_d{ 0.62, 0.3, 0.12 }, Color_d{ 0.15, 0.4, 0.42 }, Color_d{ 0.7, 0.52, 0.15 },
-        Color_d{ 0.35, 0.37, 0.4 }, Color_d{ 0.55, 0.22, 0.12 }, Color_d{ 0.2, 0.34, 0.5 } };
-    const std::array< double, 3 > containerX{ -0.36, -0.06, 0.24 };
-    for( int i{ 0 }; i < 6; i++ ) {
-        const auto x{ containerX.at( static_cast< size_t >( i / 2 ) ) };
-        const auto y{ i % 2 == 0 ? -0.22 : 0.22 };
-        const bool lost{ ( i == 3 && boss.phase >= 1 ) || ( i == 0 && boss.phase >= 2 ) };
+    // the ore hoppers on the deck, two of them open on glowing ore; the damage costs some, and sets the places on fire
+    for( int i{ 0 }; i < 4; i++ ) {
+        const auto x{ i / 2 == 0 ? 0.24 : -0.14 };
+        const auto y{ i % 2 == 0 ? -0.38 : 0.38 };
+        const bool lost{ ( i == 1 && boss.phase >= 1 ) || ( i == 2 && boss.phase >= 2 ) };
         if( lost ) {
-            scene.Add( { x, y, 0.34 }, [ &, x, y, i ]() {
+            scene.Add( { x, y, 0.32 }, [ &, x, y, i ]() {
                 const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
                 const auto flicker{ 0.5 + 0.5 * std::sin( anim * 9 + i * 2.1 ) };
-                _frame.GradientCircle( scene.ProjectModel( { x, y, 0.4 } ), unit * ( 0.22 + 0.1 * flicker ), { 1, 0.55, 0.15, 0.6 }, { 1, 0.3, 0.1, 0 } );
+                _frame.GradientCircle( project( { x, y, 0.32 } ), R * ( 0.22 + 0.08 * flicker ), { 1, 0.55, 0.15, 0.65 }, { 1, 0.3, 0.1, 0 } );
+                _frame.FillCircle( project( { x, y, 0.27 } ), R * 0.1, { 0.08, 0.05, 0.04 } ); // the scorched socket
+                for( int k{ 0 }; k < 3; k++ ) { // flames licking up
+                    const auto height{ 0.18 + 0.12 * ( 0.5 + 0.5 * std::sin( anim * 11 + i + k * 2.3 ) ) };
+                    const Vector3 base{ x + ( k - 1 ) * 0.05, y, 0.28 };
+                    _frame.Line( project( base ), project( { base.x, base.y, base.z + height } ), { 1, 0.5 + 0.2 * k, 0.15, 0.8 }, 3 - k * 0.6 );
+                }
             } );
             continue;
         }
-        const auto & color{ containerColors.at( static_cast< size_t >( i ) ) };
-        scene.Add( Mesh3D::Box( x - 0.13, x + 0.13, y - 0.085, y + 0.085, 0.32, 0.48 + 0.04 * ( i % 2 ), color, color, outlineOf( color ), 1.5 ) );
+        const bool ore{ i == 0 || i == 3 };
+        scene.Add( Mesh3D::Box( x - 0.15, x + 0.15, y - 0.12, y + 0.12, 0.26, 0.4, ore ? hullSide : steel, hullSide, edge, 1.5 ) );
+        if( ore )
+            scene.Add( Mesh3D::Box( x - 0.11, x + 0.11, y - 0.08, y + 0.08, 0.4, 0.405, amber, amber, none ).Glowing( 0.7 + 0.2 * std::sin( anim * 3 + i ) ) );
     }
 
-    // the bridge tower at the stern, its windows lit, an antenna with a beacon
-    scene.Add( Mesh3D::Box( -0.74, -0.5, -0.16, 0.16, 0.32, 0.6, plate, steel, edge, 2 ) );
-    scene.Add( Mesh3D::Box( -0.7, -0.54, -0.11, 0.11, 0.6, 0.72, steel, plate, edge, 2 ) );
-    scene.Add( Mesh3D::Box( -0.502, -0.5, -0.13, 0.13, 0.4, 0.55, lit, lit, { 0, 0, 0, 0 } ).Glowing( 1 ) );
-    scene.Add( Mesh3D::Box( -0.542, -0.54, -0.09, 0.09, 0.63, 0.69, lit, lit, { 0, 0, 0, 0 } ).Glowing( 1 ) );
-    scene.Add( Mesh3D::Beam( { -0.62, 0, 0.72 }, { -0.62, 0, 1.05 }, 0.012, steel, edgeSoft, 1 ) );
-    scene.Add( { -0.62, 0, 1.05 }, [ & ]() {
+    // the bridge at the stern of the spine, its windows lit, a mast with a beacon
+    scene.Add( Mesh3D::Box( -0.54, -0.3, -0.17, 0.17, 0.42, 0.6, steel, hullSide, edge, 2 ) );
+    scene.Add( Mesh3D::Box( -0.3, -0.29, -0.14, 0.14, 0.5, 0.56, lit, lit, none ).Glowing( 1 ) );
+    scene.Add( Mesh3D::Beam( { -0.44, 0, 0.6 }, { -0.44, 0, 0.88 }, 0.015, steel, edgeSoft, 1 ) );
+    scene.Add( { -0.44, 0, 0.88 }, [ & ]() {
         if( std::fmod( anim, 2 ) < 1 ) {
             const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
-            _frame.GradientCircle( scene.ProjectModel( { -0.62, 0, 1.05 } ), 12, { 1, 0.2, 0.15, 0.9 }, { 1, 0.1, 0.1, 0 } );
+            _frame.GradientCircle( project( { -0.44, 0, 0.88 } ), 12, { 1, 0.2, 0.15, 0.9 }, { 1, 0.1, 0.1, 0 } );
         }
     } );
 
-    // the crane: a post, a boom swinging over the deck with a counterweight, a hanging hook
-    const auto swing{ 0.9 * std::sin( anim * 0.45 ) + 0.5 };
-    const Vector3 boomEnd{ 0.38 + 0.6 * std::cos( swing ), 0.6 * std::sin( swing ), 0.68 };
-    scene.Add( Mesh3D::Box( 0.35, 0.41, -0.03, 0.03, 0.32, 0.66, steel, plate, edgeSoft, 1.5 ) );
-    scene.Add( Mesh3D::Beam( { 0.38, 0, 0.68 }, boomEnd, 0.03, amber, edge, 1.5 ) );
-    scene.Add( Mesh3D::Beam( { 0.38, 0, 0.68 }, { 0.38 - 0.2 * std::cos( swing ), -0.2 * std::sin( swing ), 0.68 }, 0.06, hullDark, edgeSoft, 1.5 ) );
-    scene.Add( boomEnd, [ &, boomEnd ]() {
-        _frame.Line( scene.ProjectModel( boomEnd ), scene.ProjectModel( { boomEnd.x, boomEnd.y, 0.5 } ), steel, 1.5 );
-    } );
-    scene.Add( Mesh3D::Box( boomEnd.x - 0.04, boomEnd.x + 0.04, boomEnd.y - 0.04, boomEnd.y + 0.04, 0.44, 0.5, amber, plate, edge, 1.5 ) );
-
-    // the engine nacelles on struts: hazard bands, a bell nozzle, a flickering exhaust
+    // the outrigger pods along the flanks, a hazard band around their middle, running lights at their bows
     for( const auto side : { -1.0, 1.0 } ) {
-        const auto y{ side * 0.88 };
-        for( const auto x : { 0.25, -0.45 } )
-            scene.Add( Mesh3D::Beam( { x, side * 0.56, 0.1 }, { x, side * 0.8, 0.08 }, 0.05, steel, edgeSoft, 1.5 ) );
-        scene.Add( Mesh3D::Lathe( { { 0.5, 0.1 }, { 0.38, 0.17 }, { 0.12, 0.17 }, { -0.14, 0.17 }, { -0.4, 0.17 }, { -0.66, 0.17 }, { -0.92, 0.17 } }, 8, y, 0.08,
-            [ & ]( const int _band, const int ) { return _band == 0 ? steel : ( _band % 2 == 1 ? Color_d{ 0.85, 0.48, 0.12 } : Color_d{ 0.14, 0.09, 0.07 } ); }, edgeSoft ) );
-        scene.Add( Mesh3D::Lathe( { { -0.92, 0.17 }, { -1.08, 0.25 } }, 8, y, 0.08, [ & ]( const int, const int ) { return steel; }, edge ) );
-        scene.Add( { -1.1, y, 0.08 }, [ &, y, side ]() {
-            const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
-            const auto flicker{ 0.5 + 0.5 * std::sin( anim * 9 + side ) };
-            const auto nozzle{ scene.ProjectModel( { -1.1, y, 0.08 } ) };
-            const auto tip{ scene.ProjectModel( { -1.1 - 0.35 - 0.12 * flicker, y, 0.08 } ) };
-            const auto direction{ tip - nozzle };
-            const auto length{ std::max( direction.Distance(), 1.0 ) };
-            const Vector perpendicular{ -direction.v / length * unit * 0.17, direction.u / length * unit * 0.17 };
-            _frame.FillPolygon( { nozzle + perpendicular, tip, nozzle - perpendicular }, { 1, 0.5, 0.15, 0.55 } );
-            _frame.FillPolygon( { nozzle + perpendicular * 0.5, nozzle + ( tip - nozzle ) * 0.6, nozzle - perpendicular * 0.5 }, { 1, 0.9, 0.5, 0.7 } );
-            _frame.GradientCircle( nozzle, unit * ( 0.34 + 0.06 * flicker ), { 1, 0.6, 0.25, 0.55 }, { 1, 0.3, 0.1, 0 } );
+        for( const auto x : { 0.08, -0.48 } )
+            scene.Add( Mesh3D::Box( x - 0.06, x + 0.06, std::min( side * 0.56, side * 0.8 ), std::max( side * 0.56, side * 0.8 ), 0.0, 0.14, steel, hullSide, edgeSoft, 1.5 ) );
+        scene.Add( Mesh3D::Lathe( { { 0.66, 0.03 }, { 0.54, 0.12 }, { 0.12, 0.12 }, { -0.12, 0.12 }, { -0.56, 0.12 }, { -0.64, 0.05 } }, 8, side * 0.86, 0.04,
+            [ & ]( const int _band, const int _segment ) { return _band == 2 ? ( _segment % 2 == 0 ? hazard : hullDark ) : ( _band == 0 || _band == 4 ? steel : hullSide ); }, edgeSoft ) );
+        scene.Add( { 0.66, side * 0.86, 0.04 }, [ &, side ]() {
+            if( std::fmod( anim + ( side > 0 ? 0.5 : 0 ), 2 ) < 1 ) {
+                const auto light{ project( { 0.67, side * 0.86, 0.04 } ) };
+                {
+                    const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+                    _frame.GradientCircle( light, 14, { 1, 0.15, 0.1, 0.8 }, { 1, 0.1, 0.1, 0 } );
+                }
+                _frame.FillCircle( light, 3.5, { 1, 0.2, 0.15 } );
+            }
         } );
-        scene.Add( { 0.45, y, 0.27 }, [ &, y, side ]() { // blinking beacon
-            if( std::fmod( anim, 2 ) < 1 )
-                _frame.FillCircle( scene.ProjectModel( { 0.45, y, 0.27 } ), 4, side > 0 ? Color_d{ 1, 0.1, 0.1 } : Color_d{ 0.1, 1, 0.3 } );
-        } );
+        if( boss.phase >= 2 ) // a pod smoldering
+            scene.Add( { -0.2, side * 0.86, 0.16 }, [ &, side ]() {
+                const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+                const auto flicker{ 0.5 + 0.5 * std::sin( anim * 7 + side * 2 ) };
+                _frame.GradientCircle( project( { -0.2, side * 0.86, 0.16 } ), R * 0.2, { 1, 0.4, 0.1, 0.3 + 0.3 * flicker }, { 1, 0.3, 0.1, 0 } );
+            } );
     }
 
-    // the head: a collar with hydraulic clamps, and the giant fluted drill turning in it
-    scene.Add( Mesh3D::Lathe( { { 0.9, 0.46 }, { 1.0, 0.5 }, { 1.15, 0.46 } }, 12, 0, 0.12,
-        [ & ]( const int, const int _segment ) { return _segment % 2 == 0 ? steel : plate; }, edge ) );
-    for( const auto side : { -1.0, 1.0 } )
-        scene.Add( Mesh3D::Beam( { 0.6, side * 0.3, 0.2 }, { 1.05, side * 0.42, 0.2 + 0.02 * std::sin( anim * 3 + side ) }, 0.04, steel, edge, 1.5 ) );
-    scene.Add( Mesh3D::Lathe( { { 1.15, 0.44 }, { 1.4, 0.4 }, { 1.65, 0.32 }, { 1.85, 0.22 }, { 2.0, 0.12 }, { 2.12, 0.04 }, { 2.18, 0 } }, 10, 0, 0.12,
-        []( const int, const int _segment ) { return _segment % 2 == 0 ? Color_d{ 0.95, 0.6, 0.2 } : Color_d{ 0.3, 0.17, 0.1 }; },
-        { amber.r, amber.g, amber.b, 0.3 }, 0.55, 2.2, anim * 2.4 ) );
-    scene.Add( { 2.18, 0, 0.12 }, [ & ]() { // the bit biting: a glow and a few sparks
-        const auto tip{ scene.ProjectModel( { 2.18, 0, 0.12 } ) };
-        const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
-        _frame.GradientCircle( tip, 22, { 1, 0.9, 0.6, 0.7 }, { 1, 0.6, 0.2, 0 } );
-        for( int i{ 0 }; i < 6; i++ ) {
-            const auto angle{ anim * 9 + i * 1.7 };
-            const auto length{ 8 + 12 * ( 0.5 + 0.5 * std::sin( anim * 13 + i * 2.3 ) ) };
-            _frame.Line( tip, tip + Vector::From( angle, length ), { 1, 0.85, 0.5, 0.8 }, 2 );
+    // the four attitude nozzles, exactly at the rotators' exhaust anchors and along their thrust: a small bell
+    // each, its mouth warming up with the thrust (the real exhaust particles come out of it)
+    for( const auto pair : { Rocket::Rotator::left, Rocket::Rotator::right } )
+        for( const auto side : { Rocket::Rotator::left, Rocket::Rotator::right } ) {
+            const auto & anchor{ rocket.dynamic.rotators.at( pair ).at( side ) };
+            const auto mouth{ toModel( anchor.position ) };
+            const auto direction{ directionToModel( anchor.orientation ) };
+            const auto thrust{ std::clamp( std::abs( rocket.rotator.thrust.at( pair ) ) / std::max( rocket.rotator.power, 1e-9 ), 0.0, 1.0 ) };
+            constexpr double length{ 0.17 };
+            scene.Add( Mesh3D::Lathe( { { 0, 0.05 }, { 0.06, 0.06 }, { length, 0.1 } }, 8, 0, 0,
+                [ & ]( const int, const int _segment ) { return _segment % 2 == 0 ? steel : hullSide; }, edge )
+                .Transformed( Placement( mouth - direction * length, direction, 0 ) ) );
+            scene.Add( mouth, [ &, mouth, thrust ]() {
+                const auto position{ project( mouth ) };
+                _frame.FillCircle( position, R * 0.07, { 0.1 + 0.9 * thrust, 0.06 + 0.5 * thrust, 0.05 + 0.1 * thrust } );
+                if( thrust > 0 ) {
+                    const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+                    _frame.GradientCircle( position, R * ( 0.1 + 0.12 * thrust ), { 1, 0.55, 0.2, 0.25 + 0.35 * thrust }, { 1, 0.3, 0.1, 0 } );
+                }
+            } );
         }
-    } );
 
-    // the stern struts to the core
-    for( const auto side : { -1.0, 1.0 } )
-        scene.Add( Mesh3D::Beam( { -0.92, side * 0.26, 0.12 }, { coreX * 0.95, side * 0.1, 0 }, 0.05, steel, edge, 1.5 ) );
-    scene.Add( Mesh3D::Beam( { -0.98, 0, 0.1 }, { coreX * 0.9, 0, 0 }, 0.08, hullDark, edge, 1.5 ) );
+    // the main engine at the stern: a housing, and a bell opening exactly where the main exhaust leaves; the core is its heart
+    const auto engineMouth{ toModel( rocket.dynamic.engine.position ) };
+    scene.Add( Mesh3D::Extrusion( { { -0.6, 0.42 }, { -0.82, 0.32 }, { -0.82, -0.32 }, { -0.6, -0.42 } }, -0.12, 0.22, deck, hullSide, edge, 2 ) );
+    scene.Add( Mesh3D::Lathe( { { -0.78, 0.26 }, { engineMouth.x + 0.07, 0.3 }, { engineMouth.x, 0.4 } }, 16, 0, 0,
+        [ & ]( const int _band, const int _segment ) { return _band == 1 ? ( _segment % 2 == 0 ? hazard : hullDark ) : steel; }, edge ) );
+    const auto engineThrust{ std::clamp( std::abs( rocket.engine.thrust ) / std::max( rocket.engine.power, 1e-9 ), 0.0, 1.0 ) };
+
+    // the bore head: a collar with hazard bands, the fluted drill spinning in it
+    constexpr double boreX{ 1.1 }, boreZ{ 0.17 };
+    scene.Add( Mesh3D::Lathe( { { 0.88, 0.2 }, { 0.96, 0.25 }, { 1.06, 0.25 }, { 1.12, 0.22 } }, 12, 0, boreZ,
+        [ & ]( const int _band, const int _segment ) { return _band == 1 ? ( _segment % 2 == 0 ? hazard : hullDark ) : steel; }, edge ) );
+    scene.Add( Mesh3D::Lathe( { { 1.12, 0.21 }, { 1.24, 0.17 }, { 1.36, 0.11 }, { 1.47, 0.04 }, { 1.52, 0 } }, 10, 0, boreZ,
+        []( const int, const int _segment ) { return _segment % 2 == 0 ? Color_d{ 0.95, 0.62, 0.2 } : Color_d{ 0.3, 0.2, 0.14 }; },
+        { amber.r, amber.g, amber.b, 0.35 }, 0.55, 5, anim * 3 ) );
+    // the cutter rings: a gyroscope around the bore head, banded steel and amber, turning on themselves and
+    // tumbling around the drill axis; the outer one breaks in the last phase
+    const auto ring{ [ & ]( const double _radius, const double _tube, const double _tilt, const double _precession, const double _spin, const bool _broken ) {
+            scene.Add( Mesh3D::Torus( _radius, _tube, 24, 5, [ & ]( const int _segment, const int, Mesh3D::Face & _out ) {
+                    if( _broken && _segment >= 8 && _segment < 12 ) {
+                        _out.color = none;
+                        return;
+                    }
+                    const bool tooth{ _segment % 4 == 0 };
+                    const bool band{ _segment % 8 < 4 };
+                    _out.color = tooth ? lit : ( band ? Color_d{ amber.r * 0.85, amber.g * 0.85, amber.b * 0.85 } : steel );
+                    _out.glow = tooth ? 0.6 : 0.05;
+                    _out.edge = edge;
+                    _out.edgeWidth = 1;
+                } ).Transformed( [ & ]( const Vector3 & _v ) {
+                    return _v.RotatedZ( _spin ).RotatedY( Maths::PiHalf + _tilt ).RotatedX( _precession ) + Vector3{ boreX, 0, boreZ };
+                } ) );
+        } };
+    const auto wobble{ 1 + heat };
+    ring( 0.36, 0.05, 0.1 * std::sin( anim * 0.7 ) * wobble, 0, anim * 2.2, false );
+    ring( 0.48, 0.045, 0.9 + 0.12 * std::sin( anim * 0.5 ) * wobble, anim * 0.35, -anim * 1.4, false );
+    ring( 0.6, 0.04, -0.9 + 0.15 * std::sin( anim * 0.33 ) * wobble, -anim * 0.25 + 1.5, anim * 0.9, boss.phase >= 2 );
 
     scene.AddLast( [ & ]() {
-        // the rear core: armored behind six petals, glowing amber while the vent warms up, then
-        // exposed (cyan, flashing white when hit) as the petals open
+        // the rear core, the heart of the main engine: armored behind six petals, glowing amber while the
+        // vent warms up, then exposed (cyan, flashing white when hit) as the petals open
         const bool armored{ boss.vent == 0 };
         const bool warning{ boss.vent == 1 };
         const bool flashing{ boss.coreFlash > 0 };
@@ -434,32 +471,208 @@ void SceneRenderer::_DrawForeman( const Enemy & _enemy, const NanoVGRenderer::Fr
         const auto pulse{ ( std::sin( m_foremanAnim * ( warning ? 14 : 5 ) ) + 1 ) * 0.5 };
         const auto r{ Enemy::coreRadius };
         const Color_d coreColor{ flashing ? Color_d{ 1, 1, 1 } : ( armored ? Color_d{ 0.45, 0.5, 0.55 } : ( warning ? Color_d{ 1, 0.6, 0.15 } : Color_d{ 0.35, 0.9, 1 } ) ) };
-        if( !armored ) {
+        {
             const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
-            _frame.GradientCircle( core, r * ( flashing ? 4.5 : ( warning ? 2.5 + pulse * 1.5 : 3 + pulse ) ), { coreColor.r, coreColor.g, coreColor.b, flashing ? 0.7 : 0.4 }, { coreColor.r, coreColor.g, coreColor.b, 0 } );
+            if( !armored )
+                _frame.GradientCircle( core, r * ( flashing ? 4.5 : ( warning ? 2.5 + pulse * 1.5 : 3 + pulse ) ), { coreColor.r, coreColor.g, coreColor.b, flashing ? 0.7 : 0.4 }, { coreColor.r, coreColor.g, coreColor.b, 0 } );
+            if( engineThrust > 0 )
+                _frame.GradientCircle( project( engineMouth ), r * ( 1 + engineThrust ), { 1, 0.55, 0.2, 0.3 * engineThrust }, { 1, 0.3, 0.1, 0 } );
         }
-        _frame.FillCircle( core, r * 1.12, hullDark );
-        _frame.StrokeCircle( core, r * 1.12, edge, 4 );
-        _frame.FillCircle( core, r * 0.75, { 0.05, 0.12, 0.18 } );
+        // the lip of the engine bell around it, hazard-striped
+        _frame.FillCircle( core, r * 1.2, hullDark );
+        for( int k{ 0 }; k < 16; k++ ) {
+            const auto angle{ Maths::Pi2 * k / 16 };
+            _frame.StrokeArc( core, r * 1.1, angle, angle + Maths::Pi2 / 16, k % 2 == 0 ? Color_d{ hazard.r * 0.8, hazard.g * 0.8, hazard.b * 0.8 } : Color_d{ 0.12, 0.1, 0.1 }, r * 0.16 );
+        }
+        _frame.StrokeCircle( core, r * 1.2, edge, 2.5 );
+        _frame.FillCircle( core, r, { 0.04, 0.08, 0.12 } );
         _frame.FillCircle( core, r * ( flashing ? 0.7 : 0.1 + open * ( 0.35 + pulse * 0.15 ) + ( warning ? 0.15 : 0 ) ), coreColor );
-        if( open > 0.5 )
-            for( int i{ 0 }; i < 3; i++ ) {
-                const auto angle{ -m_foremanAnim * 1.5 + Maths::Pi2 * i / 3 };
-                _frame.StrokeArc( core, r + 9, angle, angle + 0.9, { coreColor.r, coreColor.g, coreColor.b, 0.8 }, 2.5 );
+        // the thin technical rings around the core, counter-turning: visible while armored, faster as the vent warms up,
+        // spinning wildly (and breathing, with energy rings collapsing into it) once the core is open
+        m_foremanCoreSpin += 0.025 + open * 0.3 + ( warning ? 0.07 : 0.0 );
+        {
+            const auto spin{ m_foremanCoreSpin };
+            const auto strength{ 0.7 + 0.3 * open + ( warning ? 0.25 : 0.0 ) + ( flashing ? 0.4 : 0.0 ) };
+            const auto breath{ 1 + open * ( 0.08 + 0.05 * pulse ) };
+            const auto tint{ [ & ]( const double _alpha ) { return Color_d{ coreColor.r, coreColor.g, coreColor.b, std::min( _alpha * strength, 1.0 ) }; } };
+            const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+            for( int i{ 0 }; i < 3 && open > 0.05; i++ ) { // energy collapsing into the core
+                const auto phase{ std::fmod( m_foremanAnim * 1.4 + i / 3.0, 1.0 ) };
+                _frame.StrokeCircle( core, r * ( 3.3 - 2.0 * phase ), tint( 0.7 * open * std::sin( phase * Maths::Pi ) ), 2 );
             }
-        // the armor petals, hinged on the rim: their tips come in to the middle when closed, and sweep outward when open
+            const auto first{ r * 1.42 * breath }, second{ r * 1.75 * breath }, third{ r * 2.15 * breath };
+            _frame.StrokeCircle( core, first, tint( 0.55 ), 1.5 ); // a fine full circle carrying four bright arcs
+            for( int i{ 0 }; i < 4; i++ ) {
+                const auto angle{ spin * 1.5 + Maths::Pi2 * i / 4 };
+                _frame.StrokeArc( core, first, angle, angle + 0.7 + 0.6 * open, tint( 1 ), 3.5 + open );
+            }
+            for( int i{ 0 }; i < 28; i++ ) { // a dashed one turning the other way
+                const auto angle{ -spin * 1.1 + Maths::Pi2 * i / 28 };
+                _frame.StrokeArc( core, second, angle, angle + Maths::Pi2 / 56, tint( 1 ), 2 + open );
+            }
+            _frame.StrokeCircle( core, third, tint( 0.4 ), 1.5 ); // the outer one: ticks, and two satellites
+            for( int i{ 0 }; i < 24; i++ ) {
+                const auto angle{ spin * 0.6 + Maths::Pi2 * i / 24 };
+                const auto length{ i % 6 == 0 ? 0.24 : 0.11 };
+                _frame.Line( core + Vector::From( angle, third ), core + Vector::From( angle, third + r * length ), tint( i % 6 == 0 ? 1 : 0.65 ), 1.6 );
+            }
+            for( int i{ 0 }; i < 2; i++ ) {
+                const auto satellite{ core + Vector::From( -spin * 2.2 + Maths::Pi * i, third ) };
+                _frame.GradientCircle( satellite, 9, tint( 0.8 ), { coreColor.r, coreColor.g, coreColor.b, 0 } );
+                _frame.FillCircle( satellite, 3.2, tint( 1 ) );
+            }
+        }
+        // the armor petals, hinged on the rim: their tips come in to the middle when closed, and sweep outward
+        // when open; each is creased along its middle, one half lit and the other in shade
         const auto lightAngle{ std::atan2( -0.35, -0.5 ) };
         for( int k{ 0 }; k < 6; k++ ) {
             const auto angle{ Maths::Pi2 * k / 6 + 0.3 };
             const auto tremble{ warning ? std::sin( m_foremanAnim * 40 + k * 1.7 ) * 1.5 : 0.0 };
             const auto tip{ core + Vector::From( angle, r * ( 0.05 + open * 1.5 ) + tremble ) };
-            const std::vector< Position_d > petal{ core + Vector::From( angle - 0.5, r ), tip, core + Vector::From( angle + 0.5, r ) };
+            const auto hingeA{ core + Vector::From( angle - 0.52, r ) }, hingeB{ core + Vector::From( angle + 0.52, r ) };
+            const auto hinge{ core + Vector::From( angle, r * 1.02 ) };
             const auto shade{ 0.55 + 0.45 * std::cos( angle - lightAngle ) };
-            _frame.FillPolygon( petal, { steel.r * shade * 1.3, steel.g * shade * 1.3, steel.b * shade * 1.3 } );
-            _frame.StrokePolygon( petal, flashing ? Color_d{ 1, 1, 1, 0.9 } : ( warning ? Color_d{ 1, 0.6, 0.15, 0.6 + 0.4 * pulse } : edge ), 2 );
+            const auto tone{ [ & ]( const double _k ) { return Color_d{ std::min( steel.r * _k, 1.0 ), std::min( steel.g * _k, 1.0 ), std::min( steel.b * _k, 1.0 ) }; } };
+            _frame.FillPolygon( { hingeA, hinge, tip }, tone( shade * 1.35 ) );
+            _frame.FillPolygon( { hinge, hingeB, tip }, tone( shade * 0.85 ) );
+            _frame.Line( hinge, tip, { 0, 0, 0, 0.35 }, 1 );
+            const Color_d outline{ flashing ? Color_d{ 1, 1, 1, 0.9 } : ( warning ? Color_d{ 1, 0.6, 0.15, 0.6 + 0.4 * pulse } : edge ) };
+            _frame.StrokePolygon( { hingeA, hingeB, tip }, outline, 2 );
+            _frame.FillCircle( core + Vector::From( angle, r * 0.82 * ( 1 - open ) + r * open * 1.1 ), 2.2, { outline.r, outline.g, outline.b, 0.9 } );
         }
         _frame.StrokeCircle( core, r, { coreColor.r, coreColor.g, coreColor.b, 0.9 }, armored ? 5 : 3 );
     } );
+
+    scene.Draw( _frame );
+}
+
+
+void SceneRenderer::_DrawSingularity( const World & _world, const NanoVGRenderer::Frame & _frame, const Vector & _translation )
+{
+    // a micro black hole in fake 3D: a pure-black event horizon, a tilted accretion disk of Keplerian rings (hot spots
+    // orbiting faster inward, the near half passing in front of the horizon, the far half behind it) with the far side's
+    // light lensed over and under the hole, and two precessing polar jets; all intensifying toward the collapse
+    const auto position{ _world.SingularityPosition() + _translation };
+    m_singularityAnim += 0.12;
+    const auto anim{ m_singularityAnim };
+    const auto progress{ _world.SingularityProgress() };
+    m_singularityDust += 0.011 * ( 1 + progress * 0.8 ); // the dust cycles quicker toward the collapse
+    const auto intensity{ ( 0.7 + progress * 0.5 ) * 1.3 };
+    const auto viewer{ Vector3::Viewer() };
+    Scene3D scene{ position, 0, 1 };
+    const auto project{ [ & ]( const Vector3 & _point ) { return scene.ProjectModel( _point ); } };
+
+    const auto horizon{ 11 * intensity };
+    const auto tilt{ 0.7 + 0.1 * std::sin( anim * 0.15 ) }, turn{ anim * 0.05 };
+    const auto axis{ Vector3{ 0, 0, 1 }.RotatedX( tilt ).RotatedZ( turn ) }; // the normal of the disk, the jets' direction
+    constexpr int ringCount{ 8 }, ringSteps{ 56 };
+    const auto heat{ [ & ]( const double _layer ) { return Color_d{ 1 - _layer * 0.45, 0.7 - _layer * 0.45, 1, 1 }; } }; // white-violet inward, deep violet outward
+
+    scene.Add( { 0, 0, -400 }, [ & ]() {
+        const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+        _frame.GradientCircle( position, 180 * intensity * 0.8, { 0.3, 0.12, 0.6, 0.3 + progress * 0.3 }, { 0.08, 0, 0.18, 0 } );
+    } );
+
+    // the accretion disk, one half at a time: the far half goes behind the horizon, the near half over it
+    const auto drawDisk{ [ & ]( const bool _near ) {
+            const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+            for( int k{ 0 }; k < ringCount; k++ ) {
+                const auto layer{ k / ( ringCount - 1.0 ) };
+                const auto radius{ horizon * ( 1.9 + k * 0.62 ) };
+                const auto speed{ 2.6 * std::pow( 1.9 / ( 1.9 + k * 0.62 ), 1.5 ) * ( 1 + progress ) }; // Keplerian: faster inward, faster toward the collapse
+                const auto color{ heat( layer ) };
+                const auto point{ [ & ]( const double _angle ) { return Vector3{ std::cos( _angle ), std::sin( _angle ), 0 }.RotatedX( tilt ).RotatedZ( turn ) * radius; } };
+                for( int i{ 0 }; i < ringSteps; i++ ) {
+                    const auto a0{ Maths::Pi2 * i / ringSteps }, a1{ Maths::Pi2 * ( i + 1 ) / ringSteps };
+                    if( ( point( ( a0 + a1 ) * 0.5 ).DotProd( viewer ) >= 0 ) != _near )
+                        continue;
+                    const auto spot{ 0.5 + 0.5 * std::cos( a0 - anim * speed + k * 1.3 ) }; // the hot spots orbiting
+                    const auto brightness{ 0.18 + 0.82 * spot * spot };
+                    _frame.Line( project( point( a0 ) ), project( point( a1 ) ), { color.r, color.g, color.b, brightness * ( 0.85 - layer * 0.35 ) }, 3.2 - layer * 1.6 );
+                }
+            }
+        } };
+    scene.Add( { 0, 0, -300 }, [ & ]() { drawDisk( false ); } );
+
+    // the star dust: grains falling in from afar, more and more of them as the collapse nears, along spiraling orbits (mostly in the plane of the disk, some inclined), the fall
+    // accelerating (the radius shrinks as 1 - t^2.2, the angle grows as t^2), leaving streaks that lengthen as they speed up
+    const auto drawDust{ [ & ]( const bool _near ) {
+            constexpr int grains{ 260 };
+            const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+            const auto hash{ []( const double _a, const double _b ) { const auto v{ std::sin( _a * 12.9898 + _b * 78.233 ) * 43758.5453 }; return v - std::floor( v ); } };
+            const auto crowd{ progress * 1.5 }; // the cloud thickens progressively: every grain has its moment to join, all of them by two thirds of the life
+            for( int i{ 0 }; i < grains; i++ ) {
+                const auto presence{ std::clamp( ( crowd - hash( i, 9 ) ) * 6, 0.0, 1.0 ) };
+                if( presence <= 0 )
+                    continue;
+                const auto phase{ hash( i, 1 ) + m_singularityDust };
+                const auto cycle{ std::floor( phase ) };
+                const auto t{ phase - cycle };
+                const auto h{ [ & ]( const double _salt ) { return hash( i + cycle * 37, _salt ); } };
+                const auto flat{ h( 2 ) < 0.75 }; // in the disk plane, or inclined
+                const auto grainTilt{ flat ? tilt + ( h( 3 ) - 0.5 ) * 0.3 : h( 3 ) * Maths::Pi };
+                const auto grainTurn{ flat ? turn + ( h( 4 ) - 0.5 ) * 0.3 : h( 4 ) * Maths::Pi2 };
+                const auto start{ ( 100 + 150 * h( 5 ) ) * intensity / 1.1 }, end{ horizon * 1.2 };
+                const auto angle0{ h( 6 ) * Maths::Pi2 };
+                const auto position3{ [ & ]( const double _t ) {
+                        const auto radius{ end + ( start - end ) * ( 1 - std::pow( _t, 2.2 ) ) };
+                        const auto angle{ angle0 + 5 * _t * _t };
+                        return Vector3{ std::cos( angle ), std::sin( angle ), 0 }.RotatedX( grainTilt ).RotatedZ( grainTurn ) * radius;
+                    } };
+                const auto head{ position3( t ) };
+                if( ( head.DotProd( viewer ) >= 0 ) != _near )
+                    continue;
+                const auto tail{ position3( std::max( t - 0.018, 0.0 ) ) };
+                const auto alpha{ std::min( t * 6, 1.0 ) * ( 0.12 + 0.88 * t * t ) * ( _near ? 1 : 0.65 ) * presence };
+                const auto color{ heat( 1 - t ) }; // violet from afar, white-hot near the hole
+                _frame.Line( project( tail ), project( head ), { color.r, color.g, color.b, alpha }, 0.8 + 1.4 * t );
+                _frame.FillCircle( project( head ), 0.7 + 1.1 * t, { 1, 0.95, 1, alpha } );
+            }
+        } };
+    scene.Add( { 0, 0, -250 }, [ & ]() { drawDust( false ); } );
+
+    // the polar jets: beads flowing out along the axis, one toward the viewer and one away
+    for( const double side : { -1.0, 1.0 } ) {
+        const auto direction{ axis * side };
+        scene.Add( direction * 100, [ &, direction ]() {
+            const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+            for( int segment{ 0 }; segment < 4; segment++ ) {
+                const auto from{ project( direction * ( horizon * 1.2 + segment * horizon * 1.9 ) ) };
+                const auto to{ project( direction * ( horizon * 1.2 + ( segment + 1 ) * horizon * 1.9 ) ) };
+                _frame.Line( from, to, { 0.55, 0.35, 1, 0.3 - segment * 0.06 }, 9 - segment * 2 );
+                _frame.Line( from, to, { 0.85, 0.7, 1, 0.65 - segment * 0.14 }, 3.5 - segment * 0.7 );
+            }
+            for( int bead{ 0 }; bead < 3; bead++ ) {
+                const auto t{ std::fmod( anim * 0.35 + bead / 3.0, 1.0 ) };
+                _frame.FillCircle( project( direction * ( horizon * 1.2 + t * horizon * 7.6 ) ), 2.6 * ( 1 - t * 0.6 ), { 1, 0.9, 1, 0.9 * ( 1 - t ) } );
+            }
+        } );
+    }
+
+    // the event horizon: it must stay BLACK (normal blending), its rim flickering
+    scene.Add( { 0, 0, 0 }, [ & ]() {
+        _frame.FillCircle( position, horizon + std::sin( anim * 5 ) * 0.8, { 0.01, 0, 0.03 } );
+        _frame.StrokeCircle( position, horizon * 1.08, { 0.85, 0.55, 1, 0.75 + std::sin( anim * 3 ) * 0.2 }, 2 );
+    } );
+
+    // the far side of the disk, lensed over and under the horizon: thin bright arcs turning with the disk
+    scene.Add( { 0, 0, 40 }, [ & ]() {
+        const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+        const auto shimmer{ 0.5 + 0.25 * std::sin( anim * 4 ) };
+        _frame.StrokeCircle( position, horizon * 1.5, { 0.9, 0.7, 1, 0.3 + 0.2 * shimmer }, 1.2 );
+        _frame.StrokeArc( position, horizon * 1.5, -Maths::PiHalf - 1.2, -Maths::PiHalf + 1.2, { 1, 0.85, 1, 0.55 + 0.3 * shimmer }, 3 );
+        _frame.StrokeArc( position, horizon * 1.5, Maths::PiHalf - 0.8, Maths::PiHalf + 0.8, { 0.9, 0.6, 1, 0.3 + 0.2 * shimmer }, 2 );
+    } );
+
+    scene.Add( { 0, 0, 100 }, [ & ]() { drawDisk( true ); } );
+    scene.Add( { 0, 0, 110 }, [ & ]() { drawDust( true ); } );
+
+    // pre-collapse white flare:
+    if( progress > 0.75 )
+        scene.AddLast( [ & ]() {
+            const auto flare{ ( progress - 0.75 ) * 4 };
+            _frame.FillCircle( position, flare * 9, { 1, 0.95, 1, flare * 0.85 } );
+        } );
 
     scene.Draw( _frame );
 }
@@ -493,46 +706,9 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
         if( _Visible( _world, gravityMine.position, GravityMine::pullRange * 0.6 ) )
             gravityMine.Draw( _frame, translation );
 
-    // singularity: layered accretion disk, precessing polar jets, gravitational
-    // lensing ring and a pure-black event horizon, all intensifying toward collapse:
-    if( _world.SingularityActive() && _Visible( _world, _world.SingularityPosition(), 280 ) ) {
-        const auto position{ _world.SingularityPosition() + translation };
-        m_singularityAnim += 0.12;
-        const auto progress{ _world.SingularityProgress() };
-        const auto intensity{ 0.7 + progress * 0.5 };
-        {
-            const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
-            // deep halo:
-            _frame.GradientCircle( position, 180 * intensity,
-                { 0.3, 0.12, 0.6, 0.3 + progress * 0.3 }, { 0.08, 0, 0.18, 0 } );
-            // accretion disk: six layered arcs, faster and hotter inward:
-            for( int k{ 0 }; k < 6; k++ ) {
-                const auto layer{ k / 5.0 };
-                const auto arcRadius{ ( 20 + k * 9 ) * intensity };
-                const auto arcAngle{ m_singularityAnim * ( 2.4 - layer * 1.6 ) * ( k % 2 == 0 ? -1 : 1 ) + k * 1.3 };
-                const Color_d arcColor{ 1 - layer * 0.4, 0.6 - layer * 0.35, 1, 0.75 - layer * 0.4 };
-                _frame.StrokeArc( position, arcRadius, arcAngle, arcAngle + 1.4 + layer, arcColor, 2.8 - layer * 1.4 );
-            }
-            // polar jets, slowly precessing:
-            const auto jetAngle{ m_singularityAnim * 0.18 };
-            for( int side{ -1 }; side <= 1; side += 2 )
-                for( int segment{ 0 }; segment < 3; segment++ ) {
-                    const auto from{ position + Vector::From( jetAngle, side * ( 16.0 + segment * 24 ) * intensity ) };
-                    const auto to{ position + Vector::From( jetAngle, side * ( 16.0 + ( segment + 1 ) * 24 ) * intensity ) };
-                    _frame.Line( from, to, { 0.8, 0.6, 1, 0.55 - segment * 0.17 }, 4.0 - segment * 1.2 );
-                }
-            // gravitational lensing ring, shimmering:
-            _frame.StrokeCircle( position, 15 * intensity, { 0.9, 0.7, 1, 0.45 + 0.25 * std::sin( m_singularityAnim * 4 ) }, 1.3 );
-        }
-        // event horizon (normal blending: it must stay BLACK), rim flickering:
-        _frame.FillCircle( position, ( 11 + std::sin( m_singularityAnim * 5 ) * 0.8 ) * intensity, { 0.01, 0, 0.03 } );
-        _frame.StrokeCircle( position, 12 * intensity, { 0.85, 0.55, 1, 0.75 + std::sin( m_singularityAnim * 3 ) * 0.2 }, 2 );
-        // pre-collapse white flare:
-        if( progress > 0.75 ) {
-            const auto flare{ ( progress - 0.75 ) * 4 };
-            _frame.FillCircle( position, flare * 9, { 1, 0.95, 1, flare * 0.85 } );
-        }
-    }
+    // singularity:
+    if( _world.SingularityActive() && _Visible( _world, _world.SingularityPosition(), 280 ) )
+        _DrawSingularity( _world, _frame, translation );
 
     // decoy beacon: shiny pulsing white-hot core, orbiting sparkles and double sonar pings:
     if( _world.DecoyActive() && _Visible( _world, _world.DecoyPosition(), 60 ) ) {
@@ -573,8 +749,8 @@ void SceneRenderer::Draw( const World & _world, const NanoVGRenderer::Frame & _f
                     std::to_string( shipLengths ), { 0.5, 0.8, 1, 0.85 }, NanoVGRenderer::Frame::eTextAlign::center );
             }
         }
-        // nozzle and flames extend beyond the bounding box, keep a comfortable margin:
-        if( _Visible( _world, enemy.rocket.position, enemy.type == Enemy::eType::warden ? Enemy::pylonOrbit * 1.5 : ( enemy.type == Enemy::eType::foreman ? enemy.rocket.dynamic.bodyRadius * 3.8 : enemy.rocket.dynamic.boundingBoxRadius + Enemy::coreRadius * 4 ) ) ) {
+        // nozzle and flames extend beyond the bounding box, keep a comfortable margin (the foreman: its bore head, and the glow of its flashing core):
+        if( _Visible( _world, enemy.rocket.position, enemy.type == Enemy::eType::warden ? Enemy::pylonOrbit * 1.5 : ( enemy.type == Enemy::eType::foreman ? enemy.rocket.dynamic.bodyRadius * 3 : enemy.rocket.dynamic.boundingBoxRadius + Enemy::coreRadius * 4 ) ) ) {
             if( enemy.type == Enemy::eType::foreman )
                 _DrawForeman( enemy, _frame, translation );
             else if( enemy.type == Enemy::eType::warden )

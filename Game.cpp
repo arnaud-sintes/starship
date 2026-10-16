@@ -1,5 +1,8 @@
 #include "Game.h"
 
+#include "core/Macros.h"
+#include "version.h"
+
 
 namespace
 {
@@ -13,12 +16,16 @@ Game::Game( const Win32::Windows & _windows, const View & _view, const Packer::R
     , m_view{ _view }
     , m_frameRate{ _frameRate }
     , m_audio{ _view.logical, _resources }
-    , m_world{ std::make_unique< World >( m_audio, _view.logical, _frameRate, _options.minesLayout ? WorldCheckpoint{ .progress = 99 } : ( _options.warden ? WorldCheckpoint{ .progress = 11 } : ( _options.foreman ? WorldCheckpoint{ .progress = 5 } : WorldCheckpoint{} ) ) ) } // 99: past the last mission, free play; 5, 11: the bosses
+    , m_updateChecker{ __ToString( VERSION ) }
+    , m_world{ std::make_unique< World >( m_audio, _view.logical, _frameRate, ( _options.minesLayout || _options.singularity ) ? WorldCheckpoint{ .progress = 99 } : ( _options.warden ? WorldCheckpoint{ .progress = 11 } : ( _options.foreman ? WorldCheckpoint{ .progress = 5 } : WorldCheckpoint{} ) ) ) } // 99: past the last mission, free play; 5, 11: the bosses
     , m_scene{ _view.logical }
     , m_hud{ _view.logical }
 {
-    if( _options.minesLayout ) {
-        m_world->DebugMinesLayout();
+    if( _options.minesLayout || _options.singularity ) {
+        if( _options.singularity )
+            m_world->DebugSingularity();
+        else
+            m_world->DebugMinesLayout();
         m_step = eStep::stage11; // no prologue, no tutorial, no epilogue
         m_tutorialEnabled = false;
         m_epilogueShown = true;
@@ -56,14 +63,32 @@ void Game::_NewGame()
 
 void Game::Tick()
 {
+    // the mouse or the gamepad, whichever is in use (the gamepad's aim assist sticks to the closest enemy):
+    std::optional< PointerInput::AimTarget > aimTarget;
+    if( m_step == eStep::stage11 && !m_world->ShipDestroyed() )
+        if( const auto * pEnemy{ m_world->ClosestEnemy( m_world->Ship().position ) } )
+            aimTarget = PointerInput::AimTarget{ pEnemy->id, pEnemy->position - m_world->Ship().position, pEnemy->dynamic.boundingBoxRadius };
+    m_pointer.Update( m_windows, m_view, m_step == eStep::stage11, 1.0 / m_frameRate, aimTarget );
+
+    // a click on the update notice opens the download page, and is not meant for anything else:
+    if( _UpdateNoticeVisible() ) {
+        const auto [ a, b ]{ _UpdateNoticeRect() };
+        const auto cursor{ m_pointer.Cursor() };
+        if( m_pointer.Left() && cursor.u >= a.u && cursor.u <= b.u && cursor.v >= a.v && cursor.v <= b.v ) {
+            if( !m_noticePressed )
+                Win32::OpenUrl( m_updateChecker.Url() );
+            m_clickArmed = false;
+        }
+        m_noticePressed = m_pointer.Left();
+    }
     if( m_step == eStep::stage11_prologue ) {
         m_world->UpdateAmbientSound();
         m_audio.Update();
         // engage by answering the tutorial question (YES / NO buttons):
-        if( !m_windows.LeftMouseButtonPressed() )
+        if( !m_pointer.Left() )
             m_clickArmed = true;
         else if( m_clickArmed ) {
-            const auto cursor{ m_view.ToLogical( m_windows.CursorPosition() ) };
+            const auto cursor{ m_pointer.Cursor() };
             const auto inside{ [ & ]( const int _index ){
                     const auto [ a, b ]{ _PrologueButtonRect( _index ) };
                     return cursor.u >= a.u && cursor.u <= b.u && cursor.v >= a.v && cursor.v <= b.v;
@@ -79,10 +104,10 @@ void Game::Tick()
 
     if( m_step == eStep::upgrade ) {
         m_audio.Update();
-        if( !m_windows.LeftMouseButtonPressed() )
+        if( !m_pointer.Left() )
             m_clickArmed = true;
         else if( m_clickArmed ) {
-            const auto cursor{ m_view.ToLogical( m_windows.CursorPosition() ) };
+            const auto cursor{ m_pointer.Cursor() };
             for( size_t i{ 0 }; i < static_cast< size_t >( ShipUpgrades::eSystem::count ); i++ ) {
                 const auto [ a, b ]{ _UpgradeCardRect( i ) };
                 if( cursor.u >= a.u && cursor.u <= b.u && cursor.v >= a.v && cursor.v <= b.v ) {
@@ -99,7 +124,7 @@ void Game::Tick()
     if( m_step == eStep::tutorial ) {
         // world frozen behind the panel; the audio loops keep breathing
         m_audio.Update();
-        if( !m_windows.LeftMouseButtonPressed() )
+        if( !m_pointer.Left() )
             m_clickArmed = true;
         else if( m_clickArmed ) {
             m_tutorialSeen.at( static_cast< size_t >( m_tutorialTopic ) ) = true;
@@ -111,7 +136,7 @@ void Game::Tick()
     if( m_step == eStep::stageStory || m_step == eStep::epilogue ) {
         // a real pause: the world is frozen, click to engage the new stage (or free play)
         m_audio.Update();
-        if( !m_windows.LeftMouseButtonPressed() )
+        if( !m_pointer.Left() )
             m_clickArmed = true;
         else if( m_clickArmed ) {
             m_step = eStep::stage11;
@@ -122,9 +147,9 @@ void Game::Tick()
 
     if( m_step == eStep::stage11 ) {
         const PlayerInput input{
-            m_view.ToLogical( m_windows.CursorPosition() ),
-            m_windows.LeftMouseButtonPressed(),
-            m_windows.RightMouseButtonPressed(),
+            m_pointer.Cursor(),
+            m_pointer.Left(),
+            m_pointer.Right(),
         };
         // TEMPORARY test shortcut: F9 skips to just before the next phase (see World::DebugSkip)
         const auto f9{ m_windows.KeyPressed( Win32::Windows::eKey::f9 ) };
@@ -178,7 +203,7 @@ void Game::Tick()
     // game over: the world keeps living behind the overlay
     m_world->Update( {} );
     m_audio.Update();
-    if( !m_windows.LeftMouseButtonPressed() )
+    if( !m_pointer.Left() )
         m_clickArmed = true;
     else if( m_clickArmed ) {
         if( m_world->OutOfLives() )
@@ -194,6 +219,7 @@ void Game::Draw( const NanoVGRenderer::Frame & _frame )
     if( m_step == eStep::stage11_prologue ) {
         m_scene.DrawBackdrop( *m_world, _frame );
         _DrawPrologue( _frame );
+        _DrawUpdateNotice( _frame );
         _DrawCursor( _frame );
         return;
     }
@@ -201,13 +227,16 @@ void Game::Draw( const NanoVGRenderer::Frame & _frame )
     if( m_step == eStep::stageStory || m_step == eStep::epilogue ) {
         m_scene.DrawBackdrop( *m_world, _frame );
         _DrawStageStory( _frame );
+        _DrawUpdateNotice( _frame );
         _DrawCursor( _frame );
         return;
     }
 
     m_scene.Draw( *m_world, _frame );
-    if( m_step == eStep::gameOver )
+    if( m_step == eStep::gameOver ) {
         _DrawGameOver( _frame );
+        _DrawUpdateNotice( _frame );
+    }
     else {
         m_hud.Draw( *m_world, _frame );
         if( m_step == eStep::tutorial )
@@ -323,7 +352,7 @@ void Game::_DrawTutorial( const NanoVGRenderer::Frame & _frame )
     _frame.Text( { screenCenter.u, panelTop + 64 }, "openSans", 17, topic.line1, { 0.85, 0.92, 1 }, NanoVGRenderer::Frame::eTextAlign::center );
     _frame.Text( { screenCenter.u, panelTop + 88 }, "openSans", 17, topic.line2, { 0.85, 0.92, 1 }, NanoVGRenderer::Frame::eTextAlign::center );
     const auto pulse{ ( std::sin( m_overlayAnim * 2 ) + 1 ) * 0.5 };
-    _frame.Text( { screenCenter.u, panelTop + 122 }, "openSansBold", 13, "CLICK TO CONTINUE", { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 4 );
+    _frame.Text( { screenCenter.u, panelTop + 122 }, "openSansBold", 13, std::format( "{} TO CONTINUE", _Click() ), { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 4 );
 
     // callout toward the concerned item, technical-drawing style: orthogonal thin
     // segments with joint dots, ending on a pulsing marker ring; the callout leaves
@@ -412,7 +441,7 @@ void Game::_DrawUpgrade( const NanoVGRenderer::Frame & _frame )
         { "ENGINE", "+15% thrust, quicker spool-up", "burns more propellant", false },
         { "ROTATORS", "+20% turn power", "sharper aiming", false },
     } };
-    const auto cursor{ m_view.ToLogical( m_windows.CursorPosition() ) };
+    const auto cursor{ m_pointer.Cursor() };
     for( size_t i{ 0 }; i < cards.size(); i++ ) {
         const auto & card{ cards.at( i ) };
         const auto system{ static_cast< ShipUpgrades::eSystem >( i ) };
@@ -442,7 +471,7 @@ void Game::_DrawUpgrade( const NanoVGRenderer::Frame & _frame )
         }
     }
 
-    _frame.Text( screenCenter + Vector{ 0, 340 }, "openSansBold", 13, "CLICK A SYSTEM TO UPGRADE IT", { 1, 1, 1, 0.3 + pulse * 0.45 }, NanoVGRenderer::Frame::eTextAlign::center, 4 );
+    _frame.Text( screenCenter + Vector{ 0, 340 }, "openSansBold", 13, m_pointer.UsingGamepad() ? "AIM AT A SYSTEM AND PRESS A TO UPGRADE IT" : "CLICK A SYSTEM TO UPGRADE IT", { 1, 1, 1, 0.3 + pulse * 0.45 }, NanoVGRenderer::Frame::eTextAlign::center, 4 );
 }
 
 
@@ -484,11 +513,11 @@ void Game::_DrawStageStory( const NanoVGRenderer::Frame & _frame )
         const auto score{ std::format( "{:010}", m_world->GetHudInfo().score ) };
         _frame.Text( { screenCenter.u, screenCenter.v + 140 }, "openSansBold", 15, "F I N A L   S C O R E", { 0.62, 0.72, 0.88, 0.9 }, NanoVGRenderer::Frame::eTextAlign::center, 2 );
         _frame.Text( { screenCenter.u, screenCenter.v + 185 }, "sourceCodePro", 42, score, { 0.85, 0.92, 1 }, NanoVGRenderer::Frame::eTextAlign::center );
-        _frame.Text( screenCenter + Vector{ 0, 330 }, "openSansBold", 16, "CLICK TO KEEP PLAYING  -  FREE PLAY", { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
+        _frame.Text( screenCenter + Vector{ 0, 330 }, "openSansBold", 16, std::format( "{} TO KEEP PLAYING  -  FREE PLAY", _Click() ), { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
         return;
     }
     _DrawStory( _frame, stage.StageTitle(), stage.Label(), stage.Story() );
-    _frame.Text( screenCenter + Vector{ 0, 330 }, "openSansBold", 16, "CLICK TO ENGAGE", { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
+    _frame.Text( screenCenter + Vector{ 0, 330 }, "openSansBold", 16, std::format( "{} TO ENGAGE", _Click() ), { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
 }
 
 
@@ -501,7 +530,7 @@ void Game::_DrawPrologue( const NanoVGRenderer::Frame & _frame )
 
     // tutorial question with YES / NO buttons - answering engages the stage:
     _frame.Text( screenCenter + Vector{ 0, 250 }, "openSansBold", 16, "ENABLE THE IN-GAME TUTORIAL?", { 0.85, 0.92, 1, 0.9 }, NanoVGRenderer::Frame::eTextAlign::center, 3 );
-    const auto cursor{ m_view.ToLogical( m_windows.CursorPosition() ) };
+    const auto cursor{ m_pointer.Cursor() };
     for( int i{ 0 }; i < 2; i++ ) {
         const auto [ a, b ]{ _PrologueButtonRect( i ) };
         const bool hover{ cursor.u >= a.u && cursor.u <= b.u && cursor.v >= a.v && cursor.v <= b.v };
@@ -562,18 +591,57 @@ void Game::_DrawGameOver( const NanoVGRenderer::Frame & _frame )
     const double pulse{ ( std::sin( m_overlayAnim * 2 ) + 1 ) * 0.5 };
     if( outOfLives ) {
         _frame.Text( { screenCenter.u, dividerY + 160 }, "openSansBold", 14, "NO SHIPS LEFT  -  THE MISSION IS LOST", { dangerColor.r, dangerColor.g, dangerColor.b, 0.9 }, NanoVGRenderer::Frame::eTextAlign::center, 3 );
-        _frame.Text( { screenCenter.u, dividerY + 195 }, "openSansBold", 16, "CLICK TO START A NEW GAME", { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
+        _frame.Text( { screenCenter.u, dividerY + 195 }, "openSansBold", 16, std::format( "{} TO START A NEW GAME", _Click() ), { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
         return;
     }
     if( m_world->Stage().Phase() != StageDirector::ePhase::freePlay )
         _frame.Text( { screenCenter.u, dividerY + 160 }, "openSansBold", 14, std::format( "{} SHIP{} LEFT", m_world->Lives(), m_world->Lives() > 1 ? "S" : "" ), { 0.62, 0.72, 0.88, 0.9 }, NanoVGRenderer::Frame::eTextAlign::center, 3 );
-    _frame.Text( { screenCenter.u, dividerY + 195 }, "openSansBold", 16, std::format( "CLICK TO RETRY  -  {}", StageDirector::Label( m_world->Checkpoint().progress ) ), { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
+    _frame.Text( { screenCenter.u, dividerY + 195 }, "openSansBold", 16, std::format( "{} TO RETRY  -  {}", _Click(), StageDirector::Label( m_world->Checkpoint().progress ) ), { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
+}
+
+
+bool Game::_UpdateNoticeVisible() const
+{
+    const bool menu{ m_step == eStep::stage11_prologue || m_step == eStep::stageStory || m_step == eStep::epilogue || m_step == eStep::gameOver };
+    return menu && m_updateChecker.UpdateAvailable();
+}
+
+
+std::pair< Vector, Vector > Game::_UpdateNoticeRect() const
+{
+    const Vector center{ m_view.logical.width * 0.5, 52.0 };
+    return { center - Vector{ 330, 30 }, center + Vector{ 330, 30 } };
+}
+
+
+void Game::_DrawUpdateNotice( const NanoVGRenderer::Frame & _frame )
+{
+    if( !_UpdateNoticeVisible() )
+        return;
+    constexpr Color_d gold{ 1, 0.78, 0.3 };
+    const auto [ a, b ]{ _UpdateNoticeRect() };
+    const auto cursor{ m_pointer.Cursor() };
+    const bool hover{ cursor.u >= a.u && cursor.u <= b.u && cursor.v >= a.v && cursor.v <= b.v };
+    const double pulse{ ( std::sin( m_overlayAnim * 2 ) + 1 ) * 0.5 };
+    _frame.GradientRectangle( a, b, { 0.12, 0.09, 0.03, hover ? 0.95 : 0.8 }, { 0.05, 0.035, 0.01, hover ? 0.95 : 0.8 }, 10 );
+    _frame.StrokeRectangle( a, b, { gold.r, gold.g, gold.b, hover ? 1.0 : 0.45 + pulse * 0.25 }, 1.5, 10 );
+    const auto center{ ( a + b ) * 0.5 };
+    _frame.Text( center - Vector{ 0, 11 }, "openSansBold", 15, std::format( "A NEW VERSION IS AVAILABLE: {}  (YOU PLAY {})", m_updateChecker.LatestVersion(), m_updateChecker.CurrentVersion() ),
+        hover ? colorWhite : Color_d{ gold.r, gold.g, gold.b, 0.95 }, NanoVGRenderer::Frame::eTextAlign::center, 2 );
+    _frame.Text( center + Vector{ 0, 12 }, "openSansBold", 12, std::format( "{} TO DOWNLOAD  -  github.com/arnaud-sintes/starship/releases/latest", _Click() ),
+        hover ? colorWhite : Color_d{ 0.85, 0.92, 1, 0.75 }, NanoVGRenderer::Frame::eTextAlign::center, 1 );
+}
+
+
+std::string Game::_Click() const
+{
+    return m_pointer.UsingGamepad() ? "PRESS A" : "CLICK";
 }
 
 
 void Game::_DrawCursor( const NanoVGRenderer::Frame & _frame )
 {
-    const auto position{ m_view.ToLogical( m_windows.CursorPosition() ) };
+    const auto position{ m_pointer.Cursor() };
     const double pulse{ std::sin( m_cursorFlash += 0.15 ) };
     const Color_d color{ 0.45, 0.72 + pulse * 0.15, 1 };
     constexpr Color_d outline{ 0, 0.02, 0.08, 0.85 }; // dark under-stroke, keeps contrast over bright effects

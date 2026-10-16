@@ -50,7 +50,7 @@ struct Enemy
     };
     Boss boss;
 
-    // the weak spot of the foreman, a glowing core hanging behind its stern:
+    // the weak spot of the foreman, a glowing core behind its stern (the heart of its main engine):
     static constexpr double coreRadius{ 34 };
     bool CoreOpen() const { return boss.vent == 2; }
     bool IsBoss() const { return type == eType::foreman || type == eType::warden; }
