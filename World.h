@@ -190,6 +190,7 @@ private:
     void _UpdateWardenDamage( Enemy & _enemy );
     void _SteerWarden( Enemy & _enemy );
     void _WardenAction( Enemy & _enemy );
+    void _BurstPylon( const Vector & _position, const bool _scored ); // a pylon is down: the shockwave, its well is gone
     bool _LaserPylonCollision( Laser & _laser, Enemy & _enemy );
     void _SteerForeman( Enemy & _enemy );
     void _ForemanAction( Enemy & _enemy );

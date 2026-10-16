@@ -74,6 +74,7 @@ namespace
     constexpr size_t foremanMaxWasps{ 5 };
 
     // the warden, stage 2 boss: three pylons shield the core
+    constexpr double wardenPylonAttractorDamage{ 0.05 }; // of a pylon's hull per attractor it plows through
     constexpr double wardenPylonSeconds{ 15 };        // of sustained laser fire per pylon
     constexpr double wardenCoreSeconds{ 45 };         // of sustained laser fire on the exposed core
     constexpr double wardenHoldDistance{ 560 };
@@ -544,6 +545,17 @@ bool World::_LaserCoreCollision( Laser & _laser, Enemy & _enemy )
 }
 
 
+void World::_BurstPylon( const Vector & _position, const bool _scored )
+{
+    // the pylon bursts: a friendly shockwave and its well is gone
+    _Detonate( _position, {}, eExplosion::big, eFadeColor::violet, 240, 0, 10, true );
+    m_audio.PlayAt( eSound::attractorExplosion, _RelativeToShip( _position ) );
+    m_audio.PlayAt( eSound::shipExplosion, _RelativeToShip( _position ) );
+    if( _scored )
+        _AddScore( 250 );
+}
+
+
 bool World::_LaserPylonCollision( Laser & _laser, Enemy & _enemy )
 {
     for( int i{ 0 }; i < Enemy::pylonCount; i++ ) {
@@ -559,13 +571,8 @@ bool World::_LaserPylonCollision( Laser & _laser, Enemy & _enemy )
         _AddExplosion( *hit, {}, eExplosion::small, eFadeColor::violet );
         m_audio.PlayAt( eSound::laserCollision, _RelativeToShip( *hit ) );
         _AddScore( 3 );
-        if( !_enemy.PylonAlive( i ) ) {
-            // the pylon bursts: a friendly shockwave and its well is gone
-            _Detonate( position, {}, eExplosion::big, eFadeColor::violet, 240, 0, 10, true );
-            m_audio.PlayAt( eSound::attractorExplosion, _RelativeToShip( position ) );
-            m_audio.PlayAt( eSound::shipExplosion, _RelativeToShip( position ) );
-            _AddScore( 250 );
-        }
+        if( !_enemy.PylonAlive( i ) )
+            _BurstPylon( position, true );
         return true;
     }
     return false;
@@ -976,6 +983,26 @@ void World::_UpdateEnemyCollisions()
                     _attractor.shield -= enemy.rocket.damage;
                 }
             } );
+        // the pylons of the warden plow through them too, shattering them at the cost of some of their hull
+        // (no score for a pylon lost that way: the player did not earn it):
+        if( enemy.type == Enemy::eType::warden )
+            for( int i{ 0 }; i < Enemy::pylonCount; i++ ) {
+                if( !enemy.PylonAlive( i ) )
+                    continue;
+                const auto position{ enemy.PylonPosition( i ) };
+                const auto index{ static_cast< size_t >( i ) };
+                m_attractors.ForEachInRange( position, Enemy::pylonRadius,
+                    [ & ]( const int, Attractor & _attractor ){
+                        if( !enemy.PylonAlive( i ) || !Maths::Collision( position, Enemy::pylonRadius, _attractor.position, _attractor.radius ) )
+                            return;
+                        enemy.boss.pylonShield.at( index ) -= enemy.boss.pylonMax * wardenPylonAttractorDamage;
+                        enemy.boss.pylonFlash.at( index ) = 8;
+                        _attractor.shield -= 1000;
+                        _AddExplosion( _attractor.position, {}, eExplosion::medium, eFadeColor::violet );
+                        if( !enemy.PylonAlive( i ) )
+                            _BurstPylon( position, false );
+                    } );
+            }
     }
 }
 
