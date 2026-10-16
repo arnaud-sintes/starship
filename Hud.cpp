@@ -139,11 +139,25 @@ void Hud::Draw( const World & _world, const NanoVGRenderer::Frame & _frame )
 
     const auto info{ _world.GetHudInfo() };
 
-    // status panel:
-    const Vector panelPosition{ margin, margin };
-    const double panelHeight{ panelPadding * 2 + rowHeight * 3 };
-    _frame.GradientRectangle( panelPosition, panelPosition + Vector{ panelWidth, panelHeight }, panelTopColor, panelBottomColor, panelRadius );
-    _frame.StrokeRectangle( panelPosition, panelPosition + Vector{ panelWidth, panelHeight }, panelBorderColor, 1, panelRadius );
+    // status gauges, top left, no frame: a soft shade behind keeps them readable, then three stacked gauges (an accent tick, the
+    // label and the value on one line, a thin segmented bar with a glowing tip underneath)
+    const Vector origin{ margin + 2, margin };
+    constexpr double gaugeWidth{ 236 }, gaugePitch{ 38 }, gaugeBarHeight{ 5 };
+    {
+        const Vector shadeCenter{ origin.u + gaugeWidth * 0.5, origin.v + gaugePitch * 1.5 };
+        _frame.GradientCircle( shadeCenter, 250, { 0, 0.015, 0.04, 0.5 }, { 0, 0.015, 0.04, 0 } );
+    }
+
+    // the pips of an upgradable system: one per level, filled as far as it is bought
+    const auto pips{ [ & ]( const Vector & _position, const int _count, const int _level, const Color_d & _color ) {
+            for( int pip{ 0 }; pip < _count; pip++ ) {
+                const Vector a{ _position.u + pip * 8, _position.v };
+                if( pip < _level )
+                    _frame.FillRectangle( a, a + Vector{ 5, 5 }, { _color.r, _color.g, _color.b, 0.95 }, 1.5 );
+                else
+                    _frame.FillRectangle( a, a + Vector{ 5, 5 }, { _color.r, _color.g, _color.b, 0.2 }, 1.5 );
+            }
+        } };
 
     struct Row
     {
@@ -151,30 +165,72 @@ void Hud::Draw( const World & _world, const NanoVGRenderer::Frame & _frame )
         double rate;
         Color_d color;
         bool stateColored;
+        int level; // upgrade level shown as pips (-1: not upgradable)
     };
     const std::array< Row, 3 > rows{ {
-        { "SHIELD", info.shieldValue / info.shieldCapacity, shieldColor, true },
-        { "PROPELLANT", info.propellantValue / info.propellantCapacity, propellantColor, true },
-        { "LASER", info.laserPowerPercent / 100.0, laserColor, false },
+        { "SHIELD", info.shieldValue / info.shieldCapacity, shieldColor, true, info.shieldLevel },
+        { "PROPELLANT", info.propellantValue / info.propellantCapacity, propellantColor, true, info.propellantLevel },
+        { "LASER", 0, laserColor, false, -1 },
     } };
     for( size_t i{ 0 }; i < rows.size(); i++ ) {
         const auto & row{ rows.at( i ) };
-        const double rowY{ panelPosition.v + panelPadding + rowHeight * i };
-        _frame.Text( { panelPosition.u + panelPadding, rowY + 4 }, "openSansBold", 12, row.label, labelColor, NanoVGRenderer::Frame::eTextAlign::topLeft, 1.4 );
+        const auto rate{ std::clamp( row.rate, 0.0, 1.0 ) };
+        const Vector top{ origin.u, origin.v + gaugePitch * static_cast< double >( i ) };
         const auto color{ row.stateColored ? _StateColor( row.rate, row.color ) : row.color };
-        _Bar( _frame, { panelPosition.u + panelPadding + labelWidth, rowY + 7 }, barWidth, barHeight, row.rate, color );
-        _frame.Text( { panelPosition.u + panelWidth - panelPadding, rowY + 4 }, "sourceCodePro", 13, std::format( "{:3}%", static_cast< int >( std::round( std::clamp( row.rate, 0.0, 1.0 ) * 100 ) ) ), valueColor, NanoVGRenderer::Frame::eTextAlign::topRight );
+        _frame.FillRectangle( top + Vector{ 0, 2 }, top + Vector{ 3, 30 }, { color.r, color.g, color.b, std::max( color.a, 0.6 ) }, 1.5 ); // the accent tick
+        _frame.Text( top + Vector{ 14, 3 }, "openSansBold", 11, row.label, { color.r, color.g, color.b, 0.9 }, NanoVGRenderer::Frame::eTextAlign::topLeft, 2.6 );
+        const auto labelEnd{ top.u + 14 + _frame.TextWidth( "openSansBold", 11, row.label, 2.6 ) + 10 };
+        const Vector trackA{ top.u + 14, top.v + 22 };
+        const double trackWidth{ gaugeWidth - 14 };
+        if( row.level >= 0 ) { // shield, propellant: the upgrade level as pips, the value, the bar
+            pips( { labelEnd, top.v + 6 }, ShipUpgrades::maxLevel, row.level, row.color );
+            _frame.Text( top + Vector{ gaugeWidth, 0 }, "sourceCodePro", 17, std::format( "{:3}", static_cast< int >( std::round( rate * 100 ) ) ), valueColor, NanoVGRenderer::Frame::eTextAlign::topRight );
+            // the bar: a track, the level, ticks every quarter, a glowing tip
+            _frame.FillRectangle( trackA, trackA + Vector{ trackWidth, gaugeBarHeight }, trackColor, gaugeBarHeight * 0.5 );
+            if( rate > 0 ) {
+                const Color_d brighter{ std::min( color.r * 1.25, 1.0 ), std::min( color.g * 1.25, 1.0 ), std::min( color.b * 1.25, 1.0 ), color.a };
+                _frame.GradientRectangle( trackA, trackA + Vector{ trackWidth * rate, gaugeBarHeight }, brighter, color, gaugeBarHeight * 0.5 );
+                const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+                _frame.GradientCircle( trackA + Vector{ trackWidth * rate, gaugeBarHeight * 0.5 }, 11, { color.r, color.g, color.b, 0.5 * color.a }, { color.r, color.g, color.b, 0 } );
+            }
+            for( const auto mark : { 0.25, 0.5, 0.75 } )
+                _frame.Line( trackA + Vector{ trackWidth * mark, -1 }, trackA + Vector{ trackWidth * mark, gaugeBarHeight + 1 }, { 0, 0.02, 0.05, 0.75 }, 1.5 );
+            continue;
+        }
+        // the laser is a weapon, not a quantity: the whole of its progression, from the base gun to the full volley, as a row of
+        // vertical bars lit as far as it is upgraded
+        const auto steps{ info.laserLevelMax + 1 };
+        for( int step{ 0 }; step < steps; step++ ) {
+            const double x{ trackA.u + ( trackWidth - 3 ) * step / ( steps - 1 ) };
+            const bool lit{ step <= info.laserLevel };
+            if( lit ) {
+                const auto composition{ _frame.SetComposition( NanoVGRenderer::Frame::Composition::eType::add ) };
+                _frame.GradientCircle( { x + 1.5, trackA.v + 2.5 }, step == info.laserLevel ? 11 : 7, { laserColor.r, laserColor.g, laserColor.b, step == info.laserLevel ? 0.5 : 0.25 }, { laserColor.r, laserColor.g, laserColor.b, 0 } );
+            }
+            _frame.FillRectangle( { x, trackA.v - 2 }, { x + 3, trackA.v + 9 }, lit ? Color_d{ laserColor.r, laserColor.g, laserColor.b, 0.95 } : trackColor, 1.5 );
+        }
     }
 
-    // temporary bonuses as pills below the panel:
+    // the other two systems of the ship, upgraded on the hangar screen: small, under the gauges
+    {
+        const double lineY{ origin.v + gaugePitch * 3 + 1 };
+        _frame.Text( { origin.u + 14, lineY }, "openSansBold", 10, "ENGINE", { labelColor.r, labelColor.g, labelColor.b, 0.7 }, NanoVGRenderer::Frame::eTextAlign::topLeft, 2.2 );
+        pips( { origin.u + 14 + _frame.TextWidth( "openSansBold", 10, "ENGINE", 2.2 ) + 8, lineY + 3 }, ShipUpgrades::maxLevel, info.engineLevel, accentColor );
+        _frame.Text( { origin.u + 130, lineY }, "openSansBold", 10, "ROTATORS", { labelColor.r, labelColor.g, labelColor.b, 0.7 }, NanoVGRenderer::Frame::eTextAlign::topLeft, 2.2 );
+        pips( { origin.u + 130 + _frame.TextWidth( "openSansBold", 10, "ROTATORS", 2.2 ) + 8, lineY + 3 }, ShipUpgrades::maxLevel, info.rotatorLevel, accentColor );
+    }
+
+    // temporary bonuses as chips below the gauges (no outline either):
     struct Pill
     {
         std::string text;
         bool active;
+        bool held{ false }; // paused: the stocks are kept for later
     };
-    const std::array< Pill, 9 > pills{ {
-        { std::format( "H x{}", info.homingMissiles ), info.homingMissiles != 0 },
-        { std::format( "M x{}", info.magneticMines ), info.magneticMines != 0 },
+    const std::array< Pill, 10 > pills{ {
+        { "HOLD", info.stocksHeld, true },
+        { std::format( "H x{}", info.homingMissiles ), info.homingMissiles != 0, info.stocksHeld },
+        { std::format( "M x{}", info.magneticMines ), info.magneticMines != 0, info.stocksHeld },
         { std::format( "S {}s", info.plasmaShieldSeconds ), info.plasmaShieldSeconds != 0 },
         { std::format( "T {}s", info.turretSeconds ), info.turretSeconds != 0 },
         { std::format( "D {}s", info.decoySeconds ), info.decoySeconds != 0 },
@@ -183,19 +239,19 @@ void Hud::Draw( const World & _world, const NanoVGRenderer::Frame & _frame )
         { std::format( "B {}s", info.blossomSeconds ), info.blossomSeconds != 0 },
         { std::format( "X {}s", info.singularitySeconds ), info.singularitySeconds != 0 },
     } };
-    constexpr double pillHeight{ 24 };
-    constexpr double pillPaddingX{ 12 };
-    constexpr double pillSpacing{ 8 };
+    constexpr double pillHeight{ 22 };
+    constexpr double pillPaddingX{ 11 };
+    constexpr double pillSpacing{ 6 };
     constexpr double pillCharWidth{ 8 }; // sourceCodePro is monospaced, close enough for sizing
-    double pillX{ margin };
-    const double pillY{ panelPosition.v + panelHeight + 10 };
+    double pillX{ origin.u };
+    const double pillY{ origin.v + gaugePitch * 3 + 24 };
     for( const auto & pill : pills ) {
         if( !pill.active )
             continue;
         const double pillWidth{ pillPaddingX * 2 + pillCharWidth * static_cast< double >( pill.text.size() ) };
-        _frame.FillRectangle( { pillX, pillY }, { pillX + pillWidth, pillY + pillHeight }, { bonusColor.r, bonusColor.g, bonusColor.b, 0.12 }, pillHeight * 0.5 );
-        _frame.StrokeRectangle( { pillX, pillY }, { pillX + pillWidth, pillY + pillHeight }, { bonusColor.r, bonusColor.g, bonusColor.b, 0.45 }, 1, pillHeight * 0.5 );
-        _frame.Text( { pillX + pillWidth * 0.5, pillY + pillHeight * 0.5 }, "sourceCodePro", 13, pill.text, bonusColor, NanoVGRenderer::Frame::eTextAlign::center );
+        const Color_d color{ pill.held ? Color_d{ 1, 0.78, 0.3 } : bonusColor }; // gold while held
+        _frame.FillRectangle( { pillX, pillY }, { pillX + pillWidth, pillY + pillHeight }, { color.r * 0.25, color.g * 0.25, color.b * 0.25, 0.55 }, pillHeight * 0.5 );
+        _frame.Text( { pillX + pillWidth * 0.5, pillY + pillHeight * 0.5 }, "sourceCodePro", 13, pill.text, color, NanoVGRenderer::Frame::eTextAlign::center );
         pillX += pillWidth + pillSpacing;
     }
 

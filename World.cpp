@@ -403,8 +403,15 @@ void World::_HandleControls( const PlayerInput & _input )
         }
     }
 
+    // hold: the stocks of missiles and mines are not used, to be kept for later (a boss...)
+    if( _input.hold && !m_holdKeyDown ) {
+        m_holdStocks = !m_holdStocks;
+        m_audio.Play( m_holdStocks ? eSound::stocksHold : eSound::stocksRelease, 0.9 );
+    }
+    m_holdKeyDown = _input.hold;
+
     // shoot missile:
-    if( m_homingMissiles > 0 && m_missileCadence++ > 25 && _input.fire ) {
+    if( !m_holdStocks && m_homingMissiles > 0 && m_missileCadence++ > 25 && _input.fire ) {
         m_homingMissiles--;
         if( m_homingMissiles == 0 )
             m_audio.Play( eSound::homingMissilesOff, 0.9 );
@@ -414,7 +421,7 @@ void World::_HandleControls( const PlayerInput & _input )
     }
 
     // drop mines:
-    if( m_magneticMines > 0 && m_mineCadence++ > 60 ) {
+    if( !m_holdStocks && m_magneticMines > 0 && m_mineCadence++ > 60 ) {
         m_mineCadence = 0;
         double shortestDistanceSquared{ 1000 * 1000 };
         for( const auto & mine : m_mines )
@@ -2403,9 +2410,11 @@ World::HudInfo World::GetHudInfo() const
     return {
         m_ship.shield.value, m_ship.shield.capacity,
         m_ship.propellant.value, m_ship.propellant.capacity,
-        ( laserPass * 3 + laserSpeed ) * 100 / maxLaserPower,
+        laserPass * 3 + laserSpeed,
+        maxLaserPower,
         m_homingMissiles,
         m_magneticMines,
+        m_holdStocks,
         static_cast< int >( std::ceil( static_cast< double >( m_plasmaShield ) / m_frameRate ) ),
         static_cast< int >( std::ceil( static_cast< double >( m_turretTicks ) / m_frameRate ) ),
         static_cast< int >( std::ceil( static_cast< double >( m_decoyTicks ) / m_frameRate ) ),
@@ -2414,5 +2423,9 @@ World::HudInfo World::GetHudInfo() const
         static_cast< int >( std::ceil( static_cast< double >( m_blossomTicks ) / m_frameRate ) ),
         static_cast< int >( std::ceil( static_cast< double >( m_singularityTicks ) / m_frameRate ) ),
         m_score,
+        m_upgrades.Level( ShipUpgrades::eSystem::shield ),
+        m_upgrades.Level( ShipUpgrades::eSystem::propellant ),
+        m_upgrades.Level( ShipUpgrades::eSystem::engine ),
+        m_upgrades.Level( ShipUpgrades::eSystem::rotator ),
     };
 }

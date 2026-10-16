@@ -209,6 +209,8 @@ bool Win32::Windows::Dispatch()
             m_leftMouseButtonPressed = msg.message == WM_LBUTTONDOWN;
         if( msg.message == WM_RBUTTONDOWN || msg.message == WM_RBUTTONUP )
             m_rightMouseButtonPressed = msg.message == WM_RBUTTONDOWN;
+        if( msg.message == WM_MBUTTONDOWN || msg.message == WM_MBUTTONUP )
+            m_middleMouseButtonPressed = msg.message == WM_MBUTTONDOWN;
         // F10 (and Alt combinations) arrive as system key messages:
         const bool keyDown{ msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN };
         const bool keyUp{ msg.message == WM_KEYUP || msg.message == WM_SYSKEYUP };

@@ -22,6 +22,7 @@ struct PlayerInput
     Vector cursorPosition; // window coordinates
     bool fire{ false };
     bool thrust{ false };
+    bool hold{ false };   // toggles the hold of the missiles and mines stocks (on the press)
 };
 
 
@@ -133,9 +134,10 @@ public:
     {
         double shieldValue, shieldCapacity;
         double propellantValue, propellantCapacity;
-        int laserPowerPercent;
+        int laserLevel, laserLevelMax; // the whole progression of the laser, 0 .. max: the fire rate, then the beams
         int homingMissiles;
         int magneticMines;
+        bool stocksHeld;
         int plasmaShieldSeconds;
         int turretSeconds;
         int decoySeconds;
@@ -144,6 +146,7 @@ public:
         int blossomSeconds;
         int singularitySeconds;
         int score;
+        int shieldLevel, propellantLevel, engineLevel, rotatorLevel; // the ship upgrades, 0..ShipUpgrades::maxLevel
     };
     HudInfo GetHudInfo() const;
 
@@ -280,6 +283,8 @@ private:
 
     int m_homingMissiles{ 0 };
     int m_magneticMines{ 0 };
+    bool m_holdStocks{ false }; // the missiles and mines are kept for later (they still accumulate)
+    bool m_holdKeyDown{ false };
     ShipUpgrades m_upgrades;
 
     // firing cadences (previously function-local statics):

@@ -60,6 +60,8 @@ bool AudioDirector::_Init( const Packer::Resources & _resources )
         "wardenCoreExposed.wav",
         "lastShip.wav",
         "gameOver.wav",
+        "stocksHold.wav",
+        "stocksRelease.wav",
     };
     for( size_t id{ 0 }; id < files.size(); id++ ) {
         const auto itResource{ _resources.find( files.at( id ) ) };

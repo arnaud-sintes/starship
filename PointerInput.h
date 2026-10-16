@@ -13,6 +13,7 @@
 //   gamepad, in the menus: the left stick moves the cursor, A (or R2) clicks
 //   gamepad, while flying, aim assist: a cursor that comes close to the line from the ship to the closest enemy sticks to it (the ship
 //     follows the enemy), and lets go when the stick pulls it too far away
+//   third button while flying (hold the stocks): the middle mouse button, B on the gamepad
 //   gamepad, while flying: the right trigger (R2) is the left button (shoot), A the right one (the main thrust engine)
 class PointerInput
 {
@@ -37,6 +38,7 @@ public:
     const Vector & Cursor() const { return m_cursor; } // logical coordinates
     bool Left() const { return m_left; }
     bool Right() const { return m_right; }
+    bool Hold() const { return m_hold; } // the third button while flying: the middle mouse button, B on the gamepad
     eDevice Device() const { return m_device; }
     int MenuVertical() const { return m_menuVertical; } // -1 up, 1 down, 0 none, the same way
     int MenuDirection() const { return m_menuDirection; } // -1 left, 1 right, 0 none: the d-pad or the left stick pushed sideways (to pick between choices)
@@ -50,6 +52,6 @@ private:
     bool m_started{ false };
     bool m_stuck{ false }; // the cursor follows the closest enemy
     unsigned long long m_stuckId{ 0 };
-    bool m_left{ false }, m_right{ false };
+    bool m_left{ false }, m_right{ false }, m_hold{ false };
     int m_menuDirection{ 0 }, m_menuVertical{ 0 };
 };

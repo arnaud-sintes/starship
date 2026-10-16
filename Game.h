@@ -21,6 +21,8 @@ public:
     {
         bool minesLayout{ false }; // TEMPORARY test option (--mines): straight into a sandbox with a layout of mines
         bool foreman{ false };     // TEMPORARY test option (--foreman): straight into the stage 1 boss, invincible (F10 toggles)
+        bool stocks{ false };      // TEMPORARY test option (--stocks): free play with big stocks of missiles and mines to hold and release, invincible
+        bool upgrades{ false };    // TEMPORARY test option (--upgrades): straight to the ship upgrade screen, with skill points to spend
         bool singularity{ false }; // TEMPORARY test option (--singularity): a free-play sandbox where a singularity is deployed again and again
         bool warden{ false };      // TEMPORARY test option (--warden): same with the stage 2 boss
     };
@@ -74,6 +76,8 @@ private:
     SplashScreen m_splash;
     bool m_choiceFromKeys{ false }; // the arrow keys picked a line, until the mouse moves again
     Vector m_choiceCursor;
+    int m_upgradeSelection{ 0 }; // the card of the ship upgrade screen picked with the pad
+    int m_upgradeDirectionLatch{ 0 }; // one step per push of the stick or the d-pad
     int m_menuRow{ 0 }; // the line of the title screen menu picked with the keys or the pad
     PointerInput m_pointer; // the mouse or the gamepad
     UpdateChecker m_updateChecker; // asks GitHub for a newer release, in the background

@@ -1,4 +1,4 @@
-# Starship beta 0.0.17
+# Starship beta 0.0.18
 
 ## Goal
 
@@ -11,7 +11,7 @@ The game is split in **stages**, each one a sequence of **missions** displayed a
 - the pressure ramps up from mission to mission: more concurrent enemies, more gravity mines, a denser field of strange attractors (it fills in out of your sight), and a shorter delay (2.5s down to 0.6s) before a destroyed enemy is replaced
 - entering a new stage pauses the game on a full-screen **scenario screen** (like the prologue, click to engage) describing what awaits you
 - clearing a mission wipes out the remaining hostiles and fully restores your shield and propellant
-- clearing a mission also earns a **skill point**: the game pauses on the **ship upgrade** screen, where you spend it on one of the four ship systems (5 levels each). The hull grows with your build - a thicker shield ring, a bigger tank, a wider nozzle - and so does its mass:
+- clearing a mission also earns a **skill point**: once the mission cleared banner is over, the game pauses on the **ship upgrade** screen, where you spend it on one of the four ship systems (5 levels each). The hull grows with your build - a thicker shield ring, a bigger tank, a wider nozzle - and so does its mass:
     - **Shield**: +20% capacity and faster repair, but heavier (slower)
     - **Propellant**: +15% tank and faster refuel, but heavier (slower)
     - **Engine**: +15% thrust and quicker spool-up, burns more propellant
@@ -31,13 +31,15 @@ You have **5 ships** (shown under the score). When one is destroyed, you retry t
 
 - ***left button*** to *shoot* (both *main* laser weapon or temporary *secondary* weapon)
 - ***right button*** to activate the *main thrust engine*
+- ***middle button*** to **hold** (with a voice announcing it, and the release) your stocks of homing missiles and magnetic mines (toggle): they are not used while held (a gold *HOLD* shows in the HUD) but keep accumulating, so you can save them for a boss, and toggle again to let them flow
 
 *Gamepad* (an Xbox-style pad, or any pad working as one; plug it in, it is **detected automatically** and so is the device you are using: touch the pad or the mouse and the game follows, without any jump):
 
 - ***left stick*** to *aim*: the ship heads where you point it, and keeps that heading when you let go. A little **aim assist** helps: when your aim comes close to the line from your ship to the **closest enemy**, it sticks to it (the ship follows the enemy), until you pull the stick too far away
 - ***R2*** (right trigger) to *shoot* (the *left button*)
 - ***A*** for the *main thrust engine* (the *right button*)
-- in the menus (scenario, upgrades, retry...) the left stick moves the cursor, and **A** (or R2) clicks; on the title screen menu, **up / down** (d-pad or stick) picks a line and **A** activates it
+- ***B*** to *hold* the missiles and mines stocks (the *middle button*), with a voice announcing the hold and the release
+- in the menus (scenario, retry...) the left stick moves the cursor, and **A** (or R2) clicks; on the **ship upgrade** screen **left / right** (d-pad or stick) picks a system and **A** buys the level; on the title screen menu, **up / down** (d-pad or stick) picks a line and **A** activates it
 
 ## Goodies
 
@@ -109,6 +111,8 @@ Handy to try things out (they are not part of the story):
     - `starship.exe --mines`: an empty sandbox with a layout of both mine types (yours in a row above the ship, the gravity mines below)
     - `starship.exe --foreman`: the Foreman (stage 1 boss), next to the ship
     - `starship.exe --warden`: the Warden (stage 2 boss), next to the ship
+    - `starship.exe --stocks`: free play with 90 homing missiles and 30 mines to hold and release (middle button / B)
+    - `starship.exe --upgrades`: straight to the ship upgrade screen with 5 skill points
     - `starship.exe --singularity`: the same empty sandbox, a singularity deployed beside the ship again and again
     - `--screenshot=2,5` (with any of the above): saves `screenshot1.bmp` two seconds after the start and `screenshot2.bmp` at five seconds (the game frame, read back from OpenGL), then quits
 

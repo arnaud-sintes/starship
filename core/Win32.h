@@ -90,6 +90,7 @@ public:
     bool KeyPressed( const eKey _key ) const { return m_keyPressed.at( static_cast< unsigned char >( _key ) ); }
     bool LeftMouseButtonPressed() const { return m_leftMouseButtonPressed; }
     bool RightMouseButtonPressed() const { return m_rightMouseButtonPressed; }
+    bool MiddleMouseButtonPressed() const { return m_middleMouseButtonPressed; }
     void ShowCursor( const bool _show = true ) const;
     Position_i CursorPosition() const;
     void SetCursorPosition( const Position_i & _position ) const; // in the client area
@@ -109,4 +110,5 @@ private:
     std::array< bool, 255 > m_keyPressed{}; // filled by Dispatch, read from the same thread
     bool m_leftMouseButtonPressed{ false };
     bool m_rightMouseButtonPressed{ false };
+    bool m_middleMouseButtonPressed{ false };
 };

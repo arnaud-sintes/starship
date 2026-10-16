@@ -17,7 +17,7 @@ Game::Game( const Win32::Windows & _windows, const View & _view, const Packer::R
     , m_frameRate{ _frameRate }
     , m_audio{ _view.logical, _resources }
     , m_updateChecker{ __ToString( VERSION ) }
-    , m_world{ std::make_unique< World >( m_audio, _view.logical, _frameRate, ( _options.minesLayout || _options.singularity ) ? WorldCheckpoint{ .progress = 99 } : ( _options.warden ? WorldCheckpoint{ .progress = 11 } : ( _options.foreman ? WorldCheckpoint{ .progress = 5 } : WorldCheckpoint{} ) ) ) } // 99: past the last mission, free play; 5, 11: the bosses
+    , m_world{ std::make_unique< World >( m_audio, _view.logical, _frameRate, ( _options.minesLayout || _options.singularity ) ? WorldCheckpoint{ .progress = 99 } : ( _options.stocks ? WorldCheckpoint{ .progress = 99, .homingMissiles = 90, .magneticMines = 30 } : ( _options.upgrades ? WorldCheckpoint{ .progress = 1, .upgrades = { .points = 5 } } : ( _options.warden ? WorldCheckpoint{ .progress = 11 } : ( _options.foreman ? WorldCheckpoint{ .progress = 5 } : WorldCheckpoint{} ) ) ) ) ) } // 99: past the last mission, free play; 5, 11: the bosses
     , m_scene{ _view.logical }
     , m_hud{ _view.logical }
     , m_splash{ _view.logical }
@@ -28,6 +28,13 @@ Game::Game( const Win32::Windows & _windows, const View & _view, const Packer::R
         else
             m_world->DebugMinesLayout();
         m_step = eStep::stage11; // no prologue, no tutorial, no epilogue
+        m_tutorialEnabled = false;
+        m_epilogueShown = true;
+    }
+    else if( _options.stocks || _options.upgrades ) {
+        if( _options.stocks )
+            m_world->DebugToggleInvincible();
+        m_step = eStep::stage11; // no prologue, no tutorial; the upgrade screen comes by itself
         m_tutorialEnabled = false;
         m_epilogueShown = true;
     }
@@ -140,6 +147,37 @@ void Game::Tick()
 
     if( m_step == eStep::upgrade ) {
         m_audio.Update();
+        if( m_pointer.UsingGamepad() ) { // left / right picks a card (among those that can still be upgraded), A buys it
+            const auto & upgrades{ m_world->Upgrades() };
+            const auto count{ static_cast< int >( ShipUpgrades::eSystem::count ) };
+            const auto can{ [ & ]( const int _index ) { return upgrades.CanUpgrade( static_cast< ShipUpgrades::eSystem >( _index ) ); } };
+            if( !can( m_upgradeSelection ) )
+                for( int i{ 0 }; i < count; i++ )
+                    if( can( i ) ) {
+                        m_upgradeSelection = i;
+                        break;
+                    }
+            const auto direction{ m_pointer.MenuDirection() };
+            if( direction != 0 && m_upgradeDirectionLatch == 0 )
+                for( int step{ 1 }; step < count; step++ ) {
+                    const auto index{ ( m_upgradeSelection + direction * step + count * 2 ) % count };
+                    if( can( index ) ) {
+                        m_upgradeSelection = index;
+                        break;
+                    }
+                }
+            m_upgradeDirectionLatch = direction;
+            if( !m_pointer.Left() )
+                m_clickArmed = true;
+            else if( m_clickArmed ) {
+                m_clickArmed = false;
+                if( can( m_upgradeSelection ) )
+                    m_world->Upgrade( static_cast< ShipUpgrades::eSystem >( m_upgradeSelection ) );
+                if( !m_world->Upgrades().AnyUpgradable() )
+                    m_step = eStep::stage11;
+            }
+            return;
+        }
         if( !m_pointer.Left() )
             m_clickArmed = true;
         else if( m_clickArmed ) {
@@ -186,6 +224,7 @@ void Game::Tick()
             m_pointer.Cursor(),
             m_pointer.Left(),
             m_pointer.Right(),
+            m_pointer.Hold(),
         };
         // TEMPORARY test shortcut: F9 skips to just before the next phase (see World::DebugSkip)
         const auto f9{ m_windows.KeyPressed( Win32::Windows::eKey::f9 ) };
@@ -221,9 +260,9 @@ void Game::Tick()
             m_clickArmed = false;
             return;
         }
-        // skill points to spend (earned on the debriefing, or kept over a retry):
+        // skill points to spend (earned by the mission just cleared, or kept over a retry): once the debriefing is over, as the next mission is announced
         const auto phase{ m_world->Stage().Phase() };
-        if( !m_world->ShipDestroyed() && ( phase == StageDirector::ePhase::cleared || phase == StageDirector::ePhase::intro ) && m_world->Upgrades().AnyUpgradable() ) {
+        if( !m_world->ShipDestroyed() && phase == StageDirector::ePhase::intro && m_world->Upgrades().AnyUpgradable() ) {
             m_step = eStep::upgrade;
             m_clickArmed = false;
             return;
@@ -290,7 +329,8 @@ void Game::Draw( const NanoVGRenderer::Frame & _frame )
         else if( m_step == eStep::upgrade )
             _DrawUpgrade( _frame );
     }
-    _DrawCursor( _frame );
+    if( !( m_step == eStep::upgrade && m_pointer.UsingGamepad() ) ) // the pad picks the card, no cursor
+        _DrawCursor( _frame );
 }
 
 
@@ -362,8 +402,8 @@ void Game::_DrawTutorial( const NanoVGRenderer::Frame & _frame )
         { "INCOMING MISSILE", "A homing missile is locked on you.", "Outrun it until it starves, shoot it down (+10), or drag it into a trap." },
         // goodies, in Goody::eType order:
         { "LASER POWER-UP (L)", "Boosts your main laser: first the fire rate, then the number of beams.", "Stack them up to the full 8-beam volley." },
-        { "HOMING MISSILES (H)", "A pack of 30 missiles hunting the closest enemy.", "Fired automatically while you hold the trigger." },
-        { "MAGNETIC MINES (M)", "A pack of 10 mines, dropped behind you and attracted by enemies.", "Lay a trap and lure your pursuers through it." },
+        { "HOMING MISSILES (H)", "A pack of 30 missiles hunting the closest enemy.", "Fired automatically while you hold the trigger. B / middle click: hold them for later." },
+        { "MAGNETIC MINES (M)", "A pack of 10 mines, dropped behind you and attracted by enemies.", "Lay a trap and lure your pursuers. B / middle click: hold them for later." },
         { "PLASMA SHIELD (S)", "5 seconds behind an energy dome that blocks hits and blasts.", "Enemies bounce off it - ram them while it lasts." },
         { "SHIELD REPAIR (blue S)", "Instantly restores half of your shield capacity.", "It only spawns when your shield is damaged." },
         { "PROPELLANT (P)", "Instantly refills half of your propellant tank.", "It only spawns when your tank is not full." },
@@ -493,7 +533,7 @@ void Game::_DrawUpgrade( const NanoVGRenderer::Frame & _frame )
         const auto system{ static_cast< ShipUpgrades::eSystem >( i ) };
         const auto [ a, b ]{ _UpgradeCardRect( i ) };
         const bool enabled{ upgrades.CanUpgrade( system ) };
-        const bool hover{ enabled && cursor.u >= a.u && cursor.u <= b.u && cursor.v >= a.v && cursor.v <= b.v };
+        const bool hover{ enabled && ( m_pointer.UsingGamepad() ? static_cast< int >( i ) == m_upgradeSelection : ( cursor.u >= a.u && cursor.u <= b.u && cursor.v >= a.v && cursor.v <= b.v ) ) };
         const double alpha{ enabled ? 1.0 : 0.45 };
         _frame.GradientRectangle( a, b, { 0.07, 0.12, 0.2, hover ? 0.95 : 0.75 }, { 0.02, 0.045, 0.09, hover ? 0.95 : 0.75 }, 10 );
         _frame.StrokeRectangle( a, b, { accentColor.r, accentColor.g, accentColor.b, hover ? 0.95 : 0.4 * alpha }, 1.5, 10 );
@@ -517,7 +557,7 @@ void Game::_DrawUpgrade( const NanoVGRenderer::Frame & _frame )
         }
     }
 
-    _frame.Text( screenCenter + Vector{ 0, 340 }, "openSansBold", 13, m_pointer.UsingGamepad() ? "AIM AT A SYSTEM AND PRESS A TO UPGRADE IT" : "CLICK A SYSTEM TO UPGRADE IT", { 1, 1, 1, 0.3 + pulse * 0.45 }, NanoVGRenderer::Frame::eTextAlign::center, 4 );
+    _frame.Text( screenCenter + Vector{ 0, 340 }, "openSansBold", 13, m_pointer.UsingGamepad() ? "LEFT / RIGHT TO CHOOSE A SYSTEM  -  PRESS A TO UPGRADE IT" : "CLICK A SYSTEM TO UPGRADE IT", { 1, 1, 1, 0.3 + pulse * 0.45 }, NanoVGRenderer::Frame::eTextAlign::center, 4 );
 }
 
 

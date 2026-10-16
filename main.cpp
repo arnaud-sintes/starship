@@ -24,6 +24,10 @@ int main( const int _argc, char * _argv[] )
             options.minesLayout = true;
         else if( std::string_view{ _argv[ i ] } == "--foreman" ) // TEMPORARY test option: straight to the stage 1 boss
             options.foreman = true;
+        else if( std::string_view{ _argv[ i ] } == "--stocks" ) // TEMPORARY test option: free play with big stocks of missiles and mines
+            options.stocks = true;
+        else if( std::string_view{ _argv[ i ] } == "--upgrades" ) // TEMPORARY test option: the ship upgrade screen
+            options.upgrades = true;
         else if( std::string_view{ _argv[ i ] } == "--singularity" ) // TEMPORARY test option: a sandbox deploying singularities again and again
             options.singularity = true;
         else if( std::string_view{ _argv[ i ] } == "--warden" ) // TEMPORARY test option: straight to the stage 2 boss

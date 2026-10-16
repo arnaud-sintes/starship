@@ -56,6 +56,8 @@ enum class eSound : size_t
     wardenCoreExposed,
     lastShip,
     gameOver,
+    stocksHold,    // the missiles and mines are held / released
+    stocksRelease,
     count
 };
 

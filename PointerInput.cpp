@@ -27,7 +27,7 @@ void PointerInput::Update( const Win32::Windows & _windows, const View & _view, 
         m_cursor = _view.ToLogical( mouse );
     }
     const auto mouseUsed{ std::abs( mouse.x - m_syncedMouse.x ) > mouseTolerance || std::abs( mouse.y - m_syncedMouse.y ) > mouseTolerance
-        || _windows.LeftMouseButtonPressed() || _windows.RightMouseButtonPressed() };
+        || _windows.LeftMouseButtonPressed() || _windows.RightMouseButtonPressed() || _windows.MiddleMouseButtonPressed() };
     const auto gamepadUsed{ m_gamepad.Connected() && m_gamepad.AnyInput() };
     if( mouseUsed && !gamepadUsed )
         m_device = eDevice::mouse;
@@ -39,6 +39,7 @@ void PointerInput::Update( const Win32::Windows & _windows, const View & _view, 
         m_syncedMouse = mouse;
         m_left = _windows.LeftMouseButtonPressed();
         m_right = _windows.RightMouseButtonPressed();
+        m_hold = _windows.MiddleMouseButtonPressed();
         return;
     }
 
@@ -77,4 +78,5 @@ void PointerInput::Update( const Win32::Windows & _windows, const View & _view, 
     }
     m_left = m_gamepad.RightTrigger() > triggerPressed || ( !_aiming && m_gamepad.ButtonA() ); // R2 shoots (clicks), A clicks in the menus
     m_right = _aiming && m_gamepad.ButtonA(); // A is the thrust
+    m_hold = _aiming && m_gamepad.ButtonB();
 }
