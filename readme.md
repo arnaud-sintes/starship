@@ -1,4 +1,4 @@
-# Starship beta 0.0.19
+# Starship beta 0.0.20
 
 ## Goal
 
@@ -105,6 +105,7 @@ When destroying an enemy, goodies may appears (50% chance). They are ranked from
 
 Handy to try things out (they are not part of the story):
 
+- `starship.exe --cheats` activates the two following keys (they do nothing otherwise), and `starship.exe --fps` shows the frame rate information at the bottom left
 - **F9** skips the mission banners, brings a mission to its last kill (or last seconds) and a boss just above its next phase
 - **F10** toggles invincibility (an "INVINCIBLE" label is shown)
 - command line options start the game straight in a test setup, with an invincible ship:

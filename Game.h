@@ -21,6 +21,7 @@ public:
     {
         bool minesLayout{ false }; // TEMPORARY test option (--mines): straight into a sandbox with a layout of mines
         bool foreman{ false };     // TEMPORARY test option (--foreman): straight into the stage 1 boss, invincible (F10 toggles)
+        bool cheats{ false };      // --cheats: the F9 (skip) and F10 (invincibility) keys are active
         bool stocks{ false };      // TEMPORARY test option (--stocks): free play with big stocks of missiles and mines to hold and release, invincible
         bool upgrades{ false };    // TEMPORARY test option (--upgrades): straight to the ship upgrade screen, with skill points to spend
         bool singularity{ false }; // TEMPORARY test option (--singularity): a free-play sandbox where a singularity is deployed again and again
@@ -118,6 +119,7 @@ private:
 
     int m_storyStage{ 1 }; // highest stage whose scenario screen was shown (stage 1 has the prologue)
     bool m_epilogueShown{ false };
+    bool m_cheats{ false }; // --cheats: F9 and F10 are active
     bool m_debugKeyDown{ false }; // TEMPORARY F9 test shortcut
     bool m_debugInvincibleKeyDown{ false }; // TEMPORARY F10 test shortcut
     double m_cursorFlash{ 0 };

@@ -5,11 +5,10 @@
 #include "core/Macros.h"
 #include "version.h"
 
-//#define _DISPLAY_FPS
-
 int main( const int _argc, char * _argv[] )
 {
     Game::Options options;
+    bool showFps{ false }; // --fps: the frame rate information at the bottom left
     std::vector< double > screenshots; // TEMPORARY test option: --screenshot=2,5 saves screenshot1.bmp 2s after the start, screenshot2.bmp at 5s, then quits
     for( int i{ 1 }; i < _argc; i++ ) {
         const std::string_view argument{ _argv[ i ] };
@@ -24,6 +23,10 @@ int main( const int _argc, char * _argv[] )
             options.minesLayout = true;
         else if( std::string_view{ _argv[ i ] } == "--foreman" ) // TEMPORARY test option: straight to the stage 1 boss
             options.foreman = true;
+        else if( std::string_view{ _argv[ i ] } == "--cheats" ) // the F9 and F10 test keys
+            options.cheats = true;
+        else if( std::string_view{ _argv[ i ] } == "--fps" ) // the frame rate information
+            showFps = true;
         else if( std::string_view{ _argv[ i ] } == "--stocks" ) // TEMPORARY test option: free play with big stocks of missiles and mines
             options.stocks = true;
         else if( std::string_view{ _argv[ i ] } == "--upgrades" ) // TEMPORARY test option: the ship upgrade screen
@@ -94,12 +97,12 @@ int main( const int _argc, char * _argv[] )
             game.Draw( frame );
 
             // frame rate information:
-            #ifdef _DISPLAY_FPS
-            temper.Update();
-            const auto & fpsState{ fpsContext.Update() };
-            const std::string fps{ std::format( "FPS {:.3}  |  {:.3}%{}", fpsState.avgFrameRate, fpsState.avgConsumption, fpsState.frameDropped ? "  |  FRAME DROPPED" : "" ) };
-            frame.Text( { 6, view.logical.ToType< double >().height - 4 }, "sourceCodePro", 13, fps, { 1, 1, 1, fpsState.frameDropped ? 0.9 : 0.4 }, NanoVGRenderer::Frame::eTextAlign::bottomLeft );
-            #endif
+            if( showFps ) {
+                temper.Update();
+                const auto & fpsState{ fpsContext.Update() };
+                const std::string fps{ std::format( "FPS {:.3}  |  {:.3}%{}", fpsState.avgFrameRate, fpsState.avgConsumption, fpsState.frameDropped ? "  |  FRAME DROPPED" : "" ) };
+                frame.Text( { 6, view.logical.ToType< double >().height - 4 }, "sourceCodePro", 13, fps, { 1, 1, 1, fpsState.frameDropped ? 0.9 : 0.4 }, NanoVGRenderer::Frame::eTextAlign::bottomLeft );
+            }
         } // the frame is flushed
         if( shotsTaken < screenshots.size() && static_cast< double >( currentTime - startTime ) * 1e-9 >= screenshots.at( shotsTaken ) ) {
             context.SaveScreenshot( std::format( "screenshot{}.bmp", ++shotsTaken ) );

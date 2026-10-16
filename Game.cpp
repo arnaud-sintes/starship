@@ -22,6 +22,7 @@ Game::Game( const Win32::Windows & _windows, const View & _view, const Packer::R
     , m_hud{ _view.logical }
     , m_splash{ _view.logical }
 {
+    m_cheats = _options.cheats;
     if( _options.minesLayout || _options.singularity ) {
         if( _options.singularity )
             m_world->DebugSingularity();
@@ -227,16 +228,18 @@ void Game::Tick()
             m_pointer.Right(),
             m_pointer.Hold(),
         };
-        // TEMPORARY test shortcut: F9 skips to just before the next phase (see World::DebugSkip)
-        const auto f9{ m_windows.KeyPressed( Win32::Windows::eKey::f9 ) };
-        if( f9 && !m_debugKeyDown )
-            m_world->DebugSkip();
-        m_debugKeyDown = f9;
-        // TEMPORARY test shortcut: F10 toggles the invincibility
-        const auto f10{ m_windows.KeyPressed( Win32::Windows::eKey::f10 ) };
-        if( f10 && !m_debugInvincibleKeyDown )
-            m_world->DebugToggleInvincible();
-        m_debugInvincibleKeyDown = f10;
+        if( m_cheats ) { // --cheats
+            // TEMPORARY test shortcut: F9 skips to just before the next phase (see World::DebugSkip)
+            const auto f9{ m_windows.KeyPressed( Win32::Windows::eKey::f9 ) };
+            if( f9 && !m_debugKeyDown )
+                m_world->DebugSkip();
+            m_debugKeyDown = f9;
+            // TEMPORARY test shortcut: F10 toggles the invincibility
+            const auto f10{ m_windows.KeyPressed( Win32::Windows::eKey::f10 ) };
+            if( f10 && !m_debugInvincibleKeyDown )
+                m_world->DebugToggleInvincible();
+            m_debugInvincibleKeyDown = f10;
+        }
         m_world->Update( input );
         m_audio.Update();
         // let the explosion play out before the overlay:
