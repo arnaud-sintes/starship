@@ -280,6 +280,18 @@ void NanoVGRenderer::Frame::StrokeRectangle( const Position_d & _a, const Positi
 }
 
 
+double NanoVGRenderer::Frame::TextWidth( const std::string & _fontName, const double _size, const std::string & _text, const double _letterSpacing ) const
+{
+    auto context{ static_cast< NVGcontext * >( m_context ) };
+    ::nvgFontSize( context, static_cast< float >( _size ) );
+    ::nvgFontFace( context, _fontName.c_str() );
+    ::nvgTextLetterSpacing( context, static_cast< float >( _letterSpacing ) );
+    float bounds[ 4 ];
+    ::nvgTextBounds( context, 0, 0, _text.c_str(), nullptr, bounds );
+    return bounds[ 2 ] - bounds[ 0 ] - _letterSpacing; // no spacing after the last letter
+}
+
+
 void NanoVGRenderer::Frame::Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color, const eTextAlign _textAlign, const double _letterSpacing ) const
 {
     auto context{ static_cast< NVGcontext * >( m_context ) };

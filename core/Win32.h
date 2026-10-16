@@ -74,6 +74,7 @@ public:
 public:
     bool Dispatch();
     enum class eKey : unsigned long {
+        enter = 0x0D,
         space = 0x20,
         up = 0x26,
         down = 0x28,

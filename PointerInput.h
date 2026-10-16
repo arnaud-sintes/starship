@@ -38,6 +38,8 @@ public:
     bool Left() const { return m_left; }
     bool Right() const { return m_right; }
     eDevice Device() const { return m_device; }
+    int MenuVertical() const { return m_menuVertical; } // -1 up, 1 down, 0 none, the same way
+    int MenuDirection() const { return m_menuDirection; } // -1 left, 1 right, 0 none: the d-pad or the left stick pushed sideways (to pick between choices)
     bool UsingGamepad() const { return m_device == eDevice::gamepad; }
 
 private:
@@ -49,4 +51,5 @@ private:
     bool m_stuck{ false }; // the cursor follows the closest enemy
     unsigned long long m_stuckId{ 0 };
     bool m_left{ false }, m_right{ false };
+    int m_menuDirection{ 0 }, m_menuVertical{ 0 };
 };

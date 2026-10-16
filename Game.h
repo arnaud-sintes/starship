@@ -7,6 +7,7 @@
 #include "View.h"
 #include "PointerInput.h"
 #include "UpdateChecker.h"
+#include "SplashScreen.h"
 #include "core/Packer.h"
 
 
@@ -33,10 +34,11 @@ public:
 private:
     void _Restart();
     std::string _Click() const; // "CLICK", or the gamepad button doing it
-    std::pair< Vector, Vector > _PrologueButtonRect( const int _index ) const; // 0 = yes, 1 = no
+    std::pair< Vector, Vector > _MenuRowRect( const int _index ) const; // the title screen menu: 0 = start new game, 1 = the tutorial checkbox
     bool _DetectTutorial();
     void _DrawStory( const NanoVGRenderer::Frame & _frame, const std::string & _tag, const std::string & _title, const std::vector< const char * > & _lines ); // chapter tag, big title, scenario lines
     void _DrawPrologue( const NanoVGRenderer::Frame & _frame );
+    void _DrawStartMenu( const NanoVGRenderer::Frame & _frame, const double _alpha ); // on the title screen
     void _DrawStageStory( const NanoVGRenderer::Frame & _frame );
     void _DrawTutorial( const NanoVGRenderer::Frame & _frame );
     std::pair< Vector, Vector > _UpgradeCardRect( const size_t _index ) const; // one per ShipUpgrades::eSystem
@@ -59,6 +61,7 @@ private:
 
     enum class eStep
     {
+        splash,     // the title screen, before anything
         stage11_prologue,
         stage11,
         stageStory, // full-screen scenario of a new stage, world frozen behind
@@ -67,7 +70,11 @@ private:
         upgrade,  // world frozen behind the ship upgrade cards, until the skill points are spent
         gameOver,
     };
-    eStep m_step{ eStep::stage11_prologue };
+    eStep m_step{ eStep::splash };
+    SplashScreen m_splash;
+    bool m_choiceFromKeys{ false }; // the arrow keys picked a line, until the mouse moves again
+    Vector m_choiceCursor;
+    int m_menuRow{ 0 }; // the line of the title screen menu picked with the keys or the pad
     PointerInput m_pointer; // the mouse or the gamepad
     UpdateChecker m_updateChecker; // asks GitHub for a newer release, in the background
     bool m_noticePressed{ false }; // the button was down over the update notice
@@ -100,7 +107,7 @@ private:
         goodyHellstorm,
         count
     };
-    bool m_tutorialEnabled{ true };
+    bool m_tutorialEnabled{ false }; // the checkbox of the title screen
     std::array< bool, static_cast< size_t >( eTutorial::count ) > m_tutorialSeen{};
     eTutorial m_tutorialTopic{ eTutorial::chaser };
     Vector m_tutorialTarget; // world position of the concerned item

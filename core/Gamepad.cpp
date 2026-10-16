@@ -26,7 +26,7 @@ void Gamepad::_Reset()
     m_slot = -1;
     m_leftStick = {};
     m_leftTrigger = m_rightTrigger = 0;
-    m_buttonA = m_anyButton = false;
+    m_buttonA = m_anyButton = m_dpadLeft = m_dpadRight = m_dpadUp = m_dpadDown = false;
 }
 
 
@@ -55,5 +55,9 @@ void Gamepad::Poll()
     m_leftTrigger = Trigger( pad.bLeftTrigger );
     m_rightTrigger = Trigger( pad.bRightTrigger );
     m_buttonA = ( pad.wButtons & XINPUT_GAMEPAD_A ) != 0;
+    m_dpadLeft = ( pad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT ) != 0;
+    m_dpadRight = ( pad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT ) != 0;
+    m_dpadUp = ( pad.wButtons & XINPUT_GAMEPAD_DPAD_UP ) != 0;
+    m_dpadDown = ( pad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN ) != 0;
     m_anyButton = pad.wButtons != 0;
 }

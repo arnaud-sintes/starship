@@ -20,6 +20,7 @@ Game::Game( const Win32::Windows & _windows, const View & _view, const Packer::R
     , m_world{ std::make_unique< World >( m_audio, _view.logical, _frameRate, ( _options.minesLayout || _options.singularity ) ? WorldCheckpoint{ .progress = 99 } : ( _options.warden ? WorldCheckpoint{ .progress = 11 } : ( _options.foreman ? WorldCheckpoint{ .progress = 5 } : WorldCheckpoint{} ) ) ) } // 99: past the last mission, free play; 5, 11: the bosses
     , m_scene{ _view.logical }
     , m_hud{ _view.logical }
+    , m_splash{ _view.logical }
 {
     if( _options.minesLayout || _options.singularity ) {
         if( _options.singularity )
@@ -81,23 +82,58 @@ void Game::Tick()
         }
         m_noticePressed = m_pointer.Left();
     }
-    if( m_step == eStep::stage11_prologue ) {
+    if( m_step == eStep::splash ) {
         m_world->UpdateAmbientSound();
         m_audio.Update();
-        // engage by answering the tutorial question (YES / NO buttons):
+        // once the title has had its moment, its menu: "start new game" and the tutorial checkbox. The mouse clicks a line, the keys
+        // and the pad pick one (up / down) and activate it
+        const auto ready{ m_splash.Seconds() > 1.8 };
+        if( m_pointer.Cursor() != m_choiceCursor ) {
+            m_choiceCursor = m_pointer.Cursor();
+            m_choiceFromKeys = false;
+        }
+        if( m_windows.KeyPressed( Win32::Windows::eKey::up ) || m_windows.KeyPressed( Win32::Windows::eKey::down ) ) {
+            m_menuRow = m_windows.KeyPressed( Win32::Windows::eKey::up ) ? 0 : 1;
+            m_choiceFromKeys = true;
+        }
+        if( m_pointer.UsingGamepad() && m_pointer.MenuVertical() != 0 )
+            m_menuRow = m_pointer.MenuVertical() < 0 ? 0 : 1;
+        const auto confirm{ m_windows.KeyPressed( Win32::Windows::eKey::space ) || m_windows.KeyPressed( Win32::Windows::eKey::enter ) };
+        if( !m_pointer.Left() && !confirm )
+            m_clickArmed = true;
+        else if( m_clickArmed && ready ) {
+            int row{ -1 };
+            if( confirm || m_pointer.UsingGamepad() || m_choiceFromKeys )
+                row = m_menuRow;
+            else {
+                const auto cursor{ m_pointer.Cursor() };
+                for( int i{ 0 }; i < 2; i++ ) {
+                    const auto [ a, b ]{ _MenuRowRect( i ) };
+                    if( cursor.u >= a.u && cursor.u <= b.u && cursor.v >= a.v && cursor.v <= b.v )
+                        row = i;
+                }
+            }
+            if( row == 1 ) { // the checkbox
+                m_tutorialEnabled = !m_tutorialEnabled;
+                m_clickArmed = false;
+            }
+            else if( row == 0 ) { // start
+                m_step = eStep::stage11_prologue;
+                m_clickArmed = false;
+            }
+        }
+        return;
+    }
+
+    if( m_step == eStep::stage11_prologue ) {
+        // the mission briefing: click to engage
+        m_world->UpdateAmbientSound();
+        m_audio.Update();
         if( !m_pointer.Left() )
             m_clickArmed = true;
         else if( m_clickArmed ) {
-            const auto cursor{ m_pointer.Cursor() };
-            const auto inside{ [ & ]( const int _index ){
-                    const auto [ a, b ]{ _PrologueButtonRect( _index ) };
-                    return cursor.u >= a.u && cursor.u <= b.u && cursor.v >= a.v && cursor.v <= b.v;
-                } };
-            if( inside( 0 ) || inside( 1 ) ) {
-                m_tutorialEnabled = inside( 0 );
-                m_step = eStep::stage11;
-                m_clickArmed = false;
-            }
+            m_step = eStep::stage11;
+            m_clickArmed = false;
         }
         return;
     }
@@ -216,6 +252,16 @@ void Game::Tick()
 
 void Game::Draw( const NanoVGRenderer::Frame & _frame )
 {
+    if( m_step == eStep::splash ) {
+        m_overlayAnim += 0.05;
+        m_splash.Draw( _frame, __ToString( VERSION ) );
+        _DrawStartMenu( _frame, std::clamp( ( m_splash.Seconds() - 1.8 ) / 0.6, 0.0, 1.0 ) );
+        _DrawUpdateNotice( _frame );
+        if( !m_pointer.UsingGamepad() )
+            _DrawCursor( _frame );
+        return;
+    }
+
     if( m_step == eStep::stage11_prologue ) {
         m_scene.DrawBackdrop( *m_world, _frame );
         _DrawPrologue( _frame );
@@ -524,31 +570,54 @@ void Game::_DrawStageStory( const NanoVGRenderer::Frame & _frame )
 void Game::_DrawPrologue( const NanoVGRenderer::Frame & _frame )
 {
     m_overlayAnim += 0.05;
-    const auto & dimension{ m_view.logical };
-    const Vector screenCenter{ static_cast< double >( dimension.width ) * 0.5, static_cast< double >( dimension.height ) * 0.5 };
-    _DrawStory( _frame, "M I S S I O N", m_world->Stage().Label(), m_world->Stage().Story() );
-
-    // tutorial question with YES / NO buttons - answering engages the stage:
-    _frame.Text( screenCenter + Vector{ 0, 250 }, "openSansBold", 16, "ENABLE THE IN-GAME TUTORIAL?", { 0.85, 0.92, 1, 0.9 }, NanoVGRenderer::Frame::eTextAlign::center, 3 );
-    const auto cursor{ m_pointer.Cursor() };
-    for( int i{ 0 }; i < 2; i++ ) {
-        const auto [ a, b ]{ _PrologueButtonRect( i ) };
-        const bool hover{ cursor.u >= a.u && cursor.u <= b.u && cursor.v >= a.v && cursor.v <= b.v };
-        _frame.GradientRectangle( a, b, { 0.07, 0.12, 0.2, hover ? 0.95 : 0.7 }, { 0.02, 0.045, 0.09, hover ? 0.95 : 0.7 }, 10 );
-        _frame.StrokeRectangle( a, b, { accentColor.r, accentColor.g, accentColor.b, hover ? 0.95 : 0.4 }, 1.5, 10 );
-        _frame.Text( ( a + b ) * 0.5, "openSansBold", 18, i == 0 ? "YES" : "NO",
-            hover ? colorWhite : Color_d{ 0.85, 0.92, 1, 0.85 }, NanoVGRenderer::Frame::eTextAlign::center, 2 );
-    }
+    const Vector screenCenter{ static_cast< double >( m_view.logical.width ) * 0.5, static_cast< double >( m_view.logical.height ) * 0.5 };
     const double pulse{ ( std::sin( m_overlayAnim * 2 ) + 1 ) * 0.5 };
-    _frame.Text( screenCenter + Vector{ 0, 350 }, "openSansBold", 13, "CHOOSE TO ENGAGE", { 1, 1, 1, 0.3 + pulse * 0.45 }, NanoVGRenderer::Frame::eTextAlign::center, 4 );
+    _DrawStory( _frame, "M I S S I O N", m_world->Stage().Label(), m_world->Stage().Story() );
+    _frame.Text( screenCenter + Vector{ 0, 330 }, "openSansBold", 16, std::format( "{} TO ENGAGE", _Click() ), { 1, 1, 1, 0.35 + pulse * 0.5 }, NanoVGRenderer::Frame::eTextAlign::center, 5 );
 }
 
 
-std::pair< Vector, Vector > Game::_PrologueButtonRect( const int _index ) const
+void Game::_DrawStartMenu( const NanoVGRenderer::Frame & _frame, const double _alpha )
+{
+    // the menu of the title screen: "start new game", and the checkbox of the in-game tutorial (unchecked by default)
+    const auto cursor{ m_pointer.Cursor() };
+    for( int i{ 0 }; i < 2; i++ ) {
+        const auto [ a, b ]{ _MenuRowRect( i ) };
+        const bool hover{ m_pointer.UsingGamepad() || m_choiceFromKeys ? i == m_menuRow : ( cursor.u >= a.u && cursor.u <= b.u && cursor.v >= a.v && cursor.v <= b.v ) };
+        const auto textColor{ hover ? Color_d{ 1, 1, 1, _alpha } : Color_d{ 0.85, 0.92, 1, 0.85 * _alpha } };
+        const auto middle{ ( a + b ) * 0.5 };
+        if( i == 0 ) { // the button
+            _frame.GradientRectangle( a, b, { 0.07, 0.12, 0.2, ( hover ? 0.95 : 0.7 ) * _alpha }, { 0.02, 0.045, 0.09, ( hover ? 0.95 : 0.7 ) * _alpha }, 10 );
+            _frame.StrokeRectangle( a, b, { accentColor.r, accentColor.g, accentColor.b, ( hover ? 0.95 : 0.4 ) * _alpha }, 1.5, 10 );
+            _frame.Text( middle, "openSansBold", 18, "START NEW GAME", textColor, NanoVGRenderer::Frame::eTextAlign::center, 4 );
+            continue;
+        }
+        // the checkbox and its label, as a group centered on the line, without a frame: the selection underlines it
+        constexpr double boxSize{ 11 }, gap{ 16 };
+        const std::string label{ "ENABLE THE IN-GAME TUTORIAL" };
+        const auto labelWidth{ _frame.TextWidth( "openSansBold", 15, label, 3 ) };
+        const auto left{ middle.u - ( boxSize * 2 + gap + labelWidth ) * 0.5 };
+        const Vector box{ left + boxSize, middle.v };
+        _frame.StrokeRectangle( box - Vector{ boxSize, boxSize }, box + Vector{ boxSize, boxSize }, { accentColor.r, accentColor.g, accentColor.b, ( hover ? 1.0 : 0.7 ) * _alpha }, 1.8, 4 );
+        if( m_tutorialEnabled ) {
+            _frame.FillRectangle( box - Vector{ boxSize, boxSize }, box + Vector{ boxSize, boxSize }, { accentColor.r, accentColor.g, accentColor.b, 0.25 * _alpha }, 4 );
+            _frame.StrokePolyline( { box + Vector{ -6, 0 }, box + Vector{ -2, 5 }, box + Vector{ 7, -6 } }, { 1, 1, 1, _alpha }, 3 );
+        }
+        _frame.Text( { left + boxSize * 2 + gap + labelWidth * 0.5, middle.v + 1 }, "openSansBold", 15, label, textColor, NanoVGRenderer::Frame::eTextAlign::center, 3 );
+        if( hover )
+            _frame.Line( { left, middle.v + 20 }, { left + boxSize * 2 + gap + labelWidth, middle.v + 20 }, { accentColor.r, accentColor.g, accentColor.b, 0.8 * _alpha }, 1.5 );
+    }
+    const double pulse{ ( std::sin( m_overlayAnim * 2 ) + 1 ) * 0.5 };
+    const Vector screenCenter{ static_cast< double >( m_view.logical.width ) * 0.5, static_cast< double >( m_view.logical.height ) * 0.5 };
+    _frame.Text( screenCenter + Vector{ 0, 345 }, "openSansBold", 13, m_pointer.UsingGamepad() ? "UP / DOWN TO CHOOSE  -  PRESS A" : "CLICK TO CHOOSE", { 1, 1, 1, ( 0.3 + pulse * 0.45 ) * _alpha }, NanoVGRenderer::Frame::eTextAlign::center, 4 );
+}
+
+
+std::pair< Vector, Vector > Game::_MenuRowRect( const int _index ) const
 {
     const Vector screenCenter{ static_cast< double >( m_view.logical.width ) * 0.5, static_cast< double >( m_view.logical.height ) * 0.5 };
-    const Vector center{ screenCenter.u + ( _index == 0 ? -95.0 : 95.0 ), screenCenter.v + 305 };
-    return { center - Vector{ 65, 23 }, center + Vector{ 65, 23 } };
+    const Vector center{ screenCenter.u, screenCenter.v + 245 + _index * 62 };
+    return { center - Vector{ 190, 25 }, center + Vector{ 190, 25 } };
 }
 
 
@@ -602,7 +671,7 @@ void Game::_DrawGameOver( const NanoVGRenderer::Frame & _frame )
 
 bool Game::_UpdateNoticeVisible() const
 {
-    const bool menu{ m_step == eStep::stage11_prologue || m_step == eStep::stageStory || m_step == eStep::epilogue || m_step == eStep::gameOver };
+    const bool menu{ m_step == eStep::splash || m_step == eStep::stage11_prologue || m_step == eStep::stageStory || m_step == eStep::epilogue || m_step == eStep::gameOver };
     return menu && m_updateChecker.UpdateAvailable();
 }
 

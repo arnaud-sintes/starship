@@ -1,4 +1,4 @@
-# Starship beta 0.0.16
+# Starship beta 0.0.17
 
 ## Goal
 
@@ -37,7 +37,7 @@ You have **5 ships** (shown under the score). When one is destroyed, you retry t
 - ***left stick*** to *aim*: the ship heads where you point it, and keeps that heading when you let go. A little **aim assist** helps: when your aim comes close to the line from your ship to the **closest enemy**, it sticks to it (the ship follows the enemy), until you pull the stick too far away
 - ***R2*** (right trigger) to *shoot* (the *left button*)
 - ***A*** for the *main thrust engine* (the *right button*)
-- in the menus (scenario, upgrades, retry...) the left stick moves the cursor, and **A** (or R2) clicks
+- in the menus (scenario, upgrades, retry...) the left stick moves the cursor, and **A** (or R2) clicks; on the title screen menu, **up / down** (d-pad or stick) picks a line and **A** activates it
 
 ## Goodies
 
@@ -96,6 +96,7 @@ When destroying an enemy, goodies may appears (50% chance). They are ranked from
   - **snipers** (*pale red*) creeping to the edge of your screen, then holding position and firing fast **lead-compensated slugs** at your predicted position - it only shoots when visible, punishes straight-line flying, and never flees: close in to finish it (**+150 pts**)
   - **wasps** (*yellow*, small and fast) ramming you kamikaze-style: fragile, but their death blasts chain (**+40 pts** each)
 - When your shield is fully depleted, the next hit destroys the ship: after the explosion, click to retry the current mission, or to start over when it was your last ship (enemies keep patrolling the wreck in the background...)
+- The game opens on an animated **title screen** with a small menu: **START NEW GAME**, and an **ENABLE THE IN-GAME TUTORIAL** checkbox (unchecked by default). Click, or pick with the up/down keys or the pad and confirm with enter, space or A; the first mission briefing follows
 - At startup the game checks in the background, if a network connection is available, whether a **newer release** exists on GitHub: if so, a notice with a **clickable link** to the download page shows on the menu screens (nothing at all when offline)
 
 ## Test options

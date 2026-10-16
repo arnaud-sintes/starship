@@ -68,6 +68,9 @@
     <ClCompile Include="OpenGL.cpp">
       <Filter>wrapper</Filter>
     </ClCompile>
+    <ClCompile Include="SplashScreen.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
     <ClCompile Include="UpdateChecker.cpp">
       <Filter>game</Filter>
     </ClCompile>
@@ -137,6 +140,9 @@
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="Particule.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="SplashScreen.h">
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="UpdateChecker.h">

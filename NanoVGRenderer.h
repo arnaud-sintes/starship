@@ -61,6 +61,7 @@ public:
         bottomRight,
         center
     };
+    double TextWidth( const std::string & _fontName, const double _size, const std::string & _text, const double _letterSpacing = 0 ) const; // as Text() would draw it
     void Text( const Position_d & _position, const std::string & _fontName, const double _size, const std::string & _text, const Color_d & _color, const eTextAlign _textAlign = eTextAlign::topLeft, const double _letterSpacing = 0 ) const;
     void Reflect( const Position_d & _position, const double _radius, const Color_d & _color, const double _reflectAngle, const double _animation ) const;
 

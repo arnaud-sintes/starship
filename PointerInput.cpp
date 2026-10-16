@@ -16,6 +16,8 @@ namespace
 void PointerInput::Update( const Win32::Windows & _windows, const View & _view, const bool _aiming, const double _tickSeconds, const std::optional< AimTarget > & _target )
 {
     m_gamepad.Poll();
+    m_menuVertical = m_gamepad.DpadUp() || m_gamepad.LeftStick().v < -0.5 ? -1 : ( m_gamepad.DpadDown() || m_gamepad.LeftStick().v > 0.5 ? 1 : 0 );
+    m_menuDirection = m_gamepad.DpadLeft() || m_gamepad.LeftStick().u < -0.5 ? -1 : ( m_gamepad.DpadRight() || m_gamepad.LeftStick().u > 0.5 ? 1 : 0 );
 
     // which device is in use: the one touched last (when both are at the same time, the current one stays)
     const auto mouse{ _windows.CursorPosition() };

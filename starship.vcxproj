@@ -181,6 +181,7 @@
     <ClCompile Include="SceneRenderer.cpp" />
     <ClCompile Include="ShipUpgrades.cpp" />
     <ClCompile Include="SpikedBall.cpp" />
+    <ClCompile Include="SplashScreen.cpp" />
     <ClCompile Include="StageDirector.cpp" />
     <ClCompile Include="StarField.cpp" />
     <ClCompile Include="UpdateChecker.cpp" />
@@ -209,6 +210,7 @@
     <ClInclude Include="Mesh3D.h" />
     <ClInclude Include="Mine.h" />
     <ClInclude Include="SpikedBall.h" />
+    <ClInclude Include="SplashScreen.h" />
     <ClInclude Include="Missile.h" />
     <ClInclude Include="NanoVGRenderer.h" />
     <ClInclude Include="OpenGL.h" />

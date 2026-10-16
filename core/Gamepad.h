@@ -16,6 +16,10 @@ public:
     double LeftTrigger() const { return m_leftTrigger; }     // 0..1, 0 under the dead zone
     double RightTrigger() const { return m_rightTrigger; }
     bool ButtonA() const { return m_buttonA; }
+    bool DpadLeft() const { return m_dpadLeft; }
+    bool DpadUp() const { return m_dpadUp; }
+    bool DpadDown() const { return m_dpadDown; }
+    bool DpadRight() const { return m_dpadRight; }
     bool AnyInput() const { return m_leftStick.DistanceSquared() > 0 || m_leftTrigger > 0 || m_rightTrigger > 0 || m_anyButton; } // something is being touched
 
 private:
@@ -26,4 +30,5 @@ private:
     Vector m_leftStick;
     double m_leftTrigger{ 0 }, m_rightTrigger{ 0 };
     bool m_buttonA{ false }, m_anyButton{ false };
+    bool m_dpadLeft{ false }, m_dpadRight{ false }, m_dpadUp{ false }, m_dpadDown{ false };
 };
