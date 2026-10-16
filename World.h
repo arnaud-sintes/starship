@@ -68,6 +68,7 @@ public:
     const Rocket * ClosestEnemy( const Vector & _position ) const;
     const StageDirector & Stage() const { return m_stage; }
     const WorldCheckpoint & Checkpoint() const { return m_checkpoint; }
+    int Score() const { return m_score; }
     int Lives() const { return m_lives; }
     const ShipUpgrades & Upgrades() const { return m_upgrades; }
     void Upgrade( const ShipUpgrades::eSystem _system ); // spends one point (no-op if not allowed)

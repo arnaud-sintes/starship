@@ -50,8 +50,9 @@ Game::Game( const Win32::Windows & _windows, const View & _view, const Packer::R
 
 void Game::_Restart()
 {
-    // restarts the mission being played, with the gear it started with:
-    const WorldCheckpoint checkpoint{ m_world->Checkpoint() };
+    // restarts the mission being played, with the gear it started with; the score is kept (it only resets with a new game):
+    WorldCheckpoint checkpoint{ m_world->Checkpoint() };
+    checkpoint.score = m_world->Score();
     m_world = std::make_unique< World >( m_audio, m_view.logical, m_frameRate, checkpoint );
     m_step = eStep::stage11;
     if( m_world->Lives() == 1 && m_world->Stage().Phase() != StageDirector::ePhase::freePlay )

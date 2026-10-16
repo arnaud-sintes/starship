@@ -1,4 +1,4 @@
-# Starship beta 0.0.18
+# Starship beta 0.0.19
 
 ## Goal
 
@@ -19,7 +19,7 @@ The game is split in **stages**, each one a sequence of **missions** displayed a
 - after the last mission, an **epilogue** screen (with your final score) ends the story, then the game goes on in **free play** (endless, no objective, the last mission's setup)
 - the starfield follows the story: a dense sky in deep space (stage 1), thinning out in the glare of the planet (stage 2)
 
-You have **5 ships** (shown under the score). When one is destroyed, you retry the **current mission** with the gear (laser power, missiles, mines, ship upgrades) and the score you had when it began, minus a ship. Lose the fifth and it is **game over**: click to start a new game from the very beginning. Free play, once the story is complete, has no such limit.
+You have **5 ships** (shown under the score). When one is destroyed, you retry the **current mission** with the gear (laser power, missiles, mines, ship upgrades) minus a ship; your **score is kept**. Lose the fifth and it is **game over**: click to start a new game from the very beginning. Free play, once the story is complete, has no such limit.
 
 <iframe style='width:100%;height:480px' src="https://www.youtube.com/embed/_N0ygKAERLQ" allowfullscreen></iframe>
 
